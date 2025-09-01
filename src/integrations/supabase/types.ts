@@ -171,6 +171,36 @@ export type Database = {
           },
         ]
       }
+      lead_transfers: {
+        Row: {
+          from_user_id: string
+          id: string
+          lead_id: string
+          reason: string | null
+          to_user_id: string
+          transferred_at: string
+          transferred_by: string
+        }
+        Insert: {
+          from_user_id: string
+          id?: string
+          lead_id: string
+          reason?: string | null
+          to_user_id: string
+          transferred_at?: string
+          transferred_by: string
+        }
+        Update: {
+          from_user_id?: string
+          id?: string
+          lead_id?: string
+          reason?: string | null
+          to_user_id?: string
+          transferred_at?: string
+          transferred_by?: string
+        }
+        Relationships: []
+      }
       leads: {
         Row: {
           assigned_to: string | null
@@ -245,6 +275,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      message_templates: {
+        Row: {
+          category: string | null
+          content: string
+          created_at: string
+          created_by: string
+          id: string
+          is_active: boolean
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          category?: string | null
+          content: string
+          created_at?: string
+          created_by: string
+          id?: string
+          is_active?: boolean
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string | null
+          content?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          is_active?: boolean
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       profiles: {
         Row: {
