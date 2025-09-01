@@ -11,6 +11,8 @@ import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import Leads from "./pages/Leads";
 import Properties from "./pages/Properties";
+import Activities from "./pages/Activities";
+import Team from "./pages/Team";
 import Messages from "./pages/Messages";
 import Calendar from "./pages/Calendar";
 import Communications from "./pages/Communications";
@@ -79,8 +81,8 @@ const App: React.FC = () => {
                 <Route path="/dashboard" element={<DashboardLayout><Dashboard /></DashboardLayout>} />
                 <Route path="/leads" element={<DashboardLayout><Leads /></DashboardLayout>} />
                 <Route path="/properties" element={<DashboardLayout><Properties /></DashboardLayout>} />
-                <Route path="/activities" element={<DashboardLayout><div>Activities page coming soon...</div></DashboardLayout>} />
-                <Route path="/team" element={<DashboardLayout><div>Team page coming soon...</div></DashboardLayout>} />
+                <Route path="/activities" element={<DashboardLayout><Activities /></DashboardLayout>} />
+                <Route path="/team" element={<DashboardLayout><Team /></DashboardLayout>} />
                 <Route path="/reports" element={<DashboardLayout><Reports /></DashboardLayout>} />
                 <Route path="/calendar" element={<DashboardLayout><Calendar /></DashboardLayout>} />
                 <Route path="/messages" element={<DashboardLayout><Messages /></DashboardLayout>} />

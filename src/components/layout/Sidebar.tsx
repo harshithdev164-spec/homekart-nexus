@@ -48,7 +48,6 @@ const navigation: NavItem[] = [
     title: 'Team',
     href: '/team',
     icon: Users,
-    roles: ['admin', 'manager'],
   },
   {
     title: 'Reports',
