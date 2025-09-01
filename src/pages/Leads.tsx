@@ -5,7 +5,10 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { supabase } from '@/integrations/supabase/client';
-import { Plus, Search, Phone, Mail, MapPin, Calendar, Filter } from 'lucide-react';
+import { Plus, Search, Phone, Mail, MapPin, Calendar, Filter, Users } from 'lucide-react';
+import { RealtimeIndicator } from '@/components/collaboration/RealtimeIndicator';
+import { LeadTransfer } from '@/components/leads/LeadTransfer';
+import { MessageTemplates } from '@/components/templates/MessageTemplates';
 import { useToast } from '@/hooks/use-toast';
 import {
   Dialog,
@@ -34,6 +37,11 @@ interface Lead {
   notes?: string;
   created_at: string;
   next_followup?: string;
+  assigned_to?: string;
+  created_by: string;
+  profiles?: {
+    full_name: string;
+  };
 }
 
 const Leads: React.FC = () => {
@@ -43,6 +51,8 @@ const Leads: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [isTemplatesDialogOpen, setIsTemplatesDialogOpen] = useState(false);
+  const [selectedClient, setSelectedClient] = useState<{name: string; phone: string} | null>(null);
   
   // Form state
   const [formData, setFormData] = useState({
@@ -59,13 +69,32 @@ const Leads: React.FC = () => {
 
   useEffect(() => {
     fetchLeads();
+    
+    // Set up real-time subscription for leads
+    const channel = supabase
+      .channel('leads_changes')
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'leads' },
+        (payload) => {
+          console.log('Lead change detected:', payload);
+          fetchLeads();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const fetchLeads = async () => {
     try {
       const { data, error } = await supabase
         .from('leads')
-        .select('*')
+        .select(`
+          *,
+          profiles!leads_assigned_to_fkey(full_name)
+        `)
         .order('created_at', { ascending: false });
 
       if (error) {
@@ -168,17 +197,29 @@ const Leads: React.FC = () => {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Lead Management</h1>
+        <div className="space-y-1">
+          <div className="flex items-center gap-4">
+            <h1 className="text-3xl font-bold">Lead Management</h1>
+            <RealtimeIndicator channel="leads" />
+          </div>
           <p className="text-muted-foreground">Track and manage your leads through the sales pipeline</p>
         </div>
-        <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-          <DialogTrigger asChild>
-            <Button className="gap-2">
-              <Plus className="h-4 w-4" />
-              Add New Lead
-            </Button>
-          </DialogTrigger>
+        <div className="flex gap-2">
+          <Button 
+            variant="outline" 
+            className="gap-2"
+            onClick={() => setIsTemplatesDialogOpen(true)}
+          >
+            <Mail className="h-4 w-4" />
+            Templates
+          </Button>
+          <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+            <DialogTrigger asChild>
+              <Button className="gap-2">
+                <Plus className="h-4 w-4" />
+                Add New Lead
+              </Button>
+            </DialogTrigger>
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
               <DialogTitle>Create New Lead</DialogTitle>
@@ -299,6 +340,7 @@ const Leads: React.FC = () => {
             </form>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       {/* Search and Filters */}
@@ -365,6 +407,12 @@ const Leads: React.FC = () => {
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
+                {lead.profiles && (
+                  <div className="flex items-center gap-2 text-xs text-primary">
+                    <Users className="h-3 w-3" />
+                    Assigned to: {lead.profiles.full_name}
+                  </div>
+                )}
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Phone className="h-4 w-4" />
                   {lead.phone}
@@ -397,12 +445,20 @@ const Leads: React.FC = () => {
                 )}
               </div>
               <div className="flex gap-2 mt-4">
-                <Button size="sm" variant="outline" className="flex-1">
-                  Edit
+                <Button 
+                  size="sm" 
+                  variant="outline" 
+                  className="flex-1"
+                  onClick={() => setSelectedClient({name: lead.name, phone: lead.phone})}
+                >
+                  Message
                 </Button>
-                <Button size="sm" className="flex-1">
-                  Contact
-                </Button>
+                <LeadTransfer 
+                  leadId={lead.id}
+                  leadName={lead.name}
+                  currentOwner={lead.profiles?.full_name}
+                  onTransferSuccess={fetchLeads}
+                />
               </div>
             </CardContent>
           </Card>
@@ -424,6 +480,29 @@ const Leads: React.FC = () => {
           </CardContent>
         </Card>
       )}
+
+      {/* Message Templates Dialog */}
+      <Dialog open={isTemplatesDialogOpen} onOpenChange={setIsTemplatesDialogOpen}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-auto">
+          <DialogHeader>
+            <DialogTitle>Message Templates</DialogTitle>
+            <DialogDescription>
+              {selectedClient 
+                ? `Send pre-built messages to ${selectedClient.name}`
+                : 'Manage message templates for client communication'
+              }
+            </DialogDescription>
+          </DialogHeader>
+          <MessageTemplates 
+            selectedClient={selectedClient}
+            onSendMessage={(message) => {
+              // Here you would integrate with WhatsApp API or SMS service
+              console.log('Sending message:', message);
+              // For demo purposes, just show a success message
+            }}
+          />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

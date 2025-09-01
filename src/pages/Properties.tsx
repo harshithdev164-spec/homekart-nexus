@@ -5,8 +5,10 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { supabase } from '@/integrations/supabase/client';
-import { Plus, Search, MapPin, Home, Bed, Bath, Square, IndianRupee, Filter } from 'lucide-react';
+import { Plus, Search, MapPin, Home, Bed, Bath, Square, IndianRupee, Filter, Users } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { RealtimeIndicator } from '@/components/collaboration/RealtimeIndicator';
+import { PropertyMap } from '@/components/maps/PropertyMap';
 import {
   Dialog,
   DialogContent,
@@ -24,9 +26,9 @@ interface Property {
   id: string;
   title: string;
   description?: string;
+  price: number;
   property_type: string;
   status: string;
-  price: number;
   area?: number;
   bedrooms?: number;
   bathrooms?: number;
@@ -34,8 +36,16 @@ interface Property {
   address?: string;
   city: string;
   state: string;
+  pincode?: string;
   amenities?: string[];
+  images?: string[];
+  latitude?: number;
+  longitude?: number;
   created_at: string;
+  created_by: string;
+  profiles?: {
+    full_name: string;
+  };
 }
 
 const Properties: React.FC = () => {
@@ -45,6 +55,8 @@ const Properties: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
+  const [showMap, setShowMap] = useState(false);
   
   // Form state
   const [formData, setFormData] = useState({
@@ -63,13 +75,32 @@ const Properties: React.FC = () => {
 
   useEffect(() => {
     fetchProperties();
+    
+    // Set up real-time subscription for properties
+    const channel = supabase
+      .channel('properties_changes')
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'properties' },
+        (payload) => {
+          console.log('Property change detected:', payload);
+          fetchProperties();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const fetchProperties = async () => {
     try {
       const { data, error } = await supabase
         .from('properties')
-        .select('*')
+        .select(`
+          *,
+          profiles!properties_created_by_fkey(full_name)
+        `)
         .order('created_at', { ascending: false });
 
       if (error) {
@@ -188,17 +219,29 @@ const Properties: React.FC = () => {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Property Inventory</h1>
-          <p className="text-muted-foreground">Manage your property listings and inventory</p>
+        <div className="space-y-1">
+          <div className="flex items-center gap-4">
+            <h1 className="text-3xl font-bold">Property Management</h1>
+            <RealtimeIndicator channel="properties" />
+          </div>
+          <p className="text-muted-foreground">Manage your property inventory and listings</p>
         </div>
-        <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-          <DialogTrigger asChild>
-            <Button className="gap-2">
-              <Plus className="h-4 w-4" />
-              Add New Property
-            </Button>
-          </DialogTrigger>
+        <div className="flex gap-2">
+          <Button 
+            variant="outline" 
+            onClick={() => setShowMap(!showMap)}
+            className="gap-2"
+          >
+            <MapPin className="h-4 w-4" />
+            {showMap ? 'Hide Map' : 'Show Map'}
+          </Button>
+          <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+            <DialogTrigger asChild>
+              <Button className="gap-2">
+                <Plus className="h-4 w-4" />
+                Add New Property
+              </Button>
+            </DialogTrigger>
           <DialogContent className="sm:max-w-2xl">
             <DialogHeader>
               <DialogTitle>Add New Property</DialogTitle>
@@ -342,6 +385,7 @@ const Properties: React.FC = () => {
             </form>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       {/* Search and Filters */}
@@ -359,6 +403,16 @@ const Properties: React.FC = () => {
           <Filter className="h-4 w-4" />
         </Button>
       </div>
+
+      {/* Map View */}
+      {showMap && (
+        <PropertyMap
+          properties={properties}
+          selectedProperty={selectedProperty}
+          onPropertySelect={(property) => setSelectedProperty(property)}
+          height="500px"
+        />
+      )}
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
@@ -399,14 +453,28 @@ const Properties: React.FC = () => {
         {filteredProperties.map((property) => {
           const PropertyIcon = getPropertyTypeIcon(property.property_type);
           return (
-            <Card key={property.id} className="hover:shadow-medium transition-all duration-300">
+            <Card 
+              key={property.id} 
+              className={`hover:shadow-medium transition-all duration-300 cursor-pointer ${
+                selectedProperty?.id === property.id ? 'ring-2 ring-primary' : ''
+              }`}
+              onClick={() => setSelectedProperty(property)}
+            >
               <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-lg line-clamp-1">{property.title}</CardTitle>
-                  <Badge className={getStatusColor(property.status)}>
-                    {property.status.replace('_', ' ')}
-                  </Badge>
-                </div>
+            <CardTitle className="flex items-center gap-2">
+              <div className="flex items-center justify-between w-full">
+                <span className="text-lg line-clamp-1">{property.title}</span>
+                <Badge className={getStatusColor(property.status)}>
+                  {property.status.replace('_', ' ')}
+                </Badge>
+              </div>
+            </CardTitle>
+            {property.profiles && (
+              <div className="flex items-center gap-2 text-xs text-primary">
+                <Users className="h-3 w-3" />
+                Listed by: {property.profiles.full_name}
+              </div>
+            )}
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <PropertyIcon className="h-4 w-4" />
                   {property.property_type.charAt(0).toUpperCase() + property.property_type.slice(1)}
