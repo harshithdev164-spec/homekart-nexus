@@ -5,12 +5,13 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { supabase } from '@/integrations/supabase/client';
-import { Plus, Search, Phone, Mail, MapPin, Calendar, Filter, Users } from 'lucide-react';
+import { Plus, Search, Phone, Mail, MapPin, Calendar, Filter, Users, Upload } from 'lucide-react';
 import { RealtimeIndicator } from '@/components/collaboration/RealtimeIndicator';
 import { LeadTransfer } from '@/components/leads/LeadTransfer';
 import { MessageTemplates } from '@/components/templates/MessageTemplates';
 import { LeadAssignmentIndicator } from '@/components/leads/LeadAssignmentIndicator';
 import { LeadIntegrations } from '@/components/leads/LeadIntegrations';
+import { LeadImport } from '@/components/leads/LeadImport';
 import { useToast } from '@/hooks/use-toast';
 import {
   Dialog,
@@ -55,6 +56,7 @@ const Leads: React.FC = () => {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isTemplatesDialogOpen, setIsTemplatesDialogOpen] = useState(false);
   const [isIntegrationsOpen, setIsIntegrationsOpen] = useState(false);
+  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [selectedClient, setSelectedClient] = useState<{name: string; phone: string} | null>(null);
   
   // Form state
@@ -208,6 +210,14 @@ const Leads: React.FC = () => {
           <p className="text-muted-foreground">Track and manage your leads through the sales pipeline</p>
         </div>
         <div className="flex gap-2">
+          <Button 
+            variant="outline" 
+            className="gap-2"
+            onClick={() => setIsImportDialogOpen(true)}
+          >
+            <Upload className="h-4 w-4" />
+            Import Leads
+          </Button>
           <Button 
             variant="outline" 
             className="gap-2"
@@ -537,6 +547,19 @@ const Leads: React.FC = () => {
             </DialogDescription>
           </DialogHeader>
           <LeadIntegrations />
+        </DialogContent>
+      </Dialog>
+
+      {/* Lead Import Dialog */}
+      <Dialog open={isImportDialogOpen} onOpenChange={setIsImportDialogOpen}>
+        <DialogContent className="sm:max-w-6xl max-h-[90vh] overflow-auto">
+          <DialogHeader>
+            <DialogTitle>Import Leads from Excel</DialogTitle>
+            <DialogDescription>
+              Upload and import leads from an Excel file (.xlsx or .xls)
+            </DialogDescription>
+          </DialogHeader>
+          <LeadImport />
         </DialogContent>
       </Dialog>
     </div>
