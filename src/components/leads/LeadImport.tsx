@@ -61,14 +61,34 @@ export const LeadImport: React.FC = () => {
   };
 
   const parseExcelFile = (file: File) => {
+    console.log('Starting to parse file:', file.name);
     const reader = new FileReader();
+    
+    reader.onerror = () => {
+      console.error('FileReader error');
+      toast({
+        title: 'File reading error',
+        description: 'Failed to read the uploaded file',
+        variant: 'destructive',
+      });
+    };
+
     reader.onload = (e) => {
       try {
+        console.log('File read successfully, parsing with XLSX');
         const data = e.target?.result;
-        const workbook = XLSX.read(data, { type: 'binary' });
+        const workbook = XLSX.read(data, { type: 'array' });
         const sheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[sheetName];
-        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+        
+        // Parse as JSON with proper headers
+        const jsonData = XLSX.utils.sheet_to_json(worksheet, { 
+          header: 1,
+          defval: '',
+          raw: false
+        });
+
+        console.log('Parsed JSON data:', jsonData);
 
         if (jsonData.length < 2) {
           toast({
@@ -79,14 +99,20 @@ export const LeadImport: React.FC = () => {
           return;
         }
 
-        const headers = jsonData[0] as string[];
-        const rows = jsonData.slice(1).map(row => {
-          const obj: ExcelRow = {};
-          headers.forEach((header, index) => {
-            obj[header] = (row as any[])[index] || '';
+        const headers = (jsonData[0] as string[]).filter(header => header && header.trim());
+        const rows = jsonData.slice(1)
+          .filter(row => row && (row as any[]).some(cell => cell && cell.toString().trim()))
+          .map(row => {
+            const obj: ExcelRow = {};
+            headers.forEach((header, index) => {
+              const value = (row as any[])[index];
+              obj[header] = value ? value.toString().trim() : '';
+            });
+            return obj;
           });
-          return obj;
-        });
+
+        console.log('Processed headers:', headers);
+        console.log('Processed rows:', rows.length);
 
         setExcelColumns(headers);
         setExcelData(rows);
@@ -96,33 +122,37 @@ export const LeadImport: React.FC = () => {
         headers.forEach(header => {
           const lowerHeader = header.toLowerCase();
           if (lowerHeader.includes('name')) autoMapping[header] = 'name';
-          if (lowerHeader.includes('phone')) autoMapping[header] = 'phone';
-          if (lowerHeader.includes('email')) autoMapping[header] = 'email';
+          if (lowerHeader.includes('phone') || lowerHeader.includes('mobile')) autoMapping[header] = 'phone';
+          if (lowerHeader.includes('email') || lowerHeader.includes('mail')) autoMapping[header] = 'email';
           if (lowerHeader.includes('source')) autoMapping[header] = 'source';
           if (lowerHeader.includes('budget')) {
-            if (lowerHeader.includes('min')) autoMapping[header] = 'budget_min';
-            if (lowerHeader.includes('max')) autoMapping[header] = 'budget_max';
+            if (lowerHeader.includes('min') || lowerHeader.includes('from')) autoMapping[header] = 'budget_min';
+            if (lowerHeader.includes('max') || lowerHeader.includes('to')) autoMapping[header] = 'budget_max';
           }
-          if (lowerHeader.includes('location')) autoMapping[header] = 'preferred_location';
+          if (lowerHeader.includes('location') || lowerHeader.includes('address')) autoMapping[header] = 'preferred_location';
           if (lowerHeader.includes('property') && lowerHeader.includes('type')) autoMapping[header] = 'property_type';
-          if (lowerHeader.includes('notes')) autoMapping[header] = 'notes';
+          if (lowerHeader.includes('note') || lowerHeader.includes('comment')) autoMapping[header] = 'notes';
         });
+        
+        console.log('Auto-mapped fields:', autoMapping);
         setFieldMapping(autoMapping);
 
         toast({
           title: 'File parsed successfully',
-          description: `Found ${rows.length} rows of data`,
+          description: `Found ${rows.length} rows of data with ${headers.length} columns`,
         });
       } catch (error) {
         console.error('Error parsing Excel file:', error);
         toast({
           title: 'Error parsing file',
-          description: 'Unable to parse the Excel file. Please check the format.',
+          description: 'Unable to parse the Excel file. Please check the format and try again.',
           variant: 'destructive',
         });
       }
     };
-    reader.readAsBinaryString(file);
+    
+    // Read as ArrayBuffer for better compatibility
+    reader.readAsArrayBuffer(file);
   };
 
   const validateAndImportLeads = async () => {
