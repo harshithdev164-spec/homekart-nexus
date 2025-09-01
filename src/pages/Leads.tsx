@@ -9,6 +9,8 @@ import { Plus, Search, Phone, Mail, MapPin, Calendar, Filter, Users } from 'luci
 import { RealtimeIndicator } from '@/components/collaboration/RealtimeIndicator';
 import { LeadTransfer } from '@/components/leads/LeadTransfer';
 import { MessageTemplates } from '@/components/templates/MessageTemplates';
+import { LeadAssignmentIndicator } from '@/components/leads/LeadAssignmentIndicator';
+import { LeadIntegrations } from '@/components/leads/LeadIntegrations';
 import { useToast } from '@/hooks/use-toast';
 import {
   Dialog,
@@ -52,6 +54,7 @@ const Leads: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isTemplatesDialogOpen, setIsTemplatesDialogOpen] = useState(false);
+  const [isIntegrationsOpen, setIsIntegrationsOpen] = useState(false);
   const [selectedClient, setSelectedClient] = useState<{name: string; phone: string} | null>(null);
   
   // Form state
@@ -208,6 +211,14 @@ const Leads: React.FC = () => {
           <Button 
             variant="outline" 
             className="gap-2"
+            onClick={() => setIsIntegrationsOpen(true)}
+          >
+            <Users className="h-4 w-4" />
+            Integrations
+          </Button>
+          <Button 
+            variant="outline" 
+            className="gap-2"
             onClick={() => setIsTemplatesDialogOpen(true)}
           >
             <Mail className="h-4 w-4" />
@@ -359,6 +370,18 @@ const Leads: React.FC = () => {
         </Button>
       </div>
 
+      {/* Lead Assignment Indicator */}
+      <LeadAssignmentIndicator 
+        leads={filteredLeads} 
+        onLeadUpdate={(updatedLead) => {
+          setLeads(prevLeads => 
+            prevLeads.map(lead => 
+              lead.id === updatedLead.id ? { ...lead, ...updatedLead } : lead
+            )
+          );
+        }}
+      />
+
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <Card>
@@ -501,6 +524,19 @@ const Leads: React.FC = () => {
               // For demo purposes, just show a success message
             }}
           />
+        </DialogContent>
+      </Dialog>
+
+      {/* Lead Integrations Dialog */}
+      <Dialog open={isIntegrationsOpen} onOpenChange={setIsIntegrationsOpen}>
+        <DialogContent className="sm:max-w-4xl">
+          <DialogHeader>
+            <DialogTitle>Lead Integrations</DialogTitle>
+            <DialogDescription>
+              Import leads from external platforms like MagicBricks and 99acres.
+            </DialogDescription>
+          </DialogHeader>
+          <LeadIntegrations />
         </DialogContent>
       </Dialog>
     </div>

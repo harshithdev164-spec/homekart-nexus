@@ -9,6 +9,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { FileText, Download, Calendar, TrendingUp, Users, Home } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import * as XLSX from 'xlsx';
 
 interface ReportData {
   id: string;
@@ -260,22 +261,60 @@ export const ReportGenerator: React.FC = () => {
   };
 
   const exportReport = (report: ReportData) => {
-    const dataStr = JSON.stringify(report.data, null, 2);
-    const dataBlob = new Blob([dataStr], { type: 'application/json' });
-    const url = URL.createObjectURL(dataBlob);
-    
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `${report.title.replace(/\s+/g, '_')}_${report.generated_at.split('T')[0]}.json`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-    
-    toast({
-      title: 'Success',
-      description: 'Report exported successfully'
-    });
+    try {
+      // Create a new workbook
+      const workbook = XLSX.utils.book_new();
+
+      // Convert report data to worksheets
+      if (report.data.leads) {
+        const ws = XLSX.utils.json_to_sheet(report.data.leads);
+        XLSX.utils.book_append_sheet(workbook, ws, 'Leads');
+      }
+
+      if (report.data.properties) {
+        const ws = XLSX.utils.json_to_sheet(report.data.properties);
+        XLSX.utils.book_append_sheet(workbook, ws, 'Properties');
+      }
+
+      if (report.data.activities) {
+        const ws = XLSX.utils.json_to_sheet(report.data.activities);
+        XLSX.utils.book_append_sheet(workbook, ws, 'Activities');
+      }
+
+      if (report.data.teamPerformance) {
+        const ws = XLSX.utils.json_to_sheet(report.data.teamPerformance);
+        XLSX.utils.book_append_sheet(workbook, ws, 'Team Performance');
+      }
+
+      // If no specific data sheets, create a summary sheet
+      if (!report.data.leads && !report.data.properties && !report.data.activities && !report.data.teamPerformance) {
+        const summaryData = [
+          { Metric: 'Report Title', Value: report.title },
+          { Metric: 'Report Type', Value: report.report_type },
+          { Metric: 'Generated Date', Value: report.generated_at },
+          { Metric: 'Total Leads', Value: report.data.totalLeads || 0 },
+          { Metric: 'Total Properties', Value: report.data.totalProperties || 0 },
+          { Metric: 'Total Activities', Value: report.data.totalActivities || 0 }
+        ];
+        const ws = XLSX.utils.json_to_sheet(summaryData);
+        XLSX.utils.book_append_sheet(workbook, ws, 'Summary');
+      }
+
+      // Write and download the file
+      const fileName = `${report.title.replace(/\s+/g, '_')}_${report.generated_at.split('T')[0]}.xlsx`;
+      XLSX.writeFile(workbook, fileName);
+      
+      toast({
+        title: 'Success',
+        description: 'Report exported as Excel file successfully'
+      });
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to export report as Excel',
+        variant: 'destructive'
+      });
+    }
   };
 
   return (
