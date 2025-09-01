@@ -9,6 +9,7 @@ import { Plus, Search, Phone, Mail, MapPin, Calendar, Filter, Users, Upload } fr
 import { RealtimeIndicator } from '@/components/collaboration/RealtimeIndicator';
 import { LeadTransfer } from '@/components/leads/LeadTransfer';
 import { MessageTemplates } from '@/components/templates/MessageTemplates';
+import { LeadMessaging } from '@/components/communications/LeadMessaging';
 import { LeadAssignmentIndicator } from '@/components/leads/LeadAssignmentIndicator';
 import { LeadIntegrations } from '@/components/leads/LeadIntegrations';
 import { LeadImport } from '@/components/leads/LeadImport';
@@ -55,9 +56,10 @@ const Leads: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isTemplatesDialogOpen, setIsTemplatesDialogOpen] = useState(false);
+  const [isMessagingDialogOpen, setIsMessagingDialogOpen] = useState(false);
   const [isIntegrationsOpen, setIsIntegrationsOpen] = useState(false);
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
-  const [selectedClient, setSelectedClient] = useState<{name: string; phone: string} | null>(null);
+  const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   
   // Form state
   const [formData, setFormData] = useState({
@@ -482,7 +484,10 @@ const Leads: React.FC = () => {
                   size="sm" 
                   variant="outline" 
                   className="flex-1"
-                  onClick={() => setSelectedClient({name: lead.name, phone: lead.phone})}
+                  onClick={() => {
+                    setSelectedLead(lead);
+                    setIsMessagingDialogOpen(true);
+                  }}
                 >
                   Message
                 </Button>
@@ -520,20 +525,28 @@ const Leads: React.FC = () => {
           <DialogHeader>
             <DialogTitle>Message Templates</DialogTitle>
             <DialogDescription>
-              {selectedClient 
-                ? `Send pre-built messages to ${selectedClient.name}`
-                : 'Manage message templates for client communication'
+              Manage message templates for client communication
+            </DialogDescription>
+          </DialogHeader>
+          <MessageTemplates />
+        </DialogContent>
+      </Dialog>
+
+      {/* Lead Messaging Dialog */}
+      <Dialog open={isMessagingDialogOpen} onOpenChange={setIsMessagingDialogOpen}>
+        <DialogContent className="max-w-6xl max-h-[90vh] overflow-auto">
+          <DialogHeader>
+            <DialogTitle>Send Message to Lead</DialogTitle>
+            <DialogDescription>
+              {selectedLead 
+                ? `Send WhatsApp or email messages to ${selectedLead.name}`
+                : 'Send messages to leads'
               }
             </DialogDescription>
           </DialogHeader>
-          <MessageTemplates 
-            selectedClient={selectedClient}
-            onSendMessage={(message) => {
-              // Here you would integrate with WhatsApp API or SMS service
-              console.log('Sending message:', message);
-              // For demo purposes, just show a success message
-            }}
-          />
+          <div className="mt-4">
+            <LeadMessaging />
+          </div>
         </DialogContent>
       </Dialog>
 
