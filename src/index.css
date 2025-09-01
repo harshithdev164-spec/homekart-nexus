@@ -93,33 +93,56 @@
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
+    /* Background System */
+    --background: 215 28% 17%;
+    --foreground: 0 0% 98%;
 
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
+    /* Card System */
+    --card: 215 28% 17%;
+    --card-foreground: 0 0% 98%;
 
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
+    /* Popover System */
+    --popover: 215 28% 17%;
+    --popover-foreground: 0 0% 98%;
 
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
+    /* Primary - Professional Real Estate Blue */
+    --primary: 214 84% 66%;
+    --primary-foreground: 215 28% 17%;
+    --primary-hover: 214 84% 60%;
+    --primary-light: 214 84% 25%;
 
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
+    /* Secondary - Elegant Gray */
+    --secondary: 215 16% 30%;
+    --secondary-foreground: 0 0% 98%;
+    --secondary-light: 215 16% 20%;
 
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
+    /* Success - Property Status Green */
+    --success: 142 76% 46%;
+    --success-foreground: 0 0% 98%;
+    --success-light: 142 76% 15%;
 
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
+    /* Warning - Attention Orange */
+    --warning: 38 92% 60%;
+    --warning-foreground: 215 28% 17%;
+    --warning-light: 38 92% 15%;
 
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
+    /* Muted System */
+    --muted: 215 16% 25%;
+    --muted-foreground: 215 13% 65%;
 
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
+    /* Accent - Premium Gold */
+    --accent: 43 74% 76%;
+    --accent-foreground: 215 28% 17%;
+    --accent-light: 43 74% 20%;
+
+    /* Destructive */
+    --destructive: 0 84% 70%;
+    --destructive-foreground: 0 0% 98%;
+
+    /* UI Elements */
+    --border: 215 16% 25%;
+    --input: 215 16% 25%;
+    --ring: 214 84% 66%;
     --sidebar-background: 240 5.9% 10%;
     --sidebar-foreground: 240 4.8% 95.9%;
     --sidebar-primary: 224.3 76.3% 48%;
