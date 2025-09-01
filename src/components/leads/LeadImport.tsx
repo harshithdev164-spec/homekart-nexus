@@ -1,6 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -36,6 +35,7 @@ const PROPERTY_TYPES = ['apartment', 'villa', 'plot', 'commercial', 'office', 'w
 export const LeadImport: React.FC = () => {
   const { profile } = useAuth();
   const { toast } = useToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<File | null>(null);
   const [excelData, setExcelData] = useState<ExcelRow[]>([]);
   const [excelColumns, setExcelColumns] = useState<string[]>([]);
@@ -43,14 +43,8 @@ export const LeadImport: React.FC = () => {
   const [isImporting, setIsImporting] = useState(false);
   const [importResults, setImportResults] = useState<{success: number; errors: string[]}>({success: 0, errors: []});
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    
-    const uploadedFile = e.target.files?.[0];
-    if (!uploadedFile) return;
-
-    if (!uploadedFile.name.match(/\.(xlsx|xls)$/)) {
+  const handleFileSelection = (selectedFile: File) => {
+    if (!selectedFile.name.match(/\.(xlsx|xls)$/)) {
       toast({
         title: 'Invalid file type',
         description: 'Please upload an Excel file (.xlsx or .xls)',
@@ -59,8 +53,34 @@ export const LeadImport: React.FC = () => {
       return;
     }
 
-    setFile(uploadedFile);
-    parseExcelFile(uploadedFile);
+    setFile(selectedFile);
+    parseExcelFile(selectedFile);
+  };
+
+  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = e.target.files?.[0];
+    if (selectedFile) {
+      handleFileSelection(selectedFile);
+    }
+  };
+
+  const handleDropZoneClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const files = e.dataTransfer.files;
+    if (files.length > 0) {
+      handleFileSelection(files[0]);
+    }
   };
 
   const parseExcelFile = (file: File) => {
@@ -271,8 +291,10 @@ export const LeadImport: React.FC = () => {
           </CardHeader>
           <CardContent>
             <div className="flex items-center justify-center w-full">
-              <Label
-                htmlFor="file-upload"
+              <div
+                onClick={handleDropZoneClick}
+                onDragOver={handleDragOver}
+                onDrop={handleDrop}
                 className="flex flex-col items-center justify-center w-full h-64 border-2 border-dashed border-muted-foreground/25 rounded-lg cursor-pointer bg-muted/50 hover:bg-muted/80 transition-colors"
               >
                 <div className="flex flex-col items-center justify-center pt-5 pb-6">
@@ -282,14 +304,14 @@ export const LeadImport: React.FC = () => {
                   </p>
                   <p className="text-xs text-muted-foreground">Excel files only (.xlsx, .xls)</p>
                 </div>
-                <Input
-                  id="file-upload"
+                <input
+                  ref={fileInputRef}
                   type="file"
                   accept=".xlsx,.xls"
-                  onChange={handleFileUpload}
-                  className="hidden"
+                  onChange={handleFileInputChange}
+                  style={{ display: 'none' }}
                 />
-              </Label>
+              </div>
             </div>
           </CardContent>
         </Card>
