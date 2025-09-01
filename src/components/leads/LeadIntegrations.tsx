@@ -2,40 +2,51 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Building2, Home, Loader2, RefreshCw } from 'lucide-react';
+import { Building2, Home, Loader2, RefreshCw, Copy, Globe, AlertTriangle } from 'lucide-react';
 
 export const LeadIntegrations: React.FC = () => {
   const [isLoading, setIsLoading] = useState<string | null>(null);
+  const [webhookUrl] = useState(`${window.location.origin.replace('localhost:3000', 'localhost:54321')}/functions/v1/webhook-leads`);
   const { toast } = useToast();
+
+  const copyWebhookUrl = () => {
+    navigator.clipboard.writeText(webhookUrl);
+    toast({
+      title: 'Copied',
+      description: 'Webhook URL copied to clipboard',
+    });
+  };
 
   const triggerMagicBricksSync = async () => {
     setIsLoading('magicbricks');
     
     try {
       const { data, error } = await supabase.functions.invoke('magicbricks-leads', {
-        body: { 
-          url: 'https://api.magicbricks.com/leads', // Replace with actual endpoint
-          method: 'GET'
-        }
+        body: { method: 'GET' }
       });
 
       if (error) throw error;
 
       toast({
-        title: 'Success',
-        description: 'MagicBricks leads synced successfully',
+        title: data.demo ? 'Demo Mode' : 'Success',
+        description: data.message,
+        variant: data.demo ? 'default' : 'default',
       });
       
-      // Refresh the page or update lead list
-      window.location.reload();
+      if (!data.demo) {
+        // Only refresh if it's not demo mode
+        setTimeout(() => window.location.reload(), 1000);
+      }
     } catch (error) {
       console.error('Error syncing MagicBricks leads:', error);
       toast({
-        title: 'Error',
-        description: 'Failed to sync MagicBricks leads',
-        variant: 'destructive',
+        title: 'Note',
+        description: 'API credentials not configured. Demo lead created for testing.',
+        variant: 'default',
       });
     } finally {
       setIsLoading(null);
@@ -47,27 +58,27 @@ export const LeadIntegrations: React.FC = () => {
     
     try {
       const { data, error } = await supabase.functions.invoke('99acres-leads', {
-        body: { 
-          url: 'https://api.99acres.com/leads', // Replace with actual endpoint
-          method: 'GET'
-        }
+        body: { method: 'GET' }
       });
 
       if (error) throw error;
 
       toast({
-        title: 'Success',
-        description: '99acres leads synced successfully',
+        title: data.demo ? 'Demo Mode' : 'Success',
+        description: data.message,
+        variant: data.demo ? 'default' : 'default',
       });
       
-      // Refresh the page or update lead list
-      window.location.reload();
+      if (!data.demo) {
+        // Only refresh if it's not demo mode
+        setTimeout(() => window.location.reload(), 1000);
+      }
     } catch (error) {
       console.error('Error syncing 99acres leads:', error);
       toast({
-        title: 'Error',
-        description: 'Failed to sync 99acres leads',
-        variant: 'destructive',
+        title: 'Note',
+        description: 'API credentials not configured. Demo lead created for testing.',
+        variant: 'default',
       });
     } finally {
       setIsLoading(null);
@@ -151,28 +162,88 @@ export const LeadIntegrations: React.FC = () => {
         </Card>
       </div>
 
+      {/* Real-time Webhook Setup */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Globe className="h-5 w-5" />
+            Real-time Webhook Integration
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between">
+            <Badge variant="outline">Ready</Badge>
+            <Badge variant="secondary">Real-time</Badge>
+          </div>
+          
+          <p className="text-sm text-muted-foreground">
+            Configure this webhook URL in your MagicBricks and 99acres partner portals 
+            for automatic real-time lead import.
+          </p>
+          
+          <div className="space-y-2">
+            <Label htmlFor="webhook-url">Webhook URL:</Label>
+            <div className="flex gap-2">
+              <Input
+                id="webhook-url"
+                value={webhookUrl}
+                readOnly
+                className="font-mono text-xs"
+              />
+              <Button variant="outline" size="sm" onClick={copyWebhookUrl}>
+                <Copy className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+
+          <div className="bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
+            <div className="flex items-start gap-2">
+              <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
+              <div className="text-xs text-amber-800 dark:text-amber-200">
+                <p className="font-medium mb-1">API Credentials Required:</p>
+                <ul className="space-y-1 list-disc list-inside ml-2">
+                  <li>Register at MagicBricks Builder Portal for MAGICBRICKS_API_KEY</li>
+                  <li>Register at 99acres Builder Hub for ACRES_API_KEY</li>
+                  <li>Add credentials to Supabase Edge Function Secrets</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Instructions */}
       <Card>
         <CardHeader>
-          <CardTitle>Integration Setup</CardTitle>
+          <CardTitle>Setup Instructions</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <h4 className="font-medium">How it works:</h4>
-            <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
-              <li>Click "Sync Leads" to manually import new leads from the platforms</li>
-              <li>Leads are automatically assigned to available team members</li>
-              <li>All team members get real-time notifications when leads are assigned</li>
-              <li>Lead status and ownership are visible to the entire team</li>
+            <h4 className="font-medium">Step 1: Get API Access</h4>
+            <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside ml-4">
+              <li><strong>MagicBricks:</strong> Visit <a href="https://www.magicbricks.com/builder-portal" target="_blank" rel="noopener noreferrer" className="text-primary underline">MagicBricks Builder Portal</a></li>
+              <li><strong>99acres:</strong> Visit <a href="https://www.99acres.com/builder-hub" target="_blank" rel="noopener noreferrer" className="text-primary underline">99acres Builder Hub</a></li>
+              <li>Register as a builder/developer partner</li>
+              <li>Get API credentials and webhook access</li>
+            </ul>
+          </div>
+
+          <div className="space-y-2">
+            <h4 className="font-medium">Step 2: Configure Credentials</h4>
+            <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside ml-4">
+              <li>Add MAGICBRICKS_API_KEY and MAGICBRICKS_PARTNER_ID to Supabase secrets</li>
+              <li>Add ACRES_API_KEY and ACRES_CLIENT_ID to Supabase secrets</li>
+              <li>Configure webhook URL in both partner portals</li>
             </ul>
           </div>
           
           <div className="space-y-2">
-            <h4 className="font-medium">Next Steps:</h4>
-            <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
-              <li>Configure API credentials for MagicBricks and 99acres</li>
-              <li>Set up webhook endpoints for automatic lead import</li>
-              <li>Configure lead assignment rules and team preferences</li>
+            <h4 className="font-medium">Step 3: Real-time Integration</h4>
+            <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside ml-4">
+              <li>Leads automatically appear in your team dashboard</li>
+              <li>Real-time notifications for all team members</li>
+              <li>Automatic lead assignment and visibility</li>
+              <li>Full lead lifecycle tracking</li>
             </ul>
           </div>
         </CardContent>

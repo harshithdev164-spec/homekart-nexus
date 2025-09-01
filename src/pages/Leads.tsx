@@ -214,7 +214,7 @@ const Leads: React.FC = () => {
             onClick={() => setIsIntegrationsOpen(true)}
           >
             <Users className="h-4 w-4" />
-            Integrations
+            Lead Sources
           </Button>
           <Button 
             variant="outline" 

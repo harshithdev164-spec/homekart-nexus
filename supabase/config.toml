@@ -44,6 +44,9 @@ enabled = true
 port = 54329
 inspector_port = 5432
 
+[functions.webhook-leads]
+verify_jwt = false
+
 [functions.magicbricks-leads]
 verify_jwt = false
 
