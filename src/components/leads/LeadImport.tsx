@@ -44,6 +44,9 @@ export const LeadImport: React.FC = () => {
   const [importResults, setImportResults] = useState<{success: number; errors: string[]}>({success: 0, errors: []});
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
     const uploadedFile = e.target.files?.[0];
     if (!uploadedFile) return;
 
@@ -155,7 +158,12 @@ export const LeadImport: React.FC = () => {
     reader.readAsArrayBuffer(file);
   };
 
-  const validateAndImportLeads = async () => {
+  const validateAndImportLeads = async (e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    
     if (!profile) return;
 
     const nameField = Object.keys(fieldMapping).find(key => fieldMapping[key] === 'name');
@@ -235,7 +243,12 @@ export const LeadImport: React.FC = () => {
     }
   };
 
-  const resetImport = () => {
+  const resetImport = (e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    
     setFile(null);
     setExcelData([]);
     setExcelColumns([]);
@@ -398,13 +411,14 @@ export const LeadImport: React.FC = () => {
           {/* Actions */}
           <div className="flex gap-2">
             <Button
+              type="button"
               onClick={validateAndImportLeads}
               disabled={isImporting || !Object.keys(fieldMapping).some(key => fieldMapping[key] === 'name' || fieldMapping[key] === 'phone')}
               className="flex-1"
             >
               {isImporting ? 'Importing...' : `Import ${excelData.length} Leads`}
             </Button>
-            <Button variant="outline" onClick={resetImport}>
+            <Button type="button" variant="outline" onClick={resetImport}>
               Reset
             </Button>
           </div>
