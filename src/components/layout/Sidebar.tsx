@@ -81,10 +81,16 @@ export const Sidebar: React.FC = () => {
   const { profile } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
+  console.log('Sidebar - Current path:', location.pathname, 'Profile:', profile);
 
   const filteredNavigation = navigation.filter(item => 
     !item.roles || item.roles.includes(profile?.role as any)
   );
+
+  const handleNavigation = (href: string) => {
+    console.log('Navigating to:', href);
+    navigate(href);
+  };
 
   return (
     <div className="flex h-full w-64 flex-col bg-card border-r border-border">
@@ -100,7 +106,7 @@ export const Sidebar: React.FC = () => {
                   "w-full justify-start",
                   isActive && "bg-primary text-primary-foreground shadow-primary"
                 )}
-                onClick={() => navigate(item.href)}
+                onClick={() => handleNavigation(item.href)}
               >
                 <item.icon className="mr-3 h-5 w-5 flex-shrink-0" />
                 {item.title}

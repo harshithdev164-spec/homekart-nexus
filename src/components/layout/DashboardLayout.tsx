@@ -9,7 +9,8 @@ interface DashboardLayoutProps {
 }
 
 export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
-  const { user, loading } = useAuth();
+  const { user, loading, profile } = useAuth();
+  console.log('DashboardLayout - User:', user, 'Profile:', profile, 'Loading:', loading);
 
   if (loading) {
     return (
@@ -20,9 +21,11 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
   }
 
   if (!user) {
+    console.log('No user found, redirecting to auth...');
     return <Navigate to="/auth" replace />;
   }
 
+  console.log('DashboardLayout rendering with user:', user.email);
   return (
     <div className="min-h-screen bg-background">
       <Header />
