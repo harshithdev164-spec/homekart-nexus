@@ -105,6 +105,42 @@ export type Database = {
         }
         Relationships: []
       }
+      communication_logs: {
+        Row: {
+          communication_type: string
+          external_id: string | null
+          id: string
+          lead_id: string
+          message_content: string | null
+          sent_at: string
+          sent_by: string
+          status: string | null
+          template_id: string | null
+        }
+        Insert: {
+          communication_type: string
+          external_id?: string | null
+          id?: string
+          lead_id: string
+          message_content?: string | null
+          sent_at?: string
+          sent_by: string
+          status?: string | null
+          template_id?: string | null
+        }
+        Update: {
+          communication_type?: string
+          external_id?: string | null
+          id?: string
+          lead_id?: string
+          message_content?: string | null
+          sent_at?: string
+          sent_by?: string
+          status?: string | null
+          template_id?: string | null
+        }
+        Relationships: []
+      }
       "inventory table": {
         Row: {
           created_at: string
@@ -452,6 +488,39 @@ export type Database = {
           },
         ]
       }
+      reports: {
+        Row: {
+          data: Json | null
+          filters: Json | null
+          generated_at: string
+          generated_by: string
+          id: string
+          is_public: boolean | null
+          report_type: string
+          title: string
+        }
+        Insert: {
+          data?: Json | null
+          filters?: Json | null
+          generated_at?: string
+          generated_by: string
+          id?: string
+          is_public?: boolean | null
+          report_type: string
+          title: string
+        }
+        Update: {
+          data?: Json | null
+          filters?: Json | null
+          generated_at?: string
+          generated_by?: string
+          id?: string
+          is_public?: boolean | null
+          report_type?: string
+          title?: string
+        }
+        Relationships: []
+      }
       requirements: {
         Row: {
           client_id: string | null
@@ -512,6 +581,42 @@ export type Database = {
           },
         ]
       }
+      team_messages: {
+        Row: {
+          created_at: string
+          id: string
+          is_read: boolean
+          message: string
+          message_type: string | null
+          recipient_id: string | null
+          sender_id: string
+          team_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          message: string
+          message_type?: string | null
+          recipient_id?: string | null
+          sender_id: string
+          team_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          message?: string
+          message_type?: string | null
+          recipient_id?: string | null
+          sender_id?: string
+          team_id?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       teams: {
         Row: {
           created_at: string
@@ -546,6 +651,54 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      visit_schedules: {
+        Row: {
+          assigned_to: string
+          created_at: string
+          id: string
+          lead_id: string
+          notes: string | null
+          property_id: string
+          scheduled_by: string
+          status: string | null
+          updated_at: string
+          visit_date: string
+          visitor_email: string | null
+          visitor_name: string
+          visitor_phone: string
+        }
+        Insert: {
+          assigned_to: string
+          created_at?: string
+          id?: string
+          lead_id: string
+          notes?: string | null
+          property_id: string
+          scheduled_by: string
+          status?: string | null
+          updated_at?: string
+          visit_date: string
+          visitor_email?: string | null
+          visitor_name: string
+          visitor_phone: string
+        }
+        Update: {
+          assigned_to?: string
+          created_at?: string
+          id?: string
+          lead_id?: string
+          notes?: string | null
+          property_id?: string
+          scheduled_by?: string
+          status?: string | null
+          updated_at?: string
+          visit_date?: string
+          visitor_email?: string | null
+          visitor_name?: string
+          visitor_phone?: string
+        }
+        Relationships: []
       }
     }
     Views: {

@@ -53,14 +53,10 @@ export const PropertyMap: React.FC<PropertyMapProps> = ({
   const [showTokenInput, setShowTokenInput] = useState(false);
 
   useEffect(() => {
-    // Check if we have a Mapbox token
-    const storedToken = localStorage.getItem('mapbox_token');
-    if (storedToken) {
-      setMapboxToken(storedToken);
-      initializeMap(storedToken);
-    } else {
-      setShowTokenInput(true);
-    }
+    // Use the provided Mapbox token
+    const token = 'pk.eyJ1IjoiaGFyc2hpdGgxNzc3IiwiYSI6ImNtZjB6bWJ4NjF3djQyc3F5MjFmdzlqZmYifQ.5pUn3owcvM61Mb_oW4rrtw';
+    setMapboxToken(token);
+    initializeMap(token);
   }, []);
 
   useEffect(() => {

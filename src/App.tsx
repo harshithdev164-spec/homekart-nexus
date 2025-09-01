@@ -10,6 +10,10 @@ import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import Leads from "./pages/Leads";
 import Properties from "./pages/Properties";
+import Messages from "./pages/Messages";
+import Calendar from "./pages/Calendar";
+import Communications from "./pages/Communications";
+import Reports from "./pages/Reports";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -29,9 +33,10 @@ const App = () => (
             <Route path="/properties" element={<DashboardLayout><Properties /></DashboardLayout>} />
             <Route path="/activities" element={<DashboardLayout><div>Activities page coming soon...</div></DashboardLayout>} />
             <Route path="/team" element={<DashboardLayout><div>Team page coming soon...</div></DashboardLayout>} />
-            <Route path="/reports" element={<DashboardLayout><div>Reports page coming soon...</div></DashboardLayout>} />
-            <Route path="/calendar" element={<DashboardLayout><div>Calendar page coming soon...</div></DashboardLayout>} />
-            <Route path="/messages" element={<DashboardLayout><div>Messages page coming soon...</div></DashboardLayout>} />
+            <Route path="/reports" element={<DashboardLayout><Reports /></DashboardLayout>} />
+            <Route path="/calendar" element={<DashboardLayout><Calendar /></DashboardLayout>} />
+            <Route path="/messages" element={<DashboardLayout><Messages /></DashboardLayout>} />
+            <Route path="/communications" element={<DashboardLayout><Communications /></DashboardLayout>} />
             <Route path="/documents" element={<DashboardLayout><div>Documents page coming soon...</div></DashboardLayout>} />
             <Route path="/settings" element={<DashboardLayout><div>Settings page coming soon...</div></DashboardLayout>} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
