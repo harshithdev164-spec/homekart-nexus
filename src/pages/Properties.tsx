@@ -49,9 +49,7 @@ interface Property {
 }
 
 const Properties: React.FC = () => {
-  console.log('Properties component is loading...');
   const { profile } = useAuth();
-  console.log('Profile in Properties:', profile);
   const { toast } = useToast();
   const [properties, setProperties] = useState<Property[]>([]);
   const [loading, setLoading] = useState(true);
@@ -78,7 +76,6 @@ const Properties: React.FC = () => {
   });
 
   useEffect(() => {
-    console.log('Properties useEffect running, fetching properties...');
     fetchProperties();
     
     // Set up real-time subscription for properties
@@ -99,7 +96,6 @@ const Properties: React.FC = () => {
   }, []);
 
   const fetchProperties = async () => {
-    console.log('fetchProperties called...');
     try {
       const { data, error } = await supabase
         .from('properties')
@@ -108,8 +104,6 @@ const Properties: React.FC = () => {
           profiles!properties_created_by_fkey(full_name)
         `)
         .order('created_at', { ascending: false });
-
-      console.log('Properties query result:', { data, error });
 
       if (error) {
         console.error('Error fetching properties:', error);
