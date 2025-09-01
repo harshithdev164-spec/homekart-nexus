@@ -778,10 +778,8 @@ const Properties: React.FC = () => {
                     value={property.status} 
                     onValueChange={(newStatus: 'available' | 'under_contract' | 'sold' | 'rented' | 'off_market') => handleStatusUpdate(property.id, newStatus)}
                   >
-                    <SelectTrigger asChild>
-                      <Button size="sm" variant="secondary" className="flex-1">
-                        {property.status.replace('_', ' ')}
-                      </Button>
+                    <SelectTrigger className="flex-1">
+                      <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="available">Available</SelectItem>
