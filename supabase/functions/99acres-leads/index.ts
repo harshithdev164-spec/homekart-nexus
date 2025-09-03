@@ -19,15 +19,15 @@ serve(async (req) => {
     );
 
     // Get 99acres API credentials from Supabase secrets
-    const acresApiKey = Deno.env.get('ACRES_API_KEY');
-    const acresClientId = Deno.env.get('ACRES_CLIENT_ID');
+    const acresUsername = Deno.env.get('ACRES_USERNAME');
+    const acresPassword = Deno.env.get('ACRES_PASSWORD');
     
-    if (!acresApiKey || !acresClientId) {
+    if (!acresUsername || !acresPassword) {
       return new Response(
         JSON.stringify({ 
           success: false, 
-          error: '99acres API credentials not configured. Please add ACRES_API_KEY and ACRES_CLIENT_ID to Supabase secrets.',
-          instructions: 'Visit https://www.99acres.com/builder-hub to register as a partner and get API access.'
+          error: '99acres API credentials not configured. Please add ACRES_USERNAME and ACRES_PASSWORD to Supabase secrets.',
+          instructions: 'Contact 99acres support to get your API username and password credentials.'
         }),
         { 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -41,46 +41,88 @@ serve(async (req) => {
     console.log('Processing 99acres lead integration...');
 
     try {
-      // Real 99acres API call (replace with actual endpoint once you have credentials)
-      const acresResponse = await fetch('https://api.99acres.com/v1/leads', {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${acresApiKey}`,
-          'Client-ID': acresClientId,
-          'Content-Type': 'application/json',
-        }
+      // Create XML request for 99acres API
+      const currentDate = new Date();
+      const startDate = new Date(currentDate.getTime() - 24 * 60 * 60 * 1000); // 1 day ago
+      const endDate = currentDate;
+      
+      const formatDate = (date: Date) => {
+        return date.toISOString().slice(0, 19).replace('T', ' ');
+      };
+      
+      const xmlRequest = `<?xml version='1.0'?><query><user_name>${acresUsername}</user_name><pswd>${acresPassword}</pswd><start_date>${formatDate(startDate)}</start_date><end_date>${formatDate(endDate)}</end_date></query>`;
+      
+      console.log('Sending 99acres XML request:', xmlRequest);
+      
+      // Make API call to 99acres
+      const formData = new FormData();
+      formData.append('xml', xmlRequest);
+      
+      const acresResponse = await fetch('http://www.99acres.com/99api/v1/getmy99Response/OeAuXClO43hwseaXEQ/uid/', {
+        method: 'POST',
+        body: formData
       });
 
       if (!acresResponse.ok) {
         throw new Error(`99acres API error: ${acresResponse.status}`);
       }
 
-      const acresData = await acresResponse.json();
+      const xmlResponseText = await acresResponse.text();
+      console.log('99acres XML response:', xmlResponseText);
       
-      // Process multiple leads if available
-      const leads = acresData.leads || [acresData];
+      // Parse XML response (simple parsing for the structure shown in docs)
+      const leads = [];
       const createdLeads = [];
+      
+      // Check if response contains error
+      if (xmlResponseText.includes('ActionStatus = "false"')) {
+        throw new Error('99acres API authentication or request error');
+      }
+      
+      // Extract leads from XML (simplified parsing)
+      const respMatches = xmlResponseText.match(/<Resp>(.*?)<\/Resp>/gs);
+      
+      if (respMatches) {
+        for (const respMatch of respMatches) {
+          // Extract contact details
+          const nameMatch = respMatch.match(/<Name>(.*?)<\/Name>/);
+          const emailMatch = respMatch.match(/<Email>(.*?)<\/Email>/);
+          const phoneMatch = respMatch.match(/<Phone>(.*?)<\/Phone>/);
+          const queryInfoMatch = respMatch.match(/<QryInfo>(.*?)<\/QryInfo>/);
+          const compactLabelMatch = respMatch.match(/<CmpctLabl>(.*?)<\/CmpctLabl>/);
+          
+          if (nameMatch && phoneMatch) {
+            leads.push({
+              name: nameMatch[1],
+              email: emailMatch ? emailMatch[1] : null,
+              phone: phoneMatch[1],
+              queryInfo: queryInfoMatch ? queryInfoMatch[1] : '',
+              propertyDetails: compactLabelMatch ? compactLabelMatch[1] : ''
+            });
+          }
+        }
+      }
 
-      for (const leadData of leads) {
-        // Get the first available profile to assign the lead
-        const { data: profiles } = await supabase
-          .from('profiles')
-          .select('id')
-          .eq('is_active', true)
-          .limit(1);
+      // Get the first available profile to assign leads
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('is_active', true)
+        .limit(1);
 
-        if (profiles && profiles.length > 0) {
+      if (profiles && profiles.length > 0) {
+        for (const leadData of leads) {
           // Transform 99acres lead data to our schema
           const transformedLead = {
-            name: leadData.name || leadData.buyer_name || 'Unknown',
-            phone: leadData.phone || leadData.mobile,
+            name: leadData.name || 'Unknown',
+            phone: leadData.phone,
             email: leadData.email,
             source: '99acres',
-            preferred_location: leadData.location || leadData.city || leadData.area,
-            budget_min: leadData.budget_min ? parseFloat(leadData.budget_min) : null,
-            budget_max: leadData.budget_max ? parseFloat(leadData.budget_max) : null,
-            property_type: leadData.property_type?.toLowerCase() || 'villa',
-            notes: `Lead from 99acres - Property: ${leadData.property_title || 'N/A'}, Requirements: ${leadData.requirements || 'N/A'}`,
+            preferred_location: 'Not specified',
+            budget_min: null,
+            budget_max: null,
+            property_type: 'villa',
+            notes: `Lead from 99acres - Query: ${leadData.queryInfo || 'N/A'}, Property: ${leadData.propertyDetails || 'N/A'}`,
             created_by: profiles[0].id,
             status: 'new'
           };
@@ -106,7 +148,8 @@ serve(async (req) => {
           success: true, 
           leads: createdLeads,
           count: createdLeads.length,
-          message: `Successfully imported ${createdLeads.length} leads from 99acres` 
+          message: `Successfully imported ${createdLeads.length} leads from 99acres`,
+          raw_response: xmlResponseText.substring(0, 500) // First 500 chars for debugging
         }),
         { 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
