@@ -13,6 +13,7 @@ interface DashboardStats {
   recentActivities: any[];
   recentLeads: any[];
   recentProperties: any[];
+  recentLeadActivities: any[];
 }
 
 const Dashboard: React.FC = () => {
@@ -24,6 +25,7 @@ const Dashboard: React.FC = () => {
     recentActivities: [],
     recentLeads: [],
     recentProperties: [],
+    recentLeadActivities: [],
   });
   const [loading, setLoading] = useState(true);
 
@@ -39,9 +41,66 @@ const Dashboard: React.FC = () => {
         supabase.from('activities').select('*, leads(*), properties(*)').order('created_at', { ascending: false }).limit(5),
       ]);
 
+      // Get recent lead transfers
+      const leadTransfersResult = await supabase
+        .from('lead_transfers')
+        .select('*')
+        .order('transferred_at', { ascending: false })
+        .limit(10);
+
+      // Get recent lead assignments (leads that were assigned in the last 24 hours)
+      const recentAssignments = await supabase
+        .from('leads')
+        .select('*')
+        .not('assigned_to', 'is', null)
+        .gte('updated_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
+        .order('updated_at', { ascending: false })
+        .limit(10);
+
+      // Get profiles for user names
+      const profilesResult = await supabase
+        .from('profiles')
+        .select('id, full_name');
+
+      const profiles = profilesResult.data || [];
+      const getProfileName = (profileId: string) => {
+        const profile = profiles.find(p => p.id === profileId);
+        return profile?.full_name || 'Unknown User';
+      };
+
+      // Get lead names for transfers
+      const leadIds = (leadTransfersResult.data || []).map(t => t.lead_id);
+      const leadsForTransfers = leadIds.length > 0 ? await supabase
+        .from('leads')
+        .select('id, name, phone')
+        .in('id', leadIds) : { data: [] };
+
+      const getLeadName = (leadId: string) => {
+        const lead = (leadsForTransfers.data || []).find(l => l.id === leadId);
+        return lead?.name || 'Unknown Lead';
+      };
+
       const totalLeadsCount = await supabase.from('leads').select('id', { count: 'exact' });
       const totalPropertiesCount = await supabase.from('properties').select('id', { count: 'exact' });
       const activeLeadsCount = await supabase.from('leads').select('id', { count: 'exact' }).neq('status', 'closed_won').neq('status', 'closed_lost');
+
+      // Combine lead transfers and assignments
+      const leadActivities = [
+        ...(leadTransfersResult.data || []).map((transfer) => ({
+          id: transfer.id,
+          type: 'transfer',
+          message: `Lead "${getLeadName(transfer.lead_id)}" transferred from ${getProfileName(transfer.from_user_id)} to ${getProfileName(transfer.to_user_id)}`,
+          timestamp: transfer.transferred_at,
+          leadName: getLeadName(transfer.lead_id),
+        })),
+        ...(recentAssignments.data || []).map((lead) => ({
+          id: lead.id + '_assignment',
+          type: 'assignment',
+          message: `Lead "${lead.name}" assigned to ${getProfileName(lead.assigned_to)}`,
+          timestamp: lead.updated_at,
+          leadName: lead.name,
+        })),
+      ].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()).slice(0, 10);
 
       setStats({
         totalLeads: totalLeadsCount.count || 0,
@@ -50,6 +109,7 @@ const Dashboard: React.FC = () => {
         recentActivities: activitiesResult.data || [],
         recentLeads: leadsResult.data || [],
         recentProperties: propertiesResult.data || [],
+        recentLeadActivities: leadActivities,
       });
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
@@ -257,6 +317,41 @@ const Dashboard: React.FC = () => {
               ))
             ) : (
               <p className="text-muted-foreground text-center py-4">No recent activities</p>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Lead Activities */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Users className="h-5 w-5" />
+            Lead Activities
+          </CardTitle>
+          <CardDescription>
+            Recent lead assignments and transfers across all agents
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {stats.recentLeadActivities.length > 0 ? (
+              stats.recentLeadActivities.map((activity) => (
+                <div key={activity.id} className="flex items-start gap-3 p-3 border border-border rounded-lg">
+                  <div className={`w-2 h-2 rounded-full mt-2 ${activity.type === 'transfer' ? 'bg-orange-500' : 'bg-green-500'}`}></div>
+                  <div className="flex-1">
+                    <div className="font-medium">{activity.message}</div>
+                    <div className="text-xs text-muted-foreground mt-1">
+                      {new Date(activity.timestamp).toLocaleDateString()} at {new Date(activity.timestamp).toLocaleTimeString()}
+                    </div>
+                  </div>
+                  <Badge variant="outline" className="text-xs capitalize">
+                    {activity.type}
+                  </Badge>
+                </div>
+              ))
+            ) : (
+              <p className="text-muted-foreground text-center py-4">No lead activities yet</p>
             )}
           </div>
         </CardContent>
