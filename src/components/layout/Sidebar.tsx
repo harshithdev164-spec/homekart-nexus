@@ -55,6 +55,17 @@ const navigation: NavItem[] = [
     icon: BarChart3,
   },
   {
+    title: 'SOP Reports',
+    href: '/sop-reports',
+    icon: FileText,
+  },
+  {
+    title: 'HR Management',
+    href: '/hr',
+    icon: Users,
+    roles: ['admin'],
+  },
+  {
     title: 'Calendar',
     href: '/calendar',
     icon: Calendar,

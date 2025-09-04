@@ -17,6 +17,8 @@ import Messages from "./pages/Messages";
 import Calendar from "./pages/Calendar";
 import Communications from "./pages/Communications";
 import Reports from "./pages/Reports";
+import SOPReports from "./pages/SOPReports";
+import HR from "./pages/HR";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient({
@@ -87,6 +89,8 @@ const App: React.FC = () => {
                 <Route path="/calendar" element={<DashboardLayout><Calendar /></DashboardLayout>} />
                 <Route path="/messages" element={<DashboardLayout><Messages /></DashboardLayout>} />
                 <Route path="/communications" element={<DashboardLayout><Communications /></DashboardLayout>} />
+                <Route path="/sop-reports" element={<DashboardLayout><SOPReports /></DashboardLayout>} />
+                <Route path="/hr" element={<DashboardLayout><HR /></DashboardLayout>} />
                 <Route path="/documents" element={<DashboardLayout><div>Documents page coming soon...</div></DashboardLayout>} />
                 <Route path="/settings" element={<DashboardLayout><div>Settings page coming sure...</div></DashboardLayout>} />
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

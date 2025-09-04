@@ -545,6 +545,39 @@ export type Database = {
         }
         Relationships: []
       }
+      sop_reports: {
+        Row: {
+          created_at: string
+          id: string
+          notes: string | null
+          report_date: string
+          sop_items: Json
+          status: string
+          submitted_by: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          notes?: string | null
+          report_date: string
+          sop_items?: Json
+          status?: string
+          submitted_by: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          notes?: string | null
+          report_date?: string
+          sop_items?: Json
+          status?: string
+          submitted_by?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       team_members: {
         Row: {
           id: string

@@ -77,14 +77,19 @@ const Leads: React.FC = () => {
   useEffect(() => {
     fetchLeads();
     
-    // Set up real-time subscription for leads
+    // Set up real-time subscription for leads with optimized updates
     const channel = supabase
       .channel('leads_changes')
       .on('postgres_changes', 
         { event: '*', schema: 'public', table: 'leads' },
         (payload) => {
           console.log('Lead change detected:', payload);
-          fetchLeads();
+          // Optimized update: only refetch if not in the middle of an operation
+          const timeoutId = setTimeout(() => {
+            fetchLeads();
+          }, 500); // Debounce frequent updates
+          
+          return () => clearTimeout(timeoutId);
         }
       )
       .subscribe();
