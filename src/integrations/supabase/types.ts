@@ -548,6 +548,7 @@ export type Database = {
       sop_reports: {
         Row: {
           created_at: string
+          files: string[] | null
           id: string
           notes: string | null
           report_date: string
@@ -558,6 +559,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          files?: string[] | null
           id?: string
           notes?: string | null
           report_date: string
@@ -568,6 +570,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          files?: string[] | null
           id?: string
           notes?: string | null
           report_date?: string
