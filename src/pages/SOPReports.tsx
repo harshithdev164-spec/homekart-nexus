@@ -64,7 +64,7 @@ const SOPReports: React.FC = () => {
         .from('sop_reports')
         .select(`
           *,
-          profiles(full_name)
+          profiles!sop_reports_submitted_by_fkey(full_name)
         `)
         .order('report_date', { ascending: false })
         .limit(50);
