@@ -27,8 +27,8 @@ interface SOPReport {
   sop_items: any;
   status: string;
   notes?: string;
-  created_at: string;
   files?: string[];
+  created_at: string;
   profiles?: {
     full_name: string;
   };
@@ -90,28 +90,6 @@ const SOPReports: React.FC = () => {
     }
   };
 
-  const handleFileUpload = async (files: File[]): Promise<string[]> => {
-    const uploadedPaths: string[] = [];
-    
-    for (const file of files) {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${profile?.user_id}/${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
-      
-      const { error: uploadError } = await supabase.storage
-        .from('sop-reports')
-        .upload(fileName, file);
-      
-      if (uploadError) {
-        console.error('Error uploading file:', uploadError);
-        throw uploadError;
-      }
-      
-      uploadedPaths.push(fileName);
-    }
-    
-    return uploadedPaths;
-  };
-
   const handleSubmitReport = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -127,10 +105,30 @@ const SOPReports: React.FC = () => {
     setUploading(true);
 
     try {
-      // Upload files first if any
-      let filePaths: string[] = [];
+      let uploadedFilePaths: string[] = [];
+
+      // Upload files if any
       if (uploadedFiles.length > 0) {
-        filePaths = await handleFileUpload(uploadedFiles);
+        for (const file of uploadedFiles) {
+          const fileExt = file.name.split('.').pop();
+          const fileName = `${profile.user_id}/${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+          
+          const { error: uploadError } = await supabase.storage
+            .from('sop-reports')
+            .upload(fileName, file);
+
+          if (uploadError) {
+            console.error('Error uploading file:', uploadError);
+            toast({
+              title: 'Error',
+              description: `Failed to upload ${file.name}`,
+              variant: 'destructive',
+            });
+            continue;
+          }
+
+          uploadedFilePaths.push(fileName);
+        }
       }
 
       const reportData = {
@@ -138,7 +136,7 @@ const SOPReports: React.FC = () => {
         report_date: reportDate,
         sop_items: selectedItems.map(item => ({ item, completed: true })),
         notes: notes.trim() || null,
-        files: filePaths,
+        files: uploadedFilePaths,
       };
 
       const { error } = await supabase
@@ -163,50 +161,51 @@ const SOPReports: React.FC = () => {
       setIsCreateDialogOpen(false);
       setSelectedItems([]);
       setNotes('');
-      setReportDate(new Date().toISOString().split('T')[0]);
       setUploadedFiles([]);
+      setReportDate(new Date().toISOString().split('T')[0]);
       fetchReports();
     } catch (error) {
       console.error('Error submitting SOP report:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to submit SOP report. Please try again.',
-        variant: 'destructive',
-      });
     } finally {
       setUploading(false);
     }
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-    const maxSize = 10 * 1024 * 1024; // 10MB limit
-    const allowedTypes = [
-      'image/jpeg', 'image/png', 'image/gif', 'image/webp',
-      'application/pdf', 'text/plain',
-      'application/vnd.ms-excel',
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      'application/msword',
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-    ];
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (!files) return;
 
-    const validFiles = files.filter(file => {
+    const fileArray = Array.from(files);
+    const validFiles = fileArray.filter(file => {
+      const maxSize = 10 * 1024 * 1024; // 10MB
+      const allowedTypes = [
+        'image/jpeg', 'image/png', 'image/gif', 'image/webp',
+        'application/pdf',
+        'application/vnd.ms-excel',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'application/msword',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'text/plain'
+      ];
+
       if (file.size > maxSize) {
         toast({
-          title: 'Error',
-          description: `File ${file.name} is too large. Maximum size is 10MB.`,
+          title: 'File too large',
+          description: `${file.name} is larger than 10MB`,
           variant: 'destructive',
         });
         return false;
       }
+
       if (!allowedTypes.includes(file.type)) {
         toast({
-          title: 'Error',
-          description: `File ${file.name} is not a supported type.`,
+          title: 'Invalid file type',
+          description: `${file.name} is not a supported file type`,
           variant: 'destructive',
         });
         return false;
       }
+
       return true;
     });
 
@@ -222,30 +221,36 @@ const SOPReports: React.FC = () => {
       const { data, error } = await supabase.storage
         .from('sop-reports')
         .download(filePath);
-      
-      if (error) throw error;
-      
+
+      if (error) {
+        console.error('Error downloading file:', error);
+        toast({
+          title: 'Error',
+          description: 'Failed to download file',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      const fileName = filePath.split('/').pop() || 'download';
       const url = URL.createObjectURL(data);
       const a = document.createElement('a');
       a.href = url;
-      a.download = filePath.split('/').pop() || 'file';
+      a.download = fileName;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
     } catch (error) {
       console.error('Error downloading file:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to download file',
-        variant: 'destructive',
-      });
     }
   };
 
   const getFileIcon = (fileName: string) => {
     const ext = fileName.split('.').pop()?.toLowerCase();
-    if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext || '')) {
+    const imageTypes = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+    
+    if (imageTypes.includes(ext || '')) {
       return <Image className="h-4 w-4" />;
     }
     return <File className="h-4 w-4" />;
@@ -283,7 +288,7 @@ const SOPReports: React.FC = () => {
               Submit Daily Report
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-md">
+          <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Submit SOP Report</DialogTitle>
               <DialogDescription>
@@ -337,66 +342,58 @@ const SOPReports: React.FC = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="files">Supporting Files</Label>
-                <div className="border-2 border-dashed border-gray-300 rounded-lg p-4">
+                <Label>Supporting Files</Label>
+                <div className="border-2 border-dashed border-border rounded-lg p-4">
                   <div className="text-center">
-                    <Upload className="mx-auto h-8 w-8 text-gray-400 mb-2" />
-                    <div className="text-sm text-gray-600 mb-2">
-                      Upload images, Excel files, or documents
+                    <Upload className="mx-auto h-8 w-8 text-muted-foreground mb-2" />
+                    <div className="text-sm">
+                      <label htmlFor="file-upload" className="cursor-pointer text-primary hover:text-primary/80">
+                        Click to upload files
+                      </label>
+                      <p className="text-muted-foreground">or drag and drop</p>
                     </div>
-                    <Input
-                      id="files"
+                    <p className="text-xs text-muted-foreground mt-1">
+                      PNG, JPG, PDF, Excel, Word up to 10MB each
+                    </p>
+                    <input
+                      id="file-upload"
                       type="file"
                       multiple
-                      accept=".jpg,.jpeg,.png,.gif,.webp,.pdf,.txt,.xls,.xlsx,.doc,.docx"
-                      onChange={handleFileChange}
+                      accept="image/*,.pdf,.xlsx,.xls,.docx,.doc,.txt"
+                      onChange={handleFileUpload}
                       className="hidden"
                     />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => document.getElementById('files')?.click()}
-                    >
-                      Select Files
-                    </Button>
-                  </div>
-                  <div className="text-xs text-gray-500 mt-2 text-center">
-                    Max 10MB per file. Supports images, PDF, Excel, Word, and text files.
                   </div>
                 </div>
                 
                 {uploadedFiles.length > 0 && (
                   <div className="space-y-2">
-                    <p className="text-sm font-medium">Selected Files:</p>
-                    {uploadedFiles.map((file, index) => (
-                      <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded">
-                        <div className="flex items-center gap-2">
-                          {getFileIcon(file.name)}
-                          <span className="text-sm">{file.name}</span>
-                          <span className="text-xs text-gray-500">
-                            ({(file.size / 1024 / 1024).toFixed(2)} MB)
-                          </span>
+                    <Label className="text-sm font-medium">Selected Files:</Label>
+                    <div className="space-y-1">
+                      {uploadedFiles.map((file, index) => (
+                        <div key={index} className="flex items-center justify-between p-2 bg-muted rounded text-sm">
+                          <div className="flex items-center gap-2">
+                            {getFileIcon(file.name)}
+                            <span className="truncate">{file.name}</span>
+                            <span className="text-muted-foreground">({(file.size / 1024).toFixed(1)} KB)</span>
+                          </div>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => removeFile(index)}
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
                         </div>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => removeFile(index)}
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>
 
               <DialogFooter>
-                <Button 
-                  type="submit" 
-                  className="w-full" 
-                  disabled={uploading}
-                >
+                <Button type="submit" className="w-full" disabled={uploading}>
                   {uploading ? 'Uploading...' : 'Submit Report'}
                 </Button>
               </DialogFooter>
@@ -465,36 +462,21 @@ const SOPReports: React.FC = () => {
                 </div>
                 {report.notes && (
                   <p className="text-sm text-muted-foreground line-clamp-2">
-                    {report.notes}
+                    <span className="font-medium">Notes:</span> {report.notes}
                   </p>
                 )}
-                <div className="space-y-1">
-                  <p className="text-xs font-medium text-muted-foreground">Completed Items:</p>
-                  <div className="space-y-1">
-                    {Array.isArray(report.sop_items) && report.sop_items.slice(0, 3).map((item: any, index: number) => (
-                      <p key={index} className="text-xs text-muted-foreground">
-                        • {item.item || item}
-                      </p>
-                    ))}
-                    {Array.isArray(report.sop_items) && report.sop_items.length > 3 && (
-                      <p className="text-xs text-muted-foreground">
-                        ...and {report.sop_items.length - 3} more
-                      </p>
-                    )}
-                  </div>
-                </div>
                 
                 {report.files && report.files.length > 0 && (
                   <div className="space-y-2">
                     <p className="text-xs font-medium text-muted-foreground">Attached Files:</p>
                     <div className="space-y-1">
                       {report.files.slice(0, 3).map((filePath, index) => {
-                        const fileName = filePath.split('/').pop() || 'file';
+                        const fileName = filePath.split('/').pop() || filePath;
                         return (
                           <div key={index} className="flex items-center justify-between text-xs">
                             <div className="flex items-center gap-1">
                               {getFileIcon(fileName)}
-                              <span className="truncate max-w-24">{fileName}</span>
+                              <span className="truncate max-w-[150px]">{fileName}</span>
                             </div>
                             <Button
                               variant="ghost"
@@ -515,6 +497,22 @@ const SOPReports: React.FC = () => {
                     </div>
                   </div>
                 )}
+                
+                <div className="space-y-1">
+                  <p className="text-xs font-medium text-muted-foreground">Completed Items:</p>
+                  <div className="space-y-1">
+                    {Array.isArray(report.sop_items) && report.sop_items.slice(0, 3).map((item: any, index: number) => (
+                      <p key={index} className="text-xs text-muted-foreground">
+                        • {item.item || item}
+                      </p>
+                    ))}
+                    {Array.isArray(report.sop_items) && report.sop_items.length > 3 && (
+                      <p className="text-xs text-muted-foreground">
+                        ...and {report.sop_items.length - 3} more
+                      </p>
+                    )}
+                  </div>
+                </div>
               </div>
             </CardContent>
           </Card>
