@@ -7,7 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { supabase } from '@/integrations/supabase/client';
-import { Users, UserPlus, Calendar, TrendingUp, FileText, Settings } from 'lucide-react';
+import { Users, UserPlus, Calendar, TrendingUp, FileText, Settings, CheckCircle, Clock, Image, File, Download } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import {
   Dialog,
@@ -169,6 +169,64 @@ const HR: React.FC = () => {
     }
   };
 
+  const handleReviewReport = async (reportId: string) => {
+    try {
+      const { error } = await supabase
+        .from('sop_reports')
+        .update({ status: 'reviewed' })
+        .eq('id', reportId);
+
+      if (error) {
+        console.error('Error updating report status:', error);
+        toast({
+          title: 'Error',
+          description: 'Failed to update report status',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      toast({
+        title: 'Success',
+        description: 'Report marked as reviewed',
+      });
+
+      fetchSOPReports();
+    } catch (error) {
+      console.error('Error updating report status:', error);
+    }
+  };
+
+  const downloadFile = async (filePath: string) => {
+    try {
+      const { data, error } = await supabase.storage
+        .from('sop-reports')
+        .download(filePath);
+
+      if (error) {
+        console.error('Error downloading file:', error);
+        toast({
+          title: 'Error',
+          description: 'Failed to download file',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      const fileName = filePath.split('/').pop() || 'download';
+      const url = URL.createObjectURL(data);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error downloading file:', error);
+    }
+  };
+
   const getSOPCompletionRate = (employeeId: string) => {
     const employeeReports = sopReports.filter(r => r.submitted_by === employeeId);
     const last7Days = 7;
@@ -247,6 +305,7 @@ const HR: React.FC = () => {
         <TabsList>
           <TabsTrigger value="employees">Employee Management</TabsTrigger>
           <TabsTrigger value="performance">Performance Tracking</TabsTrigger>
+          <TabsTrigger value="sop-review">SOP Reports Review</TabsTrigger>
         </TabsList>
 
         <TabsContent value="employees" className="space-y-4">
@@ -357,6 +416,137 @@ const HR: React.FC = () => {
                 </Card>
               );
             })}
+          </div>
+        </TabsContent>
+
+        <TabsContent value="sop-review" className="space-y-4">
+          {/* SOP Reports Review */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold">Team SOP Reports Review</h3>
+              <div className="flex gap-2">
+                <Badge variant="secondary">
+                  {sopReports.filter(r => r.status === 'submitted').length} Pending Review
+                </Badge>
+                <Badge variant="default">
+                  {sopReports.filter(r => r.status === 'reviewed').length} Reviewed
+                </Badge>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {sopReports.map((report) => (
+                <Card key={report.id} className="hover:shadow-medium transition-all duration-300">
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-lg flex items-center gap-2">
+                        <FileText className="h-5 w-5" />
+                        SOP Report
+                      </CardTitle>
+                      <div className="flex gap-1">
+                        <Badge className={
+                          report.status === 'submitted' ? 'bg-yellow-100 text-yellow-800' :
+                          report.status === 'reviewed' ? 'bg-green-100 text-green-800' :
+                          'bg-gray-100 text-gray-800'
+                        }>
+                          {report.status}
+                        </Badge>
+                      </div>
+                    </div>
+                    <CardDescription>
+                      {report.profiles?.full_name}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2 text-sm">
+                        <Calendar className="h-4 w-4" />
+                        {new Date(report.report_date).toLocaleDateString()}
+                      </div>
+                      <div className="flex items-center gap-2 text-sm">
+                        <CheckCircle className="h-4 w-4 text-green-600" />
+                        {Array.isArray(report.sop_items) ? report.sop_items.length : 0} items completed
+                      </div>
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Clock className="h-4 w-4" />
+                        Submitted: {new Date(report.created_at).toLocaleDateString()}
+                      </div>
+                      {report.notes && (
+                        <p className="text-sm text-muted-foreground line-clamp-2">
+                          <span className="font-medium">Notes:</span> {report.notes}
+                        </p>
+                      )}
+                      
+                      {report.files && report.files.length > 0 && (
+                        <div className="space-y-1">
+                          <p className="text-xs font-medium text-muted-foreground">
+                            {report.files.length} file(s) attached
+                          </p>
+                          <div className="flex gap-1">
+                            {report.files.slice(0, 3).map((filePath, index) => {
+                              const fileName = filePath.split('/').pop() || filePath;
+                              const ext = fileName.split('.').pop()?.toLowerCase();
+                              const isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext || '');
+                              return (
+                                <Button
+                                  key={index}
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => downloadFile(filePath)}
+                                  className="h-6 text-xs px-2"
+                                >
+                                  {isImage ? <Image className="h-3 w-3 mr-1" /> : <File className="h-3 w-3 mr-1" />}
+                                  {fileName.length > 8 ? fileName.substring(0, 8) + '...' : fileName}
+                                </Button>
+                              );
+                            })}
+                            {report.files.length > 3 && (
+                              <span className="text-xs text-muted-foreground self-center">
+                                +{report.files.length - 3} more
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                      
+                      <div className="space-y-1">
+                        <p className="text-xs font-medium text-muted-foreground">Completed Items:</p>
+                        <div className="text-xs text-muted-foreground">
+                          {Array.isArray(report.sop_items) && report.sop_items.slice(0, 2).map((item: any, index: number) => (
+                            <div key={index}>• {item.item || item}</div>
+                          ))}
+                          {Array.isArray(report.sop_items) && report.sop_items.length > 2 && (
+                            <div>...and {report.sop_items.length - 2} more</div>
+                          )}
+                        </div>
+                      </div>
+                      
+                      {report.status === 'submitted' && (
+                        <div className="pt-2">
+                          <Button
+                            size="sm"
+                            onClick={() => handleReviewReport(report.id)}
+                            className="w-full"
+                          >
+                            Mark as Reviewed
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+            
+            {sopReports.length === 0 && (
+              <Card>
+                <CardContent className="text-center py-12">
+                  <p className="text-muted-foreground">
+                    No SOP reports submitted yet by team members.
+                  </p>
+                </CardContent>
+              </Card>
+            )}
           </div>
         </TabsContent>
       </Tabs>
