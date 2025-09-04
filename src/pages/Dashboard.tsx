@@ -57,6 +57,14 @@ const Dashboard: React.FC = () => {
         .order('updated_at', { ascending: false })
         .limit(10);
 
+      // Get recent lead creations (all new leads in last 7 days)
+      const recentLeadCreations = await supabase
+        .from('leads')
+        .select('*')
+        .gte('created_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString())
+        .order('created_at', { ascending: false })
+        .limit(15);
+
       // Get profiles for user names
       const profilesResult = await supabase
         .from('profiles')
@@ -84,7 +92,7 @@ const Dashboard: React.FC = () => {
       const totalPropertiesCount = await supabase.from('properties').select('id', { count: 'exact' });
       const activeLeadsCount = await supabase.from('leads').select('id', { count: 'exact' }).neq('status', 'closed_won').neq('status', 'closed_lost');
 
-      // Combine lead transfers and assignments
+      // Combine lead transfers, assignments, and creations
       const leadActivities = [
         ...(leadTransfersResult.data || []).map((transfer) => ({
           id: transfer.id,
@@ -100,7 +108,14 @@ const Dashboard: React.FC = () => {
           timestamp: lead.updated_at,
           leadName: lead.name,
         })),
-      ].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()).slice(0, 10);
+        ...(recentLeadCreations.data || []).map((lead) => ({
+          id: lead.id + '_creation',
+          type: 'creation',
+          message: `New lead "${lead.name}" added by ${getProfileName(lead.created_by)}`,
+          timestamp: lead.created_at,
+          leadName: lead.name,
+        })),
+      ].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()).slice(0, 15);
 
       setStats({
         totalLeads: totalLeadsCount.count || 0,
@@ -330,7 +345,7 @@ const Dashboard: React.FC = () => {
             Lead Activities
           </CardTitle>
           <CardDescription>
-            Recent lead assignments and transfers across all agents
+            Recent lead creations, assignments and transfers across all agents
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -338,7 +353,11 @@ const Dashboard: React.FC = () => {
             {stats.recentLeadActivities.length > 0 ? (
               stats.recentLeadActivities.map((activity) => (
                 <div key={activity.id} className="flex items-start gap-3 p-3 border border-border rounded-lg">
-                  <div className={`w-2 h-2 rounded-full mt-2 ${activity.type === 'transfer' ? 'bg-orange-500' : 'bg-green-500'}`}></div>
+                  <div className={`w-2 h-2 rounded-full mt-2 ${
+                    activity.type === 'transfer' ? 'bg-orange-500' : 
+                    activity.type === 'assignment' ? 'bg-green-500' : 
+                    'bg-blue-500'
+                  }`}></div>
                   <div className="flex-1">
                     <div className="font-medium">{activity.message}</div>
                     <div className="text-xs text-muted-foreground mt-1">
