@@ -271,24 +271,33 @@ export const DynamicTableImport: React.FC = () => {
       // Create SQL for table creation
       const columnDefinitions = tableStructure.columns.map(col => {
         const nullable = col.nullable ? '' : ' NOT NULL';
-        let typeDefinition = col.type;
+        let sqlType = '';
         
-        // Add constraints for specific types
-        if (col.type === 'TEXT') {
-          typeDefinition = 'TEXT';
-        } else if (col.type === 'NUMERIC') {
-          typeDefinition = 'NUMERIC';
-        } else if (col.type === 'INTEGER') {
-          typeDefinition = 'INTEGER';
-        } else if (col.type === 'BOOLEAN') {
-          typeDefinition = 'BOOLEAN';
-        } else if (col.type === 'DATE') {
-          typeDefinition = 'DATE';
-        } else if (col.type === 'TIMESTAMP') {
-          typeDefinition = 'TIMESTAMP WITH TIME ZONE';
+        // Map TypeScript types to SQL types
+        switch (col.type) {
+          case 'TEXT':
+            sqlType = 'TEXT';
+            break;
+          case 'NUMERIC':
+            sqlType = 'NUMERIC';
+            break;
+          case 'INTEGER':
+            sqlType = 'INTEGER';
+            break;
+          case 'BOOLEAN':
+            sqlType = 'BOOLEAN';
+            break;
+          case 'DATE':
+            sqlType = 'DATE';
+            break;
+          case 'TIMESTAMP':
+            sqlType = 'TIMESTAMP WITH TIME ZONE';
+            break;
+          default:
+            sqlType = 'TEXT';
         }
         
-        return `${col.name} ${typeDefinition}${nullable}`;
+        return `${col.name} ${sqlType}${nullable}`;
       }).join(',\n  ');
 
       const createTableSQL = `

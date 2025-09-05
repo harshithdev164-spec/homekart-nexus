@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { supabase } from '@/integrations/supabase/client';
-import { Plus, Search, Phone, Mail, MapPin, Calendar, Filter, Users, Upload } from 'lucide-react';
+import { Plus, Search, Phone, Mail, MapPin, Calendar, Filter, Users, Upload, Database } from 'lucide-react';
 import { RealtimeIndicator } from '@/components/collaboration/RealtimeIndicator';
 import { LeadTransfer } from '@/components/leads/LeadTransfer';
 import { MessageTemplates } from '@/components/templates/MessageTemplates';
@@ -13,6 +13,7 @@ import { LeadMessaging } from '@/components/communications/LeadMessaging';
 import { LeadAssignmentIndicator } from '@/components/leads/LeadAssignmentIndicator';
 import { LeadIntegrations } from '@/components/leads/LeadIntegrations';
 import { LeadImport } from '@/components/leads/LeadImport';
+import { DynamicTableImport } from '@/components/leads/DynamicTableImport';
 import { useToast } from '@/hooks/use-toast';
 import {
   Dialog,
@@ -59,6 +60,7 @@ const Leads: React.FC = () => {
   const [isMessagingDialogOpen, setIsMessagingDialogOpen] = useState(false);
   const [isIntegrationsOpen, setIsIntegrationsOpen] = useState(false);
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
+  const [isDynamicImportDialogOpen, setIsDynamicImportDialogOpen] = useState(false);
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   
   // Form state
@@ -224,6 +226,14 @@ const Leads: React.FC = () => {
           >
             <Upload className="h-4 w-4" />
             Import Leads
+          </Button>
+          <Button 
+            variant="outline" 
+            className="gap-2"
+            onClick={() => setIsDynamicImportDialogOpen(true)}
+          >
+            <Database className="h-4 w-4" />
+            Create Table
           </Button>
           <Button 
             variant="outline" 
@@ -578,6 +588,19 @@ const Leads: React.FC = () => {
             </DialogDescription>
           </DialogHeader>
           <LeadImport />
+        </DialogContent>
+      </Dialog>
+
+      {/* Dynamic Table Import Dialog */}
+      <Dialog open={isDynamicImportDialogOpen} onOpenChange={setIsDynamicImportDialogOpen}>
+        <DialogContent className="sm:max-w-6xl max-h-[90vh] overflow-auto">
+          <DialogHeader>
+            <DialogTitle>Create Table from Excel</DialogTitle>
+            <DialogDescription>
+              Upload an Excel file to automatically create a database table and import your data
+            </DialogDescription>
+          </DialogHeader>
+          <DynamicTableImport />
         </DialogContent>
       </Dialog>
     </div>
