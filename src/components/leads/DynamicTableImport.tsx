@@ -387,8 +387,17 @@ export const DynamicTableImport: React.FC = () => {
               // Try to map to standard lead fields
               const lowerOriginal = originalHeader.toLowerCase();
               
-              if (lowerOriginal.includes('name')) {
-                leadData.name = value.toString();
+              if (lowerOriginal.includes('customer') && lowerOriginal.includes('name')) {
+                leadData.customer_name = value.toString();
+              } else if (lowerOriginal.includes('project') && lowerOriginal.includes('name')) {
+                leadData.project_name = value.toString();
+              } else if (lowerOriginal.includes('client') && lowerOriginal.includes('name')) {
+                leadData.customer_name = value.toString();
+              } else if (lowerOriginal.includes('lead') && lowerOriginal.includes('name')) {
+                leadData.customer_name = value.toString();
+              } else if (lowerOriginal === 'name' && !leadData.customer_name) {
+                // If it's just 'name' and we don't have customer_name yet, use it as customer_name
+                leadData.customer_name = value.toString();
               } else if (lowerOriginal.includes('phone') || lowerOriginal.includes('mobile') || lowerOriginal.includes('contact')) {
                 leadData.phone = value.toString();
               } else if (lowerOriginal.includes('email') || lowerOriginal.includes('mail')) {
@@ -417,6 +426,11 @@ export const DynamicTableImport: React.FC = () => {
             }
           });
 
+          // Set the name field based on available data
+          if (leadData.customer_name) {
+            leadData.name = leadData.customer_name;
+          }
+          
           // Validate required fields
           if (!leadData.name || !leadData.phone) {
             errors.push(`Row ${i + 2}: Missing required fields - Name: "${leadData.name || 'empty'}", Phone: "${leadData.phone || 'empty'}"`);

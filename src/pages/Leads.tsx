@@ -449,7 +449,14 @@ const Leads: React.FC = () => {
           <Card key={lead.id} className="hover:shadow-medium transition-all duration-300">
             <CardHeader>
               <div className="flex items-center justify-between">
-                <CardTitle className="text-lg">{lead.name}</CardTitle>
+                <CardTitle className="text-lg">
+                  <span className="font-bold">{lead.name}</span>
+                  {(lead as any).project_name && (
+                    <span className="font-normal text-muted-foreground ml-2">
+                      - {(lead as any).project_name}
+                    </span>
+                  )}
+                </CardTitle>
                 <Badge className={getStatusColor(lead.status)}>
                   {lead.status.replace('_', ' ')}
                 </Badge>
