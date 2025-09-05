@@ -333,12 +333,17 @@ export const DynamicTableImport: React.FC = () => {
 
       console.log('Creating table with SQL:', createTableSQL);
 
-      // Execute the SQL using a custom query (you might need to create an edge function for this)
-      const { error: sqlError } = await supabase.rpc('execute_sql', { sql: createTableSQL });
+      // Use edge function to execute SQL
+      const { data, error: sqlError } = await supabase.functions.invoke('execute-sql', { 
+        body: { sql: createTableSQL }
+      });
 
       if (sqlError) {
-        // If RPC doesn't exist, we'll need to use migration approach
-        throw new Error(`Failed to create table: ${sqlError.message}`);
+        throw new Error(`Failed to create table: ${sqlError.message || 'Unknown error'}`);
+      }
+
+      if (data?.error) {
+        throw new Error(`Failed to create table: ${data.error}`);
       }
 
       setCreationResults({
@@ -390,9 +395,9 @@ export const DynamicTableImport: React.FC = () => {
             }
           });
 
-          // Insert into the new table
+          // Insert into the new table using any method (since it's a dynamic table)
           const { error } = await supabase
-            .from(tableStructure.tableName)
+            .from(tableStructure.tableName as any)
             .insert([insertData]);
 
           if (error) {

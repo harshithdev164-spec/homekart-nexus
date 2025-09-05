@@ -749,6 +749,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      exec_sql: {
+        Args: { sql_query: string }
+        Returns: string
+      }
       get_user_profile: {
         Args: { user_uuid?: string }
         Returns: {
