@@ -61,6 +61,29 @@ const SOPReports: React.FC = () => {
     fetchReports();
   }, []);
 
+  // Real-time subscription for SOP reports
+  useEffect(() => {
+    const channel = supabase
+      .channel('sop_reports_realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'sop_reports'
+        },
+        (payload) => {
+          console.log('SOP report updated:', payload);
+          fetchReports();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
   const fetchReports = async () => {
     try {
       const { data, error } = await supabase

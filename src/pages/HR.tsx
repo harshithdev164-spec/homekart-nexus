@@ -57,6 +57,31 @@ const HR: React.FC = () => {
     }
   }, [profile]);
 
+  // Real-time subscription for SOP reports
+  useEffect(() => {
+    if (!profile?.role || profile.role !== 'admin') return;
+
+    const channel = supabase
+      .channel('sop_reports_changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'sop_reports'
+        },
+        (payload) => {
+          console.log('SOP report change detected:', payload);
+          fetchSOPReports();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [profile]);
+
   const fetchEmployees = async () => {
     try {
       const { data, error } = await supabase
