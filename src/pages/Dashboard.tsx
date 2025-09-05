@@ -33,6 +33,82 @@ const Dashboard: React.FC = () => {
     fetchDashboardData();
   }, [profile]);
 
+  // Real-time subscriptions for leads and properties
+  useEffect(() => {
+    if (!profile) return;
+
+    const leadsChannel = supabase
+      .channel('dashboard_leads_changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'leads'
+        },
+        (payload) => {
+          console.log('Lead change detected on dashboard:', payload);
+          fetchDashboardData();
+        }
+      )
+      .subscribe();
+
+    const propertiesChannel = supabase
+      .channel('dashboard_properties_changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'properties'
+        },
+        (payload) => {
+          console.log('Property change detected on dashboard:', payload);
+          fetchDashboardData();
+        }
+      )
+      .subscribe();
+
+    const activitiesChannel = supabase
+      .channel('dashboard_activities_changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'activities'
+        },
+        (payload) => {
+          console.log('Activity change detected on dashboard:', payload);
+          fetchDashboardData();
+        }
+      )
+      .subscribe();
+
+    const leadTransfersChannel = supabase
+      .channel('dashboard_lead_transfers_changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'lead_transfers'
+        },
+        (payload) => {
+          console.log('Lead transfer change detected on dashboard:', payload);
+          fetchDashboardData();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(leadsChannel);
+      supabase.removeChannel(propertiesChannel);
+      supabase.removeChannel(activitiesChannel);
+      supabase.removeChannel(leadTransfersChannel);
+    };
+  }, [profile]);
+
   const fetchDashboardData = async () => {
     try {
       const [leadsResult, propertiesResult, activitiesResult] = await Promise.all([

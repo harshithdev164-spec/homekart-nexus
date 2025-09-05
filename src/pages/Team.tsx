@@ -50,8 +50,8 @@ const Team: React.FC = () => {
   useEffect(() => {
     fetchTeamMembers();
     
-    // Set up real-time subscription
-    const channel = supabase
+    // Set up real-time subscriptions
+    const profilesChannel = supabase
       .channel('profiles_changes')
       .on('postgres_changes', 
         { event: '*', schema: 'public', table: 'profiles' },
@@ -61,8 +61,30 @@ const Team: React.FC = () => {
       )
       .subscribe();
 
+    const leadsChannel = supabase
+      .channel('team_leads_changes')
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'leads' },
+        () => {
+          fetchTeamMembers();
+        }
+      )
+      .subscribe();
+
+    const propertiesChannel = supabase
+      .channel('team_properties_changes')
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'properties' },
+        () => {
+          fetchTeamMembers();
+        }
+      )
+      .subscribe();
+
     return () => {
-      supabase.removeChannel(channel);
+      supabase.removeChannel(profilesChannel);
+      supabase.removeChannel(leadsChannel);
+      supabase.removeChannel(propertiesChannel);
     };
   }, []);
 
