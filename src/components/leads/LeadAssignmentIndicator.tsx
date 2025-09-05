@@ -3,6 +3,7 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { LeadDetailModal } from './LeadDetailModal';
 import { User, Clock } from 'lucide-react';
 
 interface Lead {
@@ -14,7 +15,16 @@ interface Lead {
   assigned_to?: string;
   created_by: string;
   created_at: string;
+  updated_at: string;
   last_contacted?: string;
+  notes?: string;
+  source?: string;
+  budget_min?: number;
+  budget_max?: number;
+  property_type?: string;
+  preferred_location?: string;
+  next_followup?: string;
+  project_name?: string;
 }
 
 interface Profile {
@@ -34,6 +44,8 @@ export const LeadAssignmentIndicator: React.FC<LeadAssignmentIndicatorProps> = (
 }) => {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [currentUser, setCurrentUser] = useState<Profile | null>(null);
+  const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
+  const [showLeadDetail, setShowLeadDetail] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -147,7 +159,11 @@ export const LeadAssignmentIndicator: React.FC<LeadAssignmentIndicatorProps> = (
           return (
             <div
               key={lead.id}
-              className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors"
+              className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors cursor-pointer"
+              onClick={() => {
+                setSelectedLead(lead);
+                setShowLeadDetail(true);
+              }}
             >
               <div className="flex items-center gap-3">
                 <div>
@@ -165,7 +181,10 @@ export const LeadAssignmentIndicator: React.FC<LeadAssignmentIndicatorProps> = (
                   <div className="flex items-center gap-2">
                     <Badge variant="destructive">Unassigned</Badge>
                     <button
-                      onClick={() => assignLeadToMe(lead.id)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        assignLeadToMe(lead.id);
+                      }}
                       className="text-xs px-2 py-1 bg-primary text-primary-foreground rounded hover:bg-primary/90 transition-colors"
                     >
                       Take Lead
@@ -191,6 +210,15 @@ export const LeadAssignmentIndicator: React.FC<LeadAssignmentIndicatorProps> = (
           );
         })}
       </div>
+
+      <LeadDetailModal
+        lead={selectedLead}
+        isOpen={showLeadDetail}
+        onClose={() => {
+          setShowLeadDetail(false);
+          setSelectedLead(null);
+        }}
+      />
     </div>
   );
 };

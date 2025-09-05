@@ -14,6 +14,7 @@ import { LeadAssignmentIndicator } from '@/components/leads/LeadAssignmentIndica
 import { LeadIntegrations } from '@/components/leads/LeadIntegrations';
 import { LeadImport } from '@/components/leads/LeadImport';
 import { DynamicTableImport } from '@/components/leads/DynamicTableImport';
+import { LeadDetailModal } from '@/components/leads/LeadDetailModal';
 import { useToast } from '@/hooks/use-toast';
 import {
   Dialog,
@@ -41,9 +42,12 @@ interface Lead {
   property_type?: string;
   notes?: string;
   created_at: string;
+  updated_at: string;
   next_followup?: string;
+  last_contacted?: string;
   assigned_to?: string;
   created_by: string;
+  project_name?: string;
   profiles?: {
     full_name: string;
   };
@@ -61,7 +65,11 @@ const Leads: React.FC = () => {
   const [isIntegrationsOpen, setIsIntegrationsOpen] = useState(false);
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [isDynamicImportDialogOpen, setIsDynamicImportDialogOpen] = useState(false);
+  const [showTemplates, setShowTemplates] = useState(false);
+  const [showImport, setShowImport] = useState(false);
+  const [showDynamicImport, setShowDynamicImport] = useState(false);
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
+  const [showLeadDetail, setShowLeadDetail] = useState(false);
   
   // Form state
   const [formData, setFormData] = useState({
@@ -446,7 +454,14 @@ const Leads: React.FC = () => {
       {/* Leads Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredLeads.map((lead) => (
-          <Card key={lead.id} className="hover:shadow-medium transition-all duration-300">
+          <Card 
+            key={lead.id} 
+            className="hover:shadow-medium transition-all duration-300 cursor-pointer"
+            onClick={() => {
+              setSelectedLead(lead);
+              setShowLeadDetail(true);
+            }}
+          >
             <CardHeader>
               <div className="flex items-center justify-between">
                 <CardTitle className="text-lg">
@@ -610,6 +625,15 @@ const Leads: React.FC = () => {
           <DynamicTableImport />
         </DialogContent>
       </Dialog>
+
+      <LeadDetailModal
+        lead={selectedLead}
+        isOpen={showLeadDetail}
+        onClose={() => {
+          setShowLeadDetail(false);
+          setSelectedLead(null);
+        }}
+      />
     </div>
   );
 };
