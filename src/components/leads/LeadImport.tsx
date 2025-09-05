@@ -189,18 +189,23 @@ export const LeadImport: React.FC = () => {
         // Auto-map common field names
         const autoMapping: FieldMapping = {};
         headers.forEach(header => {
-          const lowerHeader = header.toLowerCase();
+          const lowerHeader = header.toLowerCase().trim();
           if (lowerHeader.includes('name')) autoMapping[header] = 'name';
-          if (lowerHeader.includes('phone') || lowerHeader.includes('mobile')) autoMapping[header] = 'phone';
+          if (lowerHeader.includes('phone') || lowerHeader.includes('mobile') || lowerHeader.includes('contact')) autoMapping[header] = 'phone';
           if (lowerHeader.includes('email') || lowerHeader.includes('mail')) autoMapping[header] = 'email';
           if (lowerHeader.includes('source')) autoMapping[header] = 'source';
           if (lowerHeader.includes('budget')) {
-            if (lowerHeader.includes('min') || lowerHeader.includes('from')) autoMapping[header] = 'budget_min';
-            if (lowerHeader.includes('max') || lowerHeader.includes('to')) autoMapping[header] = 'budget_max';
+            if (lowerHeader.includes('min') || lowerHeader.includes('from') || lowerHeader.includes('lower')) {
+              autoMapping[header] = 'budget_min';
+            } else if (lowerHeader.includes('max') || lowerHeader.includes('to') || lowerHeader.includes('upper')) {
+              autoMapping[header] = 'budget_max';
+            } else {
+              autoMapping[header] = 'budget_min'; // Default budget column to min
+            }
           }
-          if (lowerHeader.includes('location') || lowerHeader.includes('address')) autoMapping[header] = 'preferred_location';
+          if (lowerHeader.includes('location') || lowerHeader.includes('address') || lowerHeader.includes('area')) autoMapping[header] = 'preferred_location';
           if (lowerHeader.includes('property') && lowerHeader.includes('type')) autoMapping[header] = 'property_type';
-          if (lowerHeader.includes('note') || lowerHeader.includes('comment')) autoMapping[header] = 'notes';
+          if (lowerHeader.includes('note') || lowerHeader.includes('comment') || lowerHeader.includes('remark')) autoMapping[header] = 'notes';
         });
         
         console.log('Auto-mapped fields:', autoMapping);
@@ -288,9 +293,17 @@ export const LeadImport: React.FC = () => {
 
         // Validate required fields
         if (!leadData.name || !leadData.phone) {
-          errors.push(`Row ${i + 2}: Missing name or phone`);
+          errors.push(`Row ${i + 2}: Missing required fields - Name: "${leadData.name || 'empty'}", Phone: "${leadData.phone || 'empty'}"`);
           continue;
         }
+
+        // Clean phone number
+        const cleanPhone = leadData.phone.toString().replace(/[^\d+\-\s()]/g, '');
+        if (cleanPhone.length < 10) {
+          errors.push(`Row ${i + 2}: Invalid phone number "${leadData.phone}"`);
+          continue;
+        }
+        leadData.phone = cleanPhone;
 
         // Insert lead
         const { error } = await supabase
@@ -312,8 +325,19 @@ export const LeadImport: React.FC = () => {
 
     if (successCount > 0) {
       toast({
-        title: 'Import completed',
-        description: `Successfully imported ${successCount} leads${errors.length > 0 ? ` with ${errors.length} errors` : ''}`,
+        title: 'Import completed successfully',
+        description: `Successfully imported ${successCount} leads${errors.length > 0 ? `. ${errors.length} rows had errors.` : ''}`,
+      });
+      
+      // Reset form after successful import
+      if (errors.length === 0) {
+        resetImport();
+      }
+    } else if (errors.length > 0) {
+      toast({
+        title: 'Import failed',
+        description: `No leads were imported. Please check the errors and try again.`,
+        variant: 'destructive',
       });
     }
   };
@@ -386,10 +410,10 @@ export const LeadImport: React.FC = () => {
                   <div key={column} className="space-y-2">
                     <Label>Excel Column: "{column}"</Label>
                     <Select
-                      value={fieldMapping[column] || ''}
+                      value={fieldMapping[column] || 'none'}
                       onValueChange={(value) => {
                         const newMapping = { ...fieldMapping };
-                        if (value) {
+                        if (value && value !== 'none') {
                           newMapping[column] = value;
                         } else {
                           delete newMapping[column];
@@ -401,7 +425,7 @@ export const LeadImport: React.FC = () => {
                         <SelectValue placeholder="Select lead field" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">Don't map</SelectItem>
+                        <SelectItem value="none">Don't map</SelectItem>
                         {Object.entries(LEAD_FIELDS).map(([key, label]) => (
                           <SelectItem key={key} value={key}>{label}</SelectItem>
                         ))}
