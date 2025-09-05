@@ -233,7 +233,7 @@ const Leads: React.FC = () => {
             onClick={() => setIsDynamicImportDialogOpen(true)}
           >
             <Database className="h-4 w-4" />
-            Create Table
+            Smart Import
           </Button>
           <Button 
             variant="outline" 
@@ -591,13 +591,13 @@ const Leads: React.FC = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Dynamic Table Import Dialog */}
+      {/* Smart Lead Import Dialog */}
       <Dialog open={isDynamicImportDialogOpen} onOpenChange={setIsDynamicImportDialogOpen}>
         <DialogContent className="sm:max-w-6xl max-h-[90vh] overflow-auto">
           <DialogHeader>
-            <DialogTitle>Create Table from Excel</DialogTitle>
+            <DialogTitle>Smart Lead Import</DialogTitle>
             <DialogDescription>
-              Upload an Excel file to automatically create a database table and import your data
+              Upload any Excel file and automatically import it as leads with intelligent field mapping
             </DialogDescription>
           </DialogHeader>
           <DynamicTableImport />

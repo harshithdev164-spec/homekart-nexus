@@ -361,7 +361,7 @@ export const DynamicTableImport: React.FC = () => {
         tableName: tableStructure.tableName
       });
 
-      // Now import the data
+      // Instead of importing to the new table, convert and import to the main leads table
       setIsImporting(true);
       let successCount = 0;
       const errors: string[] = [];
@@ -370,11 +370,12 @@ export const DynamicTableImport: React.FC = () => {
         const row = excelData[i];
         
         try {
-          const insertData: any = {
-            created_by: profile.id
+          const leadData: any = {
+            created_by: profile.id,
+            status: 'new'
           };
 
-          // Map data according to column structure
+          // Map data to standard lead fields
           tableStructure.columns.forEach(col => {
             const originalHeader = excelColumns.find(h => 
               h.toLowerCase().replace(/[^a-z0-9_]/g, '_') === col.name
@@ -383,31 +384,57 @@ export const DynamicTableImport: React.FC = () => {
             if (originalHeader && row[originalHeader] !== undefined && row[originalHeader] !== '') {
               let value = row[originalHeader];
               
-              // Convert data types
-              if (col.type === 'INTEGER') {
-                const intValue = parseInt(value);
-                if (!isNaN(intValue)) insertData[col.name] = intValue;
-              } else if (col.type === 'NUMERIC') {
-                const numValue = parseFloat(value);
-                if (!isNaN(numValue)) insertData[col.name] = numValue;
-              } else if (col.type === 'BOOLEAN') {
-                const boolValue = /^(true|yes|1)$/i.test(value);
-                insertData[col.name] = boolValue;
-              } else if (col.type === 'DATE' || col.type === 'TIMESTAMP') {
-                const dateValue = new Date(value);
-                if (!isNaN(dateValue.getTime())) {
-                  insertData[col.name] = dateValue.toISOString();
+              // Try to map to standard lead fields
+              const lowerOriginal = originalHeader.toLowerCase();
+              
+              if (lowerOriginal.includes('name')) {
+                leadData.name = value.toString();
+              } else if (lowerOriginal.includes('phone') || lowerOriginal.includes('mobile') || lowerOriginal.includes('contact')) {
+                leadData.phone = value.toString();
+              } else if (lowerOriginal.includes('email') || lowerOriginal.includes('mail')) {
+                leadData.email = value.toString();
+              } else if (lowerOriginal.includes('source')) {
+                leadData.source = value.toString();
+              } else if (lowerOriginal.includes('budget')) {
+                if (lowerOriginal.includes('min') || lowerOriginal.includes('from')) {
+                  const numValue = parseFloat(value.toString().replace(/[^0-9.-]/g, ''));
+                  if (!isNaN(numValue)) leadData.budget_min = numValue;
+                } else if (lowerOriginal.includes('max') || lowerOriginal.includes('to')) {
+                  const numValue = parseFloat(value.toString().replace(/[^0-9.-]/g, ''));
+                  if (!isNaN(numValue)) leadData.budget_max = numValue;
                 }
-              } else {
-                insertData[col.name] = value.toString();
+              } else if (lowerOriginal.includes('location') || lowerOriginal.includes('address') || lowerOriginal.includes('area')) {
+                leadData.preferred_location = value.toString();
+              } else if (lowerOriginal.includes('property') && lowerOriginal.includes('type')) {
+                const type = value.toString().toLowerCase();
+                const validTypes = ['apartment', 'villa', 'plot', 'commercial', 'office', 'warehouse'];
+                if (validTypes.includes(type)) {
+                  leadData.property_type = type;
+                }
+              } else if (lowerOriginal.includes('note') || lowerOriginal.includes('comment') || lowerOriginal.includes('remark')) {
+                leadData.notes = value.toString();
               }
             }
           });
 
-          // Insert into the new table using any method (since it's a dynamic table)
+          // Validate required fields
+          if (!leadData.name || !leadData.phone) {
+            errors.push(`Row ${i + 2}: Missing required fields - Name: "${leadData.name || 'empty'}", Phone: "${leadData.phone || 'empty'}"`);
+            continue;
+          }
+
+          // Clean phone number
+          const cleanPhone = leadData.phone.toString().replace(/[^\d+\-\s()]/g, '');
+          if (cleanPhone.length < 10) {
+            errors.push(`Row ${i + 2}: Invalid phone number "${leadData.phone}"`);
+            continue;
+          }
+          leadData.phone = cleanPhone;
+
+          // Insert into the main leads table
           const { error } = await supabase
-            .from(tableStructure.tableName as any)
-            .insert([insertData]);
+            .from('leads')
+            .insert([leadData]);
 
           if (error) {
             errors.push(`Row ${i + 2}: ${error.message}`);
@@ -421,14 +448,19 @@ export const DynamicTableImport: React.FC = () => {
 
       setCreationResults(prev => ({
         ...prev,
-        message: `${prev.message} Successfully imported ${successCount} rows${errors.length > 0 ? ` with ${errors.length} errors` : ''}.`
+        message: `${prev.message} Successfully imported ${successCount} leads into the main leads table${errors.length > 0 ? ` with ${errors.length} errors` : ''}.`
       }));
 
       if (successCount > 0) {
         toast({
           title: 'Import completed',
-          description: `Successfully created table and imported ${successCount} rows${errors.length > 0 ? ` with ${errors.length} errors` : ''}`,
+          description: `Successfully created table structure and imported ${successCount} leads${errors.length > 0 ? ` with ${errors.length} errors` : ''}`,
         });
+        
+        // Reset form after successful import
+        if (errors.length === 0) {
+          setTimeout(() => resetImport(), 2000);
+        }
       }
 
     } catch (error) {
@@ -487,10 +519,10 @@ export const DynamicTableImport: React.FC = () => {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Database className="h-5 w-5" />
-              Create Table from Excel
+              Smart Lead Import
             </CardTitle>
             <CardDescription>
-              Upload an Excel file to automatically create a database table and import your data
+              Upload an Excel file with intelligent structure detection and import as leads
             </CardDescription>
           </CardHeader>
           <CardContent>
