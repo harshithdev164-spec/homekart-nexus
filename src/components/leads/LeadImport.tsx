@@ -100,38 +100,84 @@ export const LeadImport: React.FC = () => {
       try {
         console.log('File read successfully, parsing with XLSX');
         const data = e.target?.result;
-        const workbook = XLSX.read(data, { type: 'array' });
+        
+        if (!data) {
+          throw new Error('No data found in file');
+        }
+        
+        const workbook = XLSX.read(data, { 
+          type: 'array',
+          cellText: false,
+          cellDates: true
+        });
+        
+        if (!workbook.SheetNames.length) {
+          throw new Error('No sheets found in Excel file');
+        }
+        
         const sheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[sheetName];
+        
+        if (!worksheet) {
+          throw new Error('Unable to read worksheet');
+        }
         
         // Parse as JSON with proper headers
         const jsonData = XLSX.utils.sheet_to_json(worksheet, { 
           header: 1,
           defval: '',
-          raw: false
+          raw: false,
+          dateNF: 'yyyy-mm-dd'
         });
 
         console.log('Parsed JSON data:', jsonData);
+        console.log('Number of rows found:', jsonData.length);
 
+        if (jsonData.length < 1) {
+          throw new Error('Excel file is empty');
+        }
+        
         if (jsonData.length < 2) {
-          toast({
-            title: 'Invalid file',
-            description: 'Excel file must contain at least a header row and one data row',
-            variant: 'destructive',
-          });
-          return;
+          throw new Error('Excel file must contain at least a header row and one data row');
         }
 
-        const headers = (jsonData[0] as string[]).filter(header => header && header.trim());
+        // Get headers from first row
+        const firstRow = jsonData[0] as any[];
+        if (!firstRow || firstRow.length === 0) {
+          throw new Error('No headers found in Excel file');
+        }
+        
+        const headers = firstRow
+          .map(header => header ? header.toString().trim() : '')
+          .filter(header => header);
+          
+        if (headers.length === 0) {
+          throw new Error('No valid headers found in Excel file');
+        }
+        
+        console.log('Found headers:', headers);
+
         const rows = jsonData.slice(1)
-          .filter(row => row && (row as any[]).some(cell => cell && cell.toString().trim()))
-          .map(row => {
+          .filter(row => {
+            if (!row || !Array.isArray(row)) return false;
+            return (row as any[]).some(cell => cell !== null && cell !== undefined && cell.toString().trim() !== '');
+          })
+          .map((row, rowIndex) => {
             const obj: ExcelRow = {};
-            headers.forEach((header, index) => {
-              const value = (row as any[])[index];
-              obj[header] = value ? value.toString().trim() : '';
-            });
-            return obj;
+            try {
+              headers.forEach((header, index) => {
+                const value = (row as any[])[index];
+                if (value !== null && value !== undefined) {
+                  obj[header] = value.toString().trim();
+                } else {
+                  obj[header] = '';
+                }
+              });
+              return obj;
+            } catch (err) {
+              console.error(`Error processing row ${rowIndex + 2}:`, err);
+              throw new Error(`Error in row ${rowIndex + 2}: ${err instanceof Error ? err.message : 'Unknown error'}`);
+            }
           });
 
         console.log('Processed headers:', headers);
@@ -166,11 +212,20 @@ export const LeadImport: React.FC = () => {
         });
       } catch (error) {
         console.error('Error parsing Excel file:', error);
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+        console.error('Detailed error:', errorMessage);
+        
         toast({
           title: 'Error parsing file',
-          description: 'Unable to parse the Excel file. Please check the format and try again.',
+          description: `Unable to parse the Excel file: ${errorMessage}`,
           variant: 'destructive',
         });
+        
+        // Reset state on error
+        setFile(null);
+        setExcelData([]);
+        setExcelColumns([]);
+        setFieldMapping({});
       }
     };
     
