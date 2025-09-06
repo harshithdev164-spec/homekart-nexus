@@ -248,8 +248,8 @@ const Leads: React.FC = () => {
             className="gap-2"
             onClick={() => setIsIntegrationsOpen(true)}
           >
-            <Users className="h-4 w-4" />
-            Lead Sources
+            <Database className="h-4 w-4" />
+            Integrations
           </Button>
           <Button 
             variant="outline" 
@@ -593,7 +593,7 @@ const Leads: React.FC = () => {
           <DialogHeader>
             <DialogTitle>Lead Integrations</DialogTitle>
             <DialogDescription>
-              Import leads from external platforms like MagicBricks and 99acres.
+              Import leads from external platforms like MagicBricks, 99acres, and Zoho. Sync data and send bulk emails.
             </DialogDescription>
           </DialogHeader>
           <LeadIntegrations />
