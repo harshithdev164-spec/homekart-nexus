@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Building2, Home, Loader2, RefreshCw, Copy, Globe, AlertTriangle } from 'lucide-react';
+import { Building2, Home, Loader2, RefreshCw, Copy, Globe, AlertTriangle, Sheet, Mail } from 'lucide-react';
 
 export const LeadIntegrations: React.FC = () => {
   const [isLoading, setIsLoading] = useState<string | null>(null);
@@ -78,6 +78,64 @@ export const LeadIntegrations: React.FC = () => {
       toast({
         title: 'Note',
         description: 'API credentials not configured. Demo lead created for testing.',
+        variant: 'default',
+      });
+    } finally {
+      setIsLoading(null);
+    }
+  };
+
+  const triggerZohoSheetsSync = async () => {
+    setIsLoading('zoho-sheets');
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('zoho-sheets', {
+        body: { action: 'sync_leads' }
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: data.demo ? 'Demo Mode' : 'Success',
+        description: data.message,
+        variant: data.demo ? 'default' : 'default',
+      });
+      
+      if (!data.demo) {
+        setTimeout(() => window.location.reload(), 1000);
+      }
+    } catch (error) {
+      console.error('Error syncing Zoho Sheets:', error);
+      toast({
+        title: 'Note',
+        description: 'Zoho credentials not configured. Demo functionality available.',
+        variant: 'default',
+      });
+    } finally {
+      setIsLoading(null);
+    }
+  };
+
+  const triggerZohoMailSync = async () => {
+    setIsLoading('zoho-mail');
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('zoho-mail', {
+        body: { action: 'send_bulk_emails' }
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: data.demo ? 'Demo Mode' : 'Success',
+        description: data.message,
+        variant: data.demo ? 'default' : 'default',
+      });
+    } catch (error) {
+      console.error('Error with Zoho Mail:', error);
+      toast({
+        title: 'Note',
+        description: 'Zoho Mail credentials not configured. Demo functionality available.',
         variant: 'default',
       });
     } finally {
@@ -160,6 +218,74 @@ export const LeadIntegrations: React.FC = () => {
             </Button>
           </CardContent>
         </Card>
+
+        {/* Zoho Sheets Integration */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Sheet className="h-5 w-5" />
+              Zoho Sheets
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between">
+              <Badge variant="outline">Active</Badge>
+              <Badge variant="secondary">Spreadsheet Platform</Badge>
+            </div>
+            
+            <p className="text-sm text-muted-foreground">
+              Import/export leads from Zoho Sheets. Sync data bidirectionally 
+              with your spreadsheets for easy management.
+            </p>
+            
+            <Button 
+              onClick={triggerZohoSheetsSync}
+              disabled={isLoading === 'zoho-sheets'}
+              className="w-full"
+            >
+              {isLoading === 'zoho-sheets' ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <RefreshCw className="h-4 w-4 mr-2" />
+              )}
+              {isLoading === 'zoho-sheets' ? 'Syncing...' : 'Sync Sheets'}
+            </Button>
+          </CardContent>
+        </Card>
+
+        {/* Zoho Mail Integration */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Mail className="h-5 w-5" />
+              Zoho Mail
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between">
+              <Badge variant="outline">Active</Badge>
+              <Badge variant="secondary">Email Platform</Badge>
+            </div>
+            
+            <p className="text-sm text-muted-foreground">
+              Send bulk emails to leads using Zoho Mail. Automated 
+              email campaigns and personalized communications.
+            </p>
+            
+            <Button 
+              onClick={triggerZohoMailSync}
+              disabled={isLoading === 'zoho-mail'}
+              className="w-full"
+            >
+              {isLoading === 'zoho-mail' ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Mail className="h-4 w-4 mr-2" />
+              )}
+              {isLoading === 'zoho-mail' ? 'Sending...' : 'Send Emails'}
+            </Button>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Real-time Webhook Setup */}
@@ -196,7 +322,7 @@ export const LeadIntegrations: React.FC = () => {
             </div>
           </div>
 
-          <div className="bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
+            <div className="bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
             <div className="flex items-start gap-2">
               <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
               <div className="text-xs text-amber-800 dark:text-amber-200">
@@ -204,7 +330,8 @@ export const LeadIntegrations: React.FC = () => {
                 <ul className="space-y-1 list-disc list-inside ml-2">
                   <li>Register at MagicBricks Builder Portal for MAGICBRICKS_API_KEY</li>
                   <li>Register at 99acres Builder Hub for ACRES_API_KEY</li>
-                  <li>Add credentials to Supabase Edge Function Secrets</li>
+                  <li>Create Zoho OAuth app for ZOHO_CLIENT_ID and ZOHO_CLIENT_SECRET</li>
+                  <li>Add all credentials to Supabase Edge Function Secrets</li>
                 </ul>
               </div>
             </div>
@@ -223,7 +350,8 @@ export const LeadIntegrations: React.FC = () => {
             <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside ml-4">
               <li><strong>MagicBricks:</strong> Visit <a href="https://www.magicbricks.com/builder-portal" target="_blank" rel="noopener noreferrer" className="text-primary underline">MagicBricks Builder Portal</a></li>
               <li><strong>99acres:</strong> Visit <a href="https://www.99acres.com/builder-hub" target="_blank" rel="noopener noreferrer" className="text-primary underline">99acres Builder Hub</a></li>
-              <li>Register as a builder/developer partner</li>
+              <li><strong>Zoho:</strong> Visit <a href="https://api-console.zoho.com/" target="_blank" rel="noopener noreferrer" className="text-primary underline">Zoho API Console</a></li>
+              <li>Register as a partner and create OAuth applications</li>
               <li>Get API credentials and webhook access</li>
             </ul>
           </div>
@@ -233,7 +361,8 @@ export const LeadIntegrations: React.FC = () => {
             <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside ml-4">
               <li>Add MAGICBRICKS_API_KEY and MAGICBRICKS_PARTNER_ID to Supabase secrets</li>
               <li>Add ACRES_API_KEY and ACRES_CLIENT_ID to Supabase secrets</li>
-              <li>Configure webhook URL in both partner portals</li>
+              <li>Add ZOHO_CLIENT_ID, ZOHO_CLIENT_SECRET, and ZOHO_REFRESH_TOKEN to Supabase secrets</li>
+              <li>Configure webhook URL in all partner portals</li>
             </ul>
           </div>
           

@@ -52,3 +52,9 @@ verify_jwt = false
 
 [functions.99acres-leads]
 verify_jwt = false
+
+[functions.zoho-sheets]
+verify_jwt = false
+
+[functions.zoho-mail]
+verify_jwt = false
