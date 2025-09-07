@@ -274,6 +274,7 @@ const Properties: React.FC = () => {
   };
 
   const openDetailModal = (property: Property) => {
+    console.log('Opening detail modal for property:', property.title);
     setSelectedProperty(property);
     setIsDetailModalOpen(true);
   };
@@ -709,7 +710,10 @@ const Properties: React.FC = () => {
                className={`hover:shadow-medium transition-all duration-300 cursor-pointer ${
                  selectedProperty?.id === property.id ? 'ring-2 ring-primary' : ''
                }`}
-               onClick={() => openDetailModal(property)}
+               onClick={() => {
+                 console.log('Property card clicked:', property.title);
+                 openDetailModal(property);
+               }}
              >
               <CardHeader>
             <CardTitle className="flex items-center gap-2">

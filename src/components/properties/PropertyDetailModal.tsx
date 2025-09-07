@@ -97,6 +97,7 @@ export const PropertyDetailModal: React.FC<PropertyDetailModalProps> = ({
   onClose,
   onEdit,
 }) => {
+  console.log('PropertyDetailModal render:', { property: property?.title, isOpen });
   const { toast } = useToast();
   const [interests, setInterests] = useState<PropertyInterest[]>([]);
   const [visits, setVisits] = useState<VisitSchedule[]>([]);
