@@ -9,6 +9,7 @@ import { Plus, Search, MapPin, Home, Bed, Bath, Square, IndianRupee, Filter, Use
 import { useToast } from '@/hooks/use-toast';
 import { RealtimeIndicator } from '@/components/collaboration/RealtimeIndicator';
 import { PropertyMap } from '@/components/maps/PropertyMap';
+import { PropertyDetailModal } from '@/components/properties/PropertyDetailModal';
 import {
   Dialog,
   DialogContent,
@@ -59,6 +60,7 @@ const Properties: React.FC = () => {
   const [editingProperty, setEditingProperty] = useState<Property | null>(null);
   const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
   const [showMap, setShowMap] = useState(false);
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   
   // Form state
   const [formData, setFormData] = useState({
@@ -269,6 +271,11 @@ const Properties: React.FC = () => {
       state: property.state,
     });
     setIsEditDialogOpen(true);
+  };
+
+  const openDetailModal = (property: Property) => {
+    setSelectedProperty(property);
+    setIsDetailModalOpen(true);
   };
 
   const getStatusColor = (status: string) => {
@@ -697,13 +704,13 @@ const Properties: React.FC = () => {
         {filteredProperties.map((property) => {
           const PropertyIcon = getPropertyTypeIcon(property.property_type);
           return (
-            <Card 
-              key={property.id} 
-              className={`hover:shadow-medium transition-all duration-300 cursor-pointer ${
-                selectedProperty?.id === property.id ? 'ring-2 ring-primary' : ''
-              }`}
-              onClick={() => setSelectedProperty(property)}
-            >
+             <Card 
+               key={property.id} 
+               className={`hover:shadow-medium transition-all duration-300 cursor-pointer ${
+                 selectedProperty?.id === property.id ? 'ring-2 ring-primary' : ''
+               }`}
+               onClick={() => openDetailModal(property)}
+             >
               <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <div className="flex items-center justify-between w-full">
@@ -765,31 +772,34 @@ const Properties: React.FC = () => {
                     </p>
                   )}
                 </div>
-                <div className="flex gap-2 mt-4">
-                  <Button 
-                    size="sm" 
-                    variant="outline" 
-                    className="flex-1"
-                    onClick={() => openEditDialog(property)}
-                  >
-                    Edit
-                  </Button>
-                  <Select 
-                    value={property.status} 
-                    onValueChange={(newStatus: 'available' | 'under_contract' | 'sold' | 'rented' | 'off_market') => handleStatusUpdate(property.id, newStatus)}
-                  >
-                    <SelectTrigger className="flex-1">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="available">Available</SelectItem>
-                      <SelectItem value="under_contract">Under Contract</SelectItem>
-                      <SelectItem value="sold">Sold</SelectItem>
-                      <SelectItem value="rented">Rented</SelectItem>
-                      <SelectItem value="off_market">Off Market</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+                 <div className="flex gap-2 mt-4">
+                   <Button 
+                     size="sm" 
+                     variant="outline" 
+                     className="flex-1"
+                     onClick={(e) => {
+                       e.stopPropagation();
+                       openEditDialog(property);
+                     }}
+                   >
+                     Edit
+                   </Button>
+                   <Select 
+                     value={property.status} 
+                     onValueChange={(newStatus: 'available' | 'under_contract' | 'sold' | 'rented' | 'off_market') => handleStatusUpdate(property.id, newStatus)}
+                   >
+                     <SelectTrigger className="flex-1" onClick={(e) => e.stopPropagation()}>
+                       <SelectValue />
+                     </SelectTrigger>
+                     <SelectContent>
+                       <SelectItem value="available">Available</SelectItem>
+                       <SelectItem value="under_contract">Under Contract</SelectItem>
+                       <SelectItem value="sold">Sold</SelectItem>
+                       <SelectItem value="rented">Rented</SelectItem>
+                       <SelectItem value="off_market">Off Market</SelectItem>
+                     </SelectContent>
+                   </Select>
+                 </div>
               </CardContent>
             </Card>
           );
@@ -811,6 +821,20 @@ const Properties: React.FC = () => {
           </CardContent>
         </Card>
       )}
+
+      {/* Property Detail Modal */}
+      <PropertyDetailModal
+        property={selectedProperty}
+        isOpen={isDetailModalOpen}
+        onClose={() => {
+          setIsDetailModalOpen(false);
+          setSelectedProperty(null);
+        }}
+        onEdit={(property) => {
+          setIsDetailModalOpen(false);
+          openEditDialog(property);
+        }}
+      />
     </div>
   );
 };
