@@ -10,7 +10,12 @@ import { Building2, Home, Loader2, RefreshCw, Copy, Globe, AlertTriangle, Sheet,
 
 export const LeadIntegrations: React.FC = () => {
   const [isLoading, setIsLoading] = useState<string | null>(null);
-  const [webhookUrl] = useState(`${window.location.origin.replace('localhost:3000', 'localhost:54321')}/functions/v1/webhook-leads`);
+  const [webhookUrl] = useState(() => {
+    const baseUrl = window.location.hostname === 'localhost' 
+      ? 'http://localhost:54321' 
+      : 'https://qtugvzrvcuderfrebfxj.supabase.co';
+    return `${baseUrl}/functions/v1/webhook-leads`;
+  });
   const { toast } = useToast();
 
   const copyWebhookUrl = () => {
@@ -150,30 +155,31 @@ export const LeadIntegrations: React.FC = () => {
         <p className="text-muted-foreground">Import leads from external platforms</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
         {/* MagicBricks Integration */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Building2 className="h-5 w-5" />
+        <Card className="h-full">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <Building2 className="h-5 w-5 text-primary" />
               MagicBricks
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex items-center justify-between">
-              <Badge variant="outline">Active</Badge>
-              <Badge variant="secondary">Real Estate Portal</Badge>
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge variant="outline" className="text-xs">Active</Badge>
+              <Badge variant="secondary" className="text-xs">Real Estate Portal</Badge>
             </div>
             
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-muted-foreground leading-relaxed">
               Import leads from MagicBricks platform automatically. 
               Leads will be assigned to available team members.
             </p>
             
             <Button 
               onClick={triggerMagicBricksSync}
-              disabled={isLoading === 'magicbricks'}
+              disabled={!!isLoading}
               className="w-full"
+              size="sm"
             >
               {isLoading === 'magicbricks' ? (
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -186,28 +192,29 @@ export const LeadIntegrations: React.FC = () => {
         </Card>
 
         {/* 99acres Integration */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Home className="h-5 w-5" />
+        <Card className="h-full">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <Home className="h-5 w-5 text-primary" />
               99acres
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex items-center justify-between">
-              <Badge variant="outline">Active</Badge>
-              <Badge variant="secondary">Property Portal</Badge>
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge variant="outline" className="text-xs">Active</Badge>
+              <Badge variant="secondary" className="text-xs">Property Portal</Badge>
             </div>
             
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-muted-foreground leading-relaxed">
               Import leads from 99acres platform automatically.
               Leads will be assigned to available team members.
             </p>
             
             <Button 
               onClick={trigger99AcresSync}
-              disabled={isLoading === '99acres'}
+              disabled={!!isLoading}
               className="w-full"
+              size="sm"
             >
               {isLoading === '99acres' ? (
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -220,28 +227,29 @@ export const LeadIntegrations: React.FC = () => {
         </Card>
 
         {/* Zoho Sheets Integration */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Sheet className="h-5 w-5" />
+        <Card className="h-full">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <Sheet className="h-5 w-5 text-primary" />
               Zoho Sheets
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex items-center justify-between">
-              <Badge variant="outline">Active</Badge>
-              <Badge variant="secondary">Spreadsheet Platform</Badge>
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge variant="outline" className="text-xs">Active</Badge>
+              <Badge variant="secondary" className="text-xs">Spreadsheet Platform</Badge>
             </div>
             
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-muted-foreground leading-relaxed">
               Import/export leads from Zoho Sheets. Sync data bidirectionally 
               with your spreadsheets for easy management.
             </p>
             
             <Button 
               onClick={triggerZohoSheetsSync}
-              disabled={isLoading === 'zoho-sheets'}
+              disabled={!!isLoading}
               className="w-full"
+              size="sm"
             >
               {isLoading === 'zoho-sheets' ? (
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -254,28 +262,29 @@ export const LeadIntegrations: React.FC = () => {
         </Card>
 
         {/* Zoho Mail Integration */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Mail className="h-5 w-5" />
+        <Card className="h-full">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <Mail className="h-5 w-5 text-primary" />
               Zoho Mail
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex items-center justify-between">
-              <Badge variant="outline">Active</Badge>
-              <Badge variant="secondary">Email Platform</Badge>
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge variant="outline" className="text-xs">Active</Badge>
+              <Badge variant="secondary" className="text-xs">Email Platform</Badge>
             </div>
             
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-muted-foreground leading-relaxed">
               Send bulk emails to leads using Zoho Mail. Automated 
               email campaigns and personalized communications.
             </p>
             
             <Button 
               onClick={triggerZohoMailSync}
-              disabled={isLoading === 'zoho-mail'}
+              disabled={!!isLoading}
               className="w-full"
+              size="sm"
             >
               {isLoading === 'zoho-mail' ? (
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -314,20 +323,20 @@ export const LeadIntegrations: React.FC = () => {
                 id="webhook-url"
                 value={webhookUrl}
                 readOnly
-                className="font-mono text-xs"
+                className="font-mono text-xs break-all"
               />
-              <Button variant="outline" size="sm" onClick={copyWebhookUrl}>
+              <Button variant="outline" size="sm" onClick={copyWebhookUrl} className="flex-shrink-0">
                 <Copy className="h-4 w-4" />
               </Button>
             </div>
           </div>
 
-            <div className="bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
-            <div className="flex items-start gap-2">
-              <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
-              <div className="text-xs text-amber-800 dark:text-amber-200">
-                <p className="font-medium mb-1">API Credentials Required:</p>
-                <ul className="space-y-1 list-disc list-inside ml-2">
+          <div className="bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
+              <div className="text-sm text-amber-800 dark:text-amber-200">
+                <p className="font-medium mb-2">API Credentials Required:</p>
+                <ul className="space-y-1 list-disc list-inside ml-2 text-xs">
                   <li>Register at MagicBricks Builder Portal for MAGICBRICKS_API_KEY</li>
                   <li>Register at 99acres Builder Hub for ACRES_API_KEY</li>
                   <li>Create Zoho OAuth app for ZOHO_CLIENT_ID and ZOHO_CLIENT_SECRET</li>
@@ -344,21 +353,21 @@ export const LeadIntegrations: React.FC = () => {
         <CardHeader>
           <CardTitle>Setup Instructions</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <h4 className="font-medium">Step 1: Get API Access</h4>
-            <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside ml-4">
-              <li><strong>MagicBricks:</strong> Visit <a href="https://www.magicbricks.com/builder-portal" target="_blank" rel="noopener noreferrer" className="text-primary underline">MagicBricks Builder Portal</a></li>
-              <li><strong>99acres:</strong> Visit <a href="https://www.99acres.com/builder-hub" target="_blank" rel="noopener noreferrer" className="text-primary underline">99acres Builder Hub</a></li>
-              <li><strong>Zoho:</strong> Visit <a href="https://api-console.zoho.com/" target="_blank" rel="noopener noreferrer" className="text-primary underline">Zoho API Console</a></li>
+        <CardContent className="space-y-6">
+          <div className="space-y-3">
+            <h4 className="font-medium text-base">Step 1: Get API Access</h4>
+            <ul className="text-sm text-muted-foreground space-y-2 list-disc list-inside ml-4">
+              <li><strong>MagicBricks:</strong> Visit <a href="https://www.magicbricks.com/builder-portal" target="_blank" rel="noopener noreferrer" className="text-primary underline hover:text-primary/80">MagicBricks Builder Portal</a></li>
+              <li><strong>99acres:</strong> Visit <a href="https://www.99acres.com/builder-hub" target="_blank" rel="noopener noreferrer" className="text-primary underline hover:text-primary/80">99acres Builder Hub</a></li>
+              <li><strong>Zoho:</strong> Visit <a href="https://api-console.zoho.com/" target="_blank" rel="noopener noreferrer" className="text-primary underline hover:text-primary/80">Zoho API Console</a></li>
               <li>Register as a partner and create OAuth applications</li>
               <li>Get API credentials and webhook access</li>
             </ul>
           </div>
 
-          <div className="space-y-2">
-            <h4 className="font-medium">Step 2: Configure Credentials</h4>
-            <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside ml-4">
+          <div className="space-y-3">
+            <h4 className="font-medium text-base">Step 2: Configure Credentials</h4>
+            <ul className="text-sm text-muted-foreground space-y-2 list-disc list-inside ml-4">
               <li>Add MAGICBRICKS_API_KEY and MAGICBRICKS_PARTNER_ID to Supabase secrets</li>
               <li>Add ACRES_API_KEY and ACRES_CLIENT_ID to Supabase secrets</li>
               <li>Add ZOHO_CLIENT_ID, ZOHO_CLIENT_SECRET, and ZOHO_REFRESH_TOKEN to Supabase secrets</li>
@@ -366,9 +375,9 @@ export const LeadIntegrations: React.FC = () => {
             </ul>
           </div>
           
-          <div className="space-y-2">
-            <h4 className="font-medium">Step 3: Real-time Integration</h4>
-            <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside ml-4">
+          <div className="space-y-3">
+            <h4 className="font-medium text-base">Step 3: Real-time Integration</h4>
+            <ul className="text-sm text-muted-foreground space-y-2 list-disc list-inside ml-4">
               <li>Leads automatically appear in your team dashboard</li>
               <li>Real-time notifications for all team members</li>
               <li>Automatic lead assignment and visibility</li>

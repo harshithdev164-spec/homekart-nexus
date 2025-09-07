@@ -589,14 +589,16 @@ const Leads: React.FC = () => {
 
       {/* Lead Integrations Dialog */}
       <Dialog open={isIntegrationsOpen} onOpenChange={setIsIntegrationsOpen}>
-        <DialogContent className="sm:max-w-4xl">
-          <DialogHeader>
+        <DialogContent className="sm:max-w-6xl max-h-[90vh] overflow-hidden flex flex-col">
+          <DialogHeader className="flex-shrink-0">
             <DialogTitle>Lead Integrations</DialogTitle>
             <DialogDescription>
               Import leads from external platforms like MagicBricks, 99acres, and Zoho. Sync data and send bulk emails.
             </DialogDescription>
           </DialogHeader>
-          <LeadIntegrations />
+          <div className="flex-1 overflow-y-auto pr-2">
+            <LeadIntegrations />
+          </div>
         </DialogContent>
       </Dialog>
 
