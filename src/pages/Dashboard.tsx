@@ -6,6 +6,7 @@ import { Building2, Users, TrendingUp, Calendar, Phone, Mail, MapPin, IndianRupe
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { TeamTimeStatus } from '@/components/time-tracking/TeamTimeStatus';
+import { DetailedTimeLogs } from '@/components/time-tracking/DetailedTimeLogs';
 
 interface DashboardStats {
   totalLeads: number;
@@ -289,6 +290,11 @@ const Dashboard: React.FC = () => {
 
       {/* Team Time Status */}
       <TeamTimeStatus />
+
+      {/* Detailed Time Logs for Admin/HR */}
+      {(profile?.role === 'admin' || profile?.role === 'manager') && (
+        <DetailedTimeLogs />
+      )}
 
       {/* Recent Data Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
