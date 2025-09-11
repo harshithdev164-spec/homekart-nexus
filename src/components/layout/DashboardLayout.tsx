@@ -4,6 +4,8 @@ import { Sidebar } from './Sidebar';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { Navigate } from 'react-router-dom';
 import { NotificationSystem } from '@/components/notifications/NotificationSystem';
+import { CookieConsent } from '@/components/cookies/CookieConsent';
+import { EnhancedNotificationCenter } from '@/components/notifications/EnhancedNotificationCenter';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -28,6 +30,8 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
     <div className="min-h-screen bg-background">
       <Header />
       <NotificationSystem />
+      <EnhancedNotificationCenter />
+      <CookieConsent />
       <div className="flex h-[calc(100vh-73px)]">
         <Sidebar />
         <main className="flex-1 overflow-y-auto p-6">
