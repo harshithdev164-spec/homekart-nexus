@@ -25,6 +25,7 @@ import {
 import { format } from 'date-fns';
 import { AILeadInsights } from '@/components/ai/AILeadInsights';
 import { AIPropertyMatcher } from '@/components/ai/AIPropertyMatcher';
+import { LeadStatusUpdate } from '@/components/leads/LeadStatusUpdate';
 
 interface Lead {
   id: string;
@@ -165,7 +166,7 @@ export const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="flex items-center justify-between">
+          <DialogTitle className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
               <span className="text-xl font-bold">{lead.name}</span>
               {lead.project_name && (
@@ -174,9 +175,18 @@ export const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
                 </span>
               )}
             </div>
-            <Badge className={getStatusColor(lead.status)}>
-              {lead.status.replace('_', ' ')}
-            </Badge>
+            <div className="flex items-center gap-3">
+              <Badge className={getStatusColor(lead.status)}>
+                {lead.status.replace('_', ' ')}
+              </Badge>
+              <LeadStatusUpdate 
+                lead={lead} 
+                onStatusUpdate={() => {
+                  // Trigger a refresh by closing and reopening
+                  onClose();
+                }} 
+              />
+            </div>
           </DialogTitle>
         </DialogHeader>
 
