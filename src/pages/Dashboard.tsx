@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { TeamTimeStatus } from '@/components/time-tracking/TeamTimeStatus';
 import { DetailedTimeLogs } from '@/components/time-tracking/DetailedTimeLogs';
+import { AIDashboardWidget } from '@/components/ai/AIDashboardWidget';
 
 interface DashboardStats {
   totalLeads: number;
@@ -287,6 +288,9 @@ const Dashboard: React.FC = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* AI Business Insights */}
+      <AIDashboardWidget />
 
       {/* Team Time Status */}
       <TeamTimeStatus />

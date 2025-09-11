@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Label } from '@/components/ui/label';
 import { Sparkles, TrendingUp, MessageSquare, Target, Clock, Lightbulb } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -289,7 +290,7 @@ export const AILeadInsights: React.FC<AIInsightsProps> = ({
           <CardContent>
             <div className="space-y-3">
               <div>
-                <Label className="text-sm font-medium">Subject:</Label>
+                <div className="text-sm font-medium mb-2">Subject:</div>
                 <div className="p-2 bg-muted rounded border text-sm font-medium">
                   {generatedMessage.subject}
                 </div>
@@ -297,7 +298,7 @@ export const AILeadInsights: React.FC<AIInsightsProps> = ({
               
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <Label className="text-sm font-medium">Message:</Label>
+                  <div className="text-sm font-medium">Message:</div>
                   <Badge variant="outline" className="text-xs">
                     Tone: {generatedMessage.tone}
                   </Badge>

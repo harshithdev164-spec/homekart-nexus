@@ -239,6 +239,9 @@ export type Database = {
       }
       leads: {
         Row: {
+          ai_insights: Json | null
+          ai_last_analysis: string | null
+          ai_score: number | null
           assigned_to: string | null
           budget_max: number | null
           budget_min: number | null
@@ -258,6 +261,9 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          ai_insights?: Json | null
+          ai_last_analysis?: string | null
+          ai_score?: number | null
           assigned_to?: string | null
           budget_max?: number | null
           budget_min?: number | null
@@ -277,6 +283,9 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          ai_insights?: Json | null
+          ai_last_analysis?: string | null
+          ai_score?: number | null
           assigned_to?: string | null
           budget_max?: number | null
           budget_min?: number | null
