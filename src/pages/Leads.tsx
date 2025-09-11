@@ -94,12 +94,23 @@ const Leads: React.FC = () => {
         { event: '*', schema: 'public', table: 'leads' },
         (payload) => {
           console.log('Lead change detected:', payload);
-          // Optimized update: only refetch if not in the middle of an operation
-          const timeoutId = setTimeout(() => {
-            fetchLeads();
-          }, 500); // Debounce frequent updates
-          
-          return () => clearTimeout(timeoutId);
+          // Immediately update the leads list for real-time sync
+          fetchLeads();
+        }
+      )
+      .on('broadcast', 
+        { event: 'status_updated' },
+        (payload) => {
+          console.log('Lead status updated:', payload);
+          // Show notification to other users
+          if (payload.payload?.updated_by && payload.payload?.updated_by !== profile?.full_name) {
+            toast({
+              title: "Lead Updated",
+              description: `${payload.payload.updated_by} updated a lead status`,
+            });
+          }
+          // Refresh leads list
+          fetchLeads();
         }
       )
       .subscribe();
@@ -107,7 +118,7 @@ const Leads: React.FC = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [profile?.full_name, toast]);
 
   const fetchLeads = async () => {
     try {

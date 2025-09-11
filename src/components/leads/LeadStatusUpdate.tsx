@@ -71,6 +71,19 @@ export const LeadStatusUpdate: React.FC<LeadStatusUpdateProps> = ({ lead, onStat
 
       if (error) throw error;
 
+      // Trigger real-time update by broadcasting the change
+      await supabase
+        .channel('lead_status_updates')
+        .send({
+          type: 'broadcast',
+          event: 'status_updated',
+          payload: {
+            lead_id: lead.id,
+            new_status: selectedStatus,
+            updated_by: profile.full_name
+          }
+        });
+
       toast({
         title: "Success",
         description: `Lead status updated to ${selectedStatusOption?.label}`,
