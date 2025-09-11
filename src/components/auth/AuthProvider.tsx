@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -23,6 +23,7 @@ interface AuthContextType {
   signUp: (email: string, password: string, fullName: string, role?: 'admin' | 'employee') => Promise<{ error: any }>;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
   signOut: () => Promise<{ error: any }>;
+  profileCache: Map<string, Profile>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -42,7 +43,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
-  const fetchProfile = async (userId: string) => {
+  // Cache for profiles to prevent redundant API calls
+  const [profileCache, setProfileCache] = useState<Map<string, Profile>>(new Map());
+
+  const fetchProfile = useCallback(async (userId: string) => {
+    // Check cache first
+    if (profileCache.has(userId)) {
+      setProfile(profileCache.get(userId)!);
+      return;
+    }
+
     try {
       const { data, error } = await supabase
         .from('profiles')
@@ -60,26 +70,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return;
       }
 
+      // Cache the profile
+      setProfileCache(prev => new Map(prev).set(userId, data));
       setProfile(data);
     } catch (error) {
       console.error('Error fetching profile:', error);
     }
-  };
+  }, [profileCache]);
 
   useEffect(() => {
+    let mounted = true;
+
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        if (!mounted) return;
+        
         setSession(session);
         setUser(session?.user ?? null);
         
         if (session?.user) {
-          // Defer profile fetching to avoid deadlock
-          setTimeout(() => {
-            fetchProfile(session.user.id);
-          }, 0);
+          fetchProfile(session.user.id);
         } else {
           setProfile(null);
+          setProfileCache(new Map()); // Clear cache on logout
         }
         
         setLoading(false);
@@ -88,20 +102,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // Check for existing session
     supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!mounted) return;
+      
       setSession(session);
       setUser(session?.user ?? null);
       
       if (session?.user) {
-        setTimeout(() => {
-          fetchProfile(session.user.id);
-        }, 0);
+        fetchProfile(session.user.id);
       }
       
       setLoading(false);
     });
 
-    return () => subscription.unsubscribe();
-  }, []);
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
+  }, [fetchProfile]);
 
   const signUp = async (email: string, password: string, fullName: string, role: 'admin' | 'employee' = 'employee') => {
     const redirectUrl = `${window.location.origin}/`;
@@ -165,7 +182,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return { error };
   };
 
-  const value = {
+  const value = useMemo(() => ({
     user,
     session,
     profile,
@@ -173,7 +190,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     signUp,
     signIn,
     signOut,
-  };
+    profileCache, // Expose cache for other components
+  }), [user, session, profile, loading, signUp, signIn, signOut, profileCache]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

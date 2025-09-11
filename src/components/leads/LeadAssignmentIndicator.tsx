@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/components/auth/AuthProvider';
 import { LeadDetailModal } from './LeadDetailModal';
 import { User, Clock } from 'lucide-react';
 
@@ -38,23 +39,41 @@ interface LeadAssignmentIndicatorProps {
   onLeadUpdate: (updatedLead: Lead) => void;
 }
 
-export const LeadAssignmentIndicator: React.FC<LeadAssignmentIndicatorProps> = ({
+export const LeadAssignmentIndicator: React.FC<LeadAssignmentIndicatorProps> = React.memo(({
   leads,
   onLeadUpdate
 }) => {
   const [profiles, setProfiles] = useState<Profile[]>([]);
-  const [currentUser, setCurrentUser] = useState<Profile | null>(null);
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [showLeadDetail, setShowLeadDetail] = useState(false);
   const { toast } = useToast();
+  const { profile: currentUser, profileCache } = useAuth();
+
+  // Fetch profiles only once with caching
+  const fetchProfiles = useCallback(async () => {
+    // Check if we already have cached profiles
+    if (profiles.length > 0) return;
+    
+    const { data } = await supabase
+      .from('profiles')
+      .select('id, full_name, email');
+    
+    if (data) {
+      setProfiles(data);
+    }
+  }, [profiles.length]);
 
   useEffect(() => {
     fetchProfiles();
-    fetchCurrentUser();
+  }, [fetchProfiles]);
+
+  // Memoized real-time subscription (only when profiles change)
+  useEffect(() => {
+    if (profiles.length === 0) return;
     
-    // Subscribe to real-time lead changes
+    // Subscribe to real-time lead changes - optimized
     const channel = supabase
-      .channel('lead-assignments')
+      .channel(`lead-assignments-${Date.now()}`) // Unique channel name
       .on(
         'postgres_changes',
         {
@@ -66,8 +85,8 @@ export const LeadAssignmentIndicator: React.FC<LeadAssignmentIndicatorProps> = (
           console.log('Lead updated:', payload);
           onLeadUpdate(payload.new as Lead);
           
-          // Show toast notification
-          if (payload.new.assigned_to && payload.new.assigned_to !== payload.old.assigned_to) {
+          // Show toast notification only for assignment changes
+          if (payload.new.assigned_to && payload.new.assigned_to !== payload.old?.assigned_to) {
             const assignedProfile = profiles.find(p => p.id === payload.new.assigned_to);
             toast({
               title: 'Lead Assigned',
@@ -83,29 +102,7 @@ export const LeadAssignmentIndicator: React.FC<LeadAssignmentIndicatorProps> = (
     };
   }, [profiles, onLeadUpdate, toast]);
 
-  const fetchProfiles = async () => {
-    const { data } = await supabase
-      .from('profiles')
-      .select('id, full_name, email');
-    
-    if (data) {
-      setProfiles(data);
-    }
-  };
-
-  const fetchCurrentUser = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('user_id', user.id)
-        .single();
-      setCurrentUser(profile);
-    }
-  };
-
-  const assignLeadToMe = async (leadId: string) => {
+  const assignLeadToMe = useCallback(async (leadId: string) => {
     if (!currentUser) return;
 
     const { error } = await supabase
@@ -125,21 +122,82 @@ export const LeadAssignmentIndicator: React.FC<LeadAssignmentIndicatorProps> = (
         description: 'Lead assigned to you successfully'
       });
     }
-  };
+  }, [currentUser, toast]);
 
-  const getProfileName = (profileId: string) => {
+  const getProfileName = useCallback((profileId: string) => {
     const profile = profiles.find(p => p.id === profileId);
     return profile?.full_name || 'Unknown';
-  };
+  }, [profiles]);
 
-  const getInitials = (name: string) => {
+  const getInitials = useCallback((name: string) => {
     return name
       .split(' ')
       .map(n => n[0])
       .join('')
       .toUpperCase()
       .slice(0, 2);
-  };
+  }, []);
+
+  // Memoize the leads rendering to prevent unnecessary re-renders
+  const renderedLeads = useMemo(() => {
+    return leads.map((lead) => {
+      const assignedProfile = lead.assigned_to ? profiles.find(p => p.id === lead.assigned_to) : null;
+      const isUnassigned = !lead.assigned_to;
+      
+      return (
+        <div
+          key={lead.id}
+          className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors cursor-pointer"
+          onClick={() => {
+            setSelectedLead(lead);
+            setShowLeadDetail(true);
+          }}
+        >
+          <div className="flex items-center gap-3">
+            <div>
+              <p className="font-medium">{lead.name}</p>
+              <p className="text-sm text-muted-foreground">{lead.phone}</p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <Badge variant={lead.status === 'new' ? 'default' : 'secondary'}>
+              {lead.status}
+            </Badge>
+
+            {isUnassigned ? (
+              <div className="flex items-center gap-2">
+                <Badge variant="destructive">Unassigned</Badge>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    assignLeadToMe(lead.id);
+                  }}
+                  className="text-xs px-2 py-1 bg-primary text-primary-foreground rounded hover:bg-primary/90 transition-colors"
+                >
+                  Take Lead
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <Avatar className="h-8 w-8">
+                  <AvatarFallback className="text-xs">
+                    {assignedProfile ? getInitials(assignedProfile.full_name) : '?'}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="text-right">
+                  <p className="text-sm font-medium">
+                    {assignedProfile?.full_name || 'Unknown'}
+                  </p>
+                  <p className="text-xs text-muted-foreground">Assigned</p>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    });
+  }, [leads, profiles, assignLeadToMe, getInitials]);
 
   return (
     <div className="space-y-4">
@@ -152,63 +210,7 @@ export const LeadAssignmentIndicator: React.FC<LeadAssignmentIndicatorProps> = (
       </div>
 
       <div className="space-y-2">
-        {leads.map((lead) => {
-          const assignedProfile = lead.assigned_to ? profiles.find(p => p.id === lead.assigned_to) : null;
-          const isUnassigned = !lead.assigned_to;
-          
-          return (
-            <div
-              key={lead.id}
-              className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors cursor-pointer"
-              onClick={() => {
-                setSelectedLead(lead);
-                setShowLeadDetail(true);
-              }}
-            >
-              <div className="flex items-center gap-3">
-                <div>
-                  <p className="font-medium">{lead.name}</p>
-                  <p className="text-sm text-muted-foreground">{lead.phone}</p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3">
-                <Badge variant={lead.status === 'new' ? 'default' : 'secondary'}>
-                  {lead.status}
-                </Badge>
-
-                {isUnassigned ? (
-                  <div className="flex items-center gap-2">
-                    <Badge variant="destructive">Unassigned</Badge>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        assignLeadToMe(lead.id);
-                      }}
-                      className="text-xs px-2 py-1 bg-primary text-primary-foreground rounded hover:bg-primary/90 transition-colors"
-                    >
-                      Take Lead
-                    </button>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-2">
-                    <Avatar className="h-8 w-8">
-                      <AvatarFallback className="text-xs">
-                        {assignedProfile ? getInitials(assignedProfile.full_name) : '?'}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="text-right">
-                      <p className="text-sm font-medium">
-                        {assignedProfile?.full_name || 'Unknown'}
-                      </p>
-                      <p className="text-xs text-muted-foreground">Assigned</p>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          );
-        })}
+        {renderedLeads}
       </div>
 
       <LeadDetailModal
@@ -221,4 +223,4 @@ export const LeadAssignmentIndicator: React.FC<LeadAssignmentIndicatorProps> = (
       />
     </div>
   );
-};
+});

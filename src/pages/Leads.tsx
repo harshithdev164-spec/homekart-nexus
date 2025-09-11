@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,6 +16,7 @@ import { LeadImport } from '@/components/leads/LeadImport';
 import { DynamicTableImport } from '@/components/leads/DynamicTableImport';
 import { LeadDetailModal } from '@/components/leads/LeadDetailModal';
 import { useToast } from '@/hooks/use-toast';
+import { useDebounce } from '@/hooks/useDebounce';
 import {
   Dialog,
   DialogContent,
@@ -59,6 +60,9 @@ const Leads: React.FC = () => {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  
+  // Debounce search term to prevent excessive filtering
+  const debouncedSearchTerm = useDebounce(searchTerm, 300);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isTemplatesDialogOpen, setIsTemplatesDialogOpen] = useState(false);
   const [isMessagingDialogOpen, setIsMessagingDialogOpen] = useState(false);
@@ -84,44 +88,10 @@ const Leads: React.FC = () => {
     notes: '',
   });
 
-  useEffect(() => {
-    fetchLeads();
-    
-    // Set up real-time subscription for leads with optimized updates
-    const channel = supabase
-      .channel('leads_changes')
-      .on('postgres_changes', 
-        { event: '*', schema: 'public', table: 'leads' },
-        (payload) => {
-          console.log('Lead change detected:', payload);
-          // Immediately update the leads list for real-time sync
-          fetchLeads();
-        }
-      )
-      .on('broadcast', 
-        { event: 'status_updated' },
-        (payload) => {
-          console.log('Lead status updated:', payload);
-          // Show notification to other users
-          if (payload.payload?.updated_by && payload.payload?.updated_by !== profile?.full_name) {
-            toast({
-              title: "Lead Updated",
-              description: `${payload.payload.updated_by} updated a lead status`,
-            });
-          }
-          // Refresh leads list
-          fetchLeads();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [profile?.full_name, toast]);
-
-  const fetchLeads = async () => {
+  // Memoized fetch function to prevent unnecessary re-renders
+  const fetchLeads = useCallback(async () => {
     try {
+      setLoading(true);
       const { data, error } = await supabase
         .from('leads')
         .select(`
@@ -146,7 +116,59 @@ const Leads: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [toast]);
+
+  useEffect(() => {
+    fetchLeads();
+  }, [fetchLeads]);
+
+  // Optimized real-time subscription
+  useEffect(() => {
+    let debounceTimer: NodeJS.Timeout;
+    
+    const channel = supabase
+      .channel(`leads_changes_${Date.now()}`) // Unique channel name
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'leads' },
+        (payload) => {
+          console.log('Lead change detected:', payload);
+          
+          // Debounce rapid updates to prevent excessive API calls
+          clearTimeout(debounceTimer);
+          debounceTimer = setTimeout(() => {
+            fetchLeads();
+          }, 500);
+        }
+      )
+      .on('broadcast', 
+        { event: 'status_updated' },
+        (payload) => {
+          console.log('Lead status updated:', payload);
+          
+          // Show notification to other users
+          if (payload.payload?.updated_by && payload.payload?.updated_by !== profile?.full_name) {
+            toast({
+              title: "Lead Updated",
+              description: `${payload.payload.updated_by} updated a lead status`,
+            });
+          }
+          
+          // Debounced refresh
+          clearTimeout(debounceTimer);
+          debounceTimer = setTimeout(() => {
+            fetchLeads();
+          }, 300);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      clearTimeout(debounceTimer);
+      supabase.removeChannel(channel);
+    };
+  }, [fetchLeads, profile?.full_name, toast]);
+
+  // Remove duplicate fetchLeads function
 
   const handleCreateLead = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -193,7 +215,20 @@ const Leads: React.FC = () => {
         property_type: '',
         notes: '',
       });
-      fetchLeads();
+        fetchLeads();
+      setIsCreateDialogOpen(false);
+      setFormData({
+        name: '',
+        email: '',
+        phone: '',
+        source: '',
+        budget_min: '',
+        budget_max: '',
+        preferred_location: '',
+        property_type: '',
+        notes: '',
+      });
+      // Don't call fetchLeads here as real-time will handle it
     } catch (error) {
       console.error('Error creating lead:', error);
     }
@@ -212,11 +247,25 @@ const Leads: React.FC = () => {
     }
   };
 
-  const filteredLeads = leads.filter(lead =>
-    lead.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    lead.phone.includes(searchTerm) ||
-    (lead.email && lead.email.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
+  // Memoized filtered leads with debounced search
+  const filteredLeads = useMemo(() => {
+    if (!debouncedSearchTerm) return leads;
+    
+    const searchLower = debouncedSearchTerm.toLowerCase();
+    return leads.filter(lead =>
+      lead.name.toLowerCase().includes(searchLower) ||
+      lead.phone.includes(debouncedSearchTerm) ||
+      (lead.email && lead.email.toLowerCase().includes(searchLower))
+    );
+  }, [leads, debouncedSearchTerm]);
+
+  // Memoized stats to prevent recalculation on every render
+  const stats = useMemo(() => ({
+    total: leads.length,
+    new: leads.filter(lead => lead.status === 'new').length,
+    active: leads.filter(lead => ['qualified', 'proposal', 'negotiation'].includes(lead.status)).length,
+    closed_won: leads.filter(lead => lead.status === 'closed_won').length,
+  }), [leads]);
 
   if (loading) {
     return (
@@ -432,31 +481,25 @@ const Leads: React.FC = () => {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <Card>
           <CardContent className="pt-6">
-            <div className="text-2xl font-bold">{leads.length}</div>
+            <div className="text-2xl font-bold">{stats.total}</div>
             <p className="text-xs text-muted-foreground">Total Leads</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-6">
-            <div className="text-2xl font-bold">
-              {leads.filter(lead => lead.status === 'new').length}
-            </div>
+            <div className="text-2xl font-bold">{stats.new}</div>
             <p className="text-xs text-muted-foreground">New Leads</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-6">
-            <div className="text-2xl font-bold">
-              {leads.filter(lead => ['qualified', 'proposal', 'negotiation'].includes(lead.status)).length}
-            </div>
+            <div className="text-2xl font-bold">{stats.active}</div>
             <p className="text-xs text-muted-foreground">Active Leads</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-6">
-            <div className="text-2xl font-bold">
-              {leads.filter(lead => lead.status === 'closed_won').length}
-            </div>
+            <div className="text-2xl font-bold">{stats.closed_won}</div>
             <p className="text-xs text-muted-foreground">Closed Won</p>
           </CardContent>
         </Card>

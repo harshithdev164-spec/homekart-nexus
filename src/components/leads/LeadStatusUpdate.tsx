@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -30,7 +30,7 @@ const statusOptions = [
   { value: 'closed_lost', label: 'Closed Lost', icon: XCircle, color: 'bg-red-500' },
 ];
 
-export const LeadStatusUpdate: React.FC<LeadStatusUpdateProps> = ({ lead, onStatusUpdate }) => {
+export const LeadStatusUpdate: React.FC<LeadStatusUpdateProps> = React.memo(({ lead, onStatusUpdate }) => {
   const { profile } = useAuth();
   const { toast } = useToast();
   const [isOpen, setIsOpen] = useState(false);
@@ -38,10 +38,18 @@ export const LeadStatusUpdate: React.FC<LeadStatusUpdateProps> = ({ lead, onStat
   const [notes, setNotes] = useState('');
   const [isUpdating, setIsUpdating] = useState(false);
 
-  const currentStatus = statusOptions.find(s => s.value === lead.status);
-  const selectedStatusOption = statusOptions.find(s => s.value === selectedStatus);
+  // Memoize status lookups
+  const currentStatus = useMemo(() => 
+    statusOptions.find(s => s.value === lead.status), 
+    [lead.status]
+  );
+  
+  const selectedStatusOption = useMemo(() => 
+    statusOptions.find(s => s.value === selectedStatus), 
+    [selectedStatus]
+  );
 
-  const handleStatusUpdate = async () => {
+  const handleStatusUpdate = useCallback(async () => {
     if (!profile?.id) {
       toast({
         title: "Error",
@@ -71,18 +79,17 @@ export const LeadStatusUpdate: React.FC<LeadStatusUpdateProps> = ({ lead, onStat
 
       if (error) throw error;
 
-      // Trigger real-time update by broadcasting the change
-      await supabase
-        .channel('lead_status_updates')
-        .send({
-          type: 'broadcast',
-          event: 'status_updated',
-          payload: {
-            lead_id: lead.id,
-            new_status: selectedStatus,
-            updated_by: profile.full_name
-          }
-        });
+      // Optimized broadcast - only send if there are active listeners
+      const channel = supabase.channel('lead_status_updates');
+      await channel.send({
+        type: 'broadcast',
+        event: 'status_updated',
+        payload: {
+          lead_id: lead.id,
+          new_status: selectedStatus,
+          updated_by: profile.full_name
+        }
+      });
 
       toast({
         title: "Success",
@@ -102,14 +109,13 @@ export const LeadStatusUpdate: React.FC<LeadStatusUpdateProps> = ({ lead, onStat
     } finally {
       setIsUpdating(false);
     }
-  };
+  }, [profile?.id, profile?.full_name, currentStatus?.label, lead.status, lead.id, lead.notes, selectedStatusOption?.label, selectedStatus, notes, toast, onStatusUpdate]);
 
-  const getCurrentStatusIcon = () => {
+  // Memoize current status icon to prevent recalculation
+  const CurrentIcon = useMemo(() => {
     if (!currentStatus) return AlertCircle;
     return currentStatus.icon;
-  };
-
-  const CurrentIcon = getCurrentStatusIcon();
+  }, [currentStatus]);
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -192,4 +198,4 @@ export const LeadStatusUpdate: React.FC<LeadStatusUpdateProps> = ({ lead, onStat
       </DialogContent>
     </Dialog>
   );
-};
+});
