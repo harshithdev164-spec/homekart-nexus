@@ -488,6 +488,50 @@ export type Database = {
           },
         ]
       }
+      purva_atmosphere__1_: {
+        Row: {
+          client_name: string
+          contact_number: string
+          created_at: string
+          created_by: string | null
+          email_id: string | null
+          id: string
+          project_name: string
+          slno: number
+          updated_at: string
+        }
+        Insert: {
+          client_name: string
+          contact_number: string
+          created_at?: string
+          created_by?: string | null
+          email_id?: string | null
+          id?: string
+          project_name: string
+          slno: number
+          updated_at?: string
+        }
+        Update: {
+          client_name?: string
+          contact_number?: string
+          created_at?: string
+          created_by?: string | null
+          email_id?: string | null
+          id?: string
+          project_name?: string
+          slno?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purva_atmosphere__1__created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       reports: {
         Row: {
           data: Json | null
