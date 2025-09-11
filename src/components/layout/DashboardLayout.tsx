@@ -3,6 +3,7 @@ import { Header } from './Header';
 import { Sidebar } from './Sidebar';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { Navigate } from 'react-router-dom';
+import { NotificationSystem } from '@/components/notifications/NotificationSystem';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -26,6 +27,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
   return (
     <div className="min-h-screen bg-background">
       <Header />
+      <NotificationSystem />
       <div className="flex h-[calc(100vh-73px)]">
         <Sidebar />
         <main className="flex-1 overflow-y-auto p-6">

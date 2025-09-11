@@ -5,6 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Building2, Users, TrendingUp, Calendar, Phone, Mail, MapPin, IndianRupee } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { TeamTimeStatus } from '@/components/time-tracking/TeamTimeStatus';
 
 interface DashboardStats {
   totalLeads: number;
@@ -285,6 +286,9 @@ const Dashboard: React.FC = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Team Time Status */}
+      <TeamTimeStatus />
 
       {/* Recent Data Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
