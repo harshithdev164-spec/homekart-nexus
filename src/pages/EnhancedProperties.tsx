@@ -494,9 +494,9 @@ const EnhancedProperties: React.FC = () => {
           properties={properties}
           selectedProperty={selectedProperty}
           onPropertySelect={(property) => setSelectedProperty({
-            ...(property as any),
-            category: 'primary' as const,
-            updated_at: property.created_at
+            ...property,
+            category: (property as any)?.category || 'primary',
+            updated_at: (property as any)?.updated_at || property.created_at
           } as Property)}
           height="500px"
         />
