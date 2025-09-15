@@ -16,20 +16,11 @@ import { useToast } from '@/hooks/use-toast';
 
 interface DailyReportData {
   id: string;
-  report_date: string;
-  leads_contacted: number;
-  meetings_scheduled: number;
-  site_visits: number;
-  follow_ups_pending: number;
-  deals_closed: number;
-  revenue_generated: number;
-  challenges_faced: string;
-  achievements: string;
-  next_day_plan: string;
-  call_sheet_attached: boolean;
-  submitted_by: string;
-  created_at: string;
-  updated_at: string;
+  title: string;
+  report_type: string;
+  data: any;
+  generated_by: string;
+  generated_at: string;
   reporter?: {
     full_name: string;
   };
@@ -82,14 +73,12 @@ export const IntegratedDailyReport: React.FC = () => {
     const endOfMonth = new Date(selectedDate.getFullYear(), selectedDate.getMonth() + 1, 0);
 
     const { data, error } = await supabase
-      .from('daily_reports')
-      .select(`
-        *,
-        reporter:submitted_by(full_name)
-      `)
-      .gte('report_date', format(startOfMonth, 'yyyy-MM-dd'))
-      .lte('report_date', format(endOfMonth, 'yyyy-MM-dd'))
-      .order('report_date', { ascending: false });
+      .from('reports')
+      .select('*')
+      .eq('report_type', 'daily_report')
+      .gte('generated_at', format(startOfMonth, 'yyyy-MM-dd'))
+      .lte('generated_at', format(endOfMonth, 'yyyy-MM-dd'))
+      .order('generated_at', { ascending: false });
 
     if (error) {
       console.error('Error fetching reports:', error);
@@ -99,7 +88,20 @@ export const IntegratedDailyReport: React.FC = () => {
         variant: 'destructive'
       });
     } else {
-      setReports(data || []);
+      // Fetch reporter names separately
+      const reportsWithReporter = await Promise.all((data || []).map(async (report) => {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('full_name')
+          .eq('id', report.generated_by)
+          .single();
+        
+        return {
+          ...report,
+          reporter: profile || { full_name: 'Unknown' }
+        };
+      }));
+      setReports(reportsWithReporter);
     }
     setLoading(false);
   };
@@ -108,20 +110,22 @@ export const IntegratedDailyReport: React.FC = () => {
     if (!profile) return;
 
     const reportData = {
-      ...formData,
-      report_date: format(selectedDate, 'yyyy-MM-dd'),
-      submitted_by: profile.id,
+      title: `Daily Report - ${format(selectedDate, 'dd MMM yyyy')}`,
+      report_type: 'daily_report',
+      data: formData,
+      generated_by: profile.id,
+      filters: { report_date: format(selectedDate, 'yyyy-MM-dd') }
     };
 
     let error;
     if (reportId) {
       ({ error } = await supabase
-        .from('daily_reports')
+        .from('reports')
         .update(reportData)
         .eq('id', reportId));
     } else {
       ({ error } = await supabase
-        .from('daily_reports')
+        .from('reports')
         .insert(reportData));
     }
 
@@ -142,17 +146,18 @@ export const IntegratedDailyReport: React.FC = () => {
   };
 
   const startEditing = (report: DailyReportData) => {
+    const reportData = report.data || {};
     setFormData({
-      leads_contacted: report.leads_contacted,
-      meetings_scheduled: report.meetings_scheduled,
-      site_visits: report.site_visits,
-      follow_ups_pending: report.follow_ups_pending,
-      deals_closed: report.deals_closed,
-      revenue_generated: report.revenue_generated,
-      challenges_faced: report.challenges_faced,
-      achievements: report.achievements,
-      next_day_plan: report.next_day_plan,
-      call_sheet_attached: report.call_sheet_attached,
+      leads_contacted: reportData.leads_contacted || 0,
+      meetings_scheduled: reportData.meetings_scheduled || 0,
+      site_visits: reportData.site_visits || 0,
+      follow_ups_pending: reportData.follow_ups_pending || 0,
+      deals_closed: reportData.deals_closed || 0,
+      revenue_generated: reportData.revenue_generated || 0,
+      challenges_faced: reportData.challenges_faced || '',
+      achievements: reportData.achievements || '',
+      next_day_plan: reportData.next_day_plan || '',
+      call_sheet_attached: reportData.call_sheet_attached || false,
     });
     setEditingReport(report.id);
   };
@@ -175,19 +180,22 @@ export const IntegratedDailyReport: React.FC = () => {
   const exportToCSV = () => {
     const csvContent = [
       ['Date', 'Reporter', 'Leads Contacted', 'Meetings Scheduled', 'Site Visits', 'Follow-ups Pending', 'Deals Closed', 'Revenue Generated', 'Challenges', 'Achievements', 'Next Day Plan'].join(','),
-      ...reports.map(report => [
-        report.report_date,
-        report.reporter?.full_name || 'Unknown',
-        report.leads_contacted,
-        report.meetings_scheduled,
-        report.site_visits,
-        report.follow_ups_pending,
-        report.deals_closed,
-        report.revenue_generated,
-        `"${report.challenges_faced.replace(/"/g, '""')}"`,
-        `"${report.achievements.replace(/"/g, '""')}"`,
-        `"${report.next_day_plan.replace(/"/g, '""')}"`,
-      ].join(','))
+      ...reports.map(report => {
+        const data = report.data || {};
+        return [
+          report.generated_at.split('T')[0],
+          report.reporter?.full_name || 'Unknown',
+          data.leads_contacted || 0,
+          data.meetings_scheduled || 0,
+          data.site_visits || 0,
+          data.follow_ups_pending || 0,
+          data.deals_closed || 0,
+          data.revenue_generated || 0,
+          `"${(data.challenges_faced || '').replace(/"/g, '""')}"`,
+          `"${(data.achievements || '').replace(/"/g, '""')}"`,
+          `"${(data.next_day_plan || '').replace(/"/g, '""')}"`,
+        ].join(',');
+      })
     ].join('\n');
 
     const blob = new Blob([csvContent], { type: 'text/csv' });
@@ -200,7 +208,7 @@ export const IntegratedDailyReport: React.FC = () => {
   };
 
   const todaysReport = reports.find(report => 
-    report.report_date === format(selectedDate, 'yyyy-MM-dd')
+    report.generated_at.split('T')[0] === format(selectedDate, 'yyyy-MM-dd')
   );
 
   if (loading) {
@@ -378,21 +386,21 @@ export const IntegratedDailyReport: React.FC = () => {
             <TableBody>
               {reports.map((report) => (
                 <TableRow key={report.id}>
-                  <TableCell>{format(new Date(report.report_date), 'dd MMM')}</TableCell>
+                  <TableCell>{format(new Date(report.generated_at), 'dd MMM')}</TableCell>
                   <TableCell>{report.reporter?.full_name || 'Unknown'}</TableCell>
                   <TableCell>
-                    <Badge variant="outline">{report.leads_contacted}</Badge>
+                    <Badge variant="outline">{report.data?.leads_contacted || 0}</Badge>
                   </TableCell>
                   <TableCell>
-                    <Badge variant="outline">{report.meetings_scheduled}</Badge>
+                    <Badge variant="outline">{report.data?.meetings_scheduled || 0}</Badge>
                   </TableCell>
                   <TableCell>
-                    <Badge variant="outline">{report.site_visits}</Badge>
+                    <Badge variant="outline">{report.data?.site_visits || 0}</Badge>
                   </TableCell>
                   <TableCell>
-                    <Badge variant="secondary">{report.deals_closed}</Badge>
+                    <Badge variant="secondary">{report.data?.deals_closed || 0}</Badge>
                   </TableCell>
-                  <TableCell>₹{report.revenue_generated.toLocaleString()}</TableCell>
+                  <TableCell>₹{(report.data?.revenue_generated || 0).toLocaleString()}</TableCell>
                   <TableCell>
                     <Button
                       size="sm"

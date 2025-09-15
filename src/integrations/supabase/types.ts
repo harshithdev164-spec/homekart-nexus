@@ -141,6 +141,60 @@ export type Database = {
         }
         Relationships: []
       }
+      daily_reports: {
+        Row: {
+          achievements: string | null
+          call_sheet_attached: boolean | null
+          challenges_faced: string | null
+          created_at: string
+          deals_closed: number | null
+          follow_ups_pending: number | null
+          id: string
+          leads_contacted: number | null
+          meetings_scheduled: number | null
+          next_day_plan: string | null
+          report_date: string
+          revenue_generated: number | null
+          site_visits: number | null
+          submitted_by: string
+          updated_at: string
+        }
+        Insert: {
+          achievements?: string | null
+          call_sheet_attached?: boolean | null
+          challenges_faced?: string | null
+          created_at?: string
+          deals_closed?: number | null
+          follow_ups_pending?: number | null
+          id?: string
+          leads_contacted?: number | null
+          meetings_scheduled?: number | null
+          next_day_plan?: string | null
+          report_date: string
+          revenue_generated?: number | null
+          site_visits?: number | null
+          submitted_by: string
+          updated_at?: string
+        }
+        Update: {
+          achievements?: string | null
+          call_sheet_attached?: boolean | null
+          challenges_faced?: string | null
+          created_at?: string
+          deals_closed?: number | null
+          follow_ups_pending?: number | null
+          id?: string
+          leads_contacted?: number | null
+          meetings_scheduled?: number | null
+          next_day_plan?: string | null
+          report_date?: string
+          revenue_generated?: number | null
+          site_visits?: number | null
+          submitted_by?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       "inventory table": {
         Row: {
           created_at: string

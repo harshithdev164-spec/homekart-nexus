@@ -119,7 +119,12 @@ const Properties: React.FC = () => {
         return;
       }
 
-      setProperties(data || []);
+      const propertiesWithTypedCategory = (data || []).map(property => ({
+        ...property,
+        category: (property.category as 'primary' | 'resale' | 'rent') || 'primary',
+        updated_at: property.updated_at || property.created_at
+      }));
+      setProperties(propertiesWithTypedCategory);
     } catch (error) {
       console.error('Error fetching properties:', error);
     } finally {
@@ -258,7 +263,11 @@ const Properties: React.FC = () => {
   };
 
   const openEditDialog = (property: Property) => {
-    setEditingProperty(property);
+    setEditingProperty({
+      ...property,
+      category: property.category || 'primary',
+      updated_at: property.updated_at || property.created_at
+    });
     setFormData({
       title: property.title,
       description: property.description || '',
@@ -277,7 +286,11 @@ const Properties: React.FC = () => {
 
   const openDetailModal = (property: Property) => {
     console.log('Opening detail modal for property:', property.title);
-    setSelectedProperty(property);
+    setSelectedProperty({
+      ...property,
+      category: property.category || 'primary',
+      updated_at: property.updated_at || property.created_at
+    });
     setIsDetailModalOpen(true);
   };
 
@@ -663,7 +676,11 @@ const Properties: React.FC = () => {
         <PropertyMap
           properties={properties}
           selectedProperty={selectedProperty}
-          onPropertySelect={(property) => setSelectedProperty(property)}
+          onPropertySelect={(property) => setSelectedProperty({
+            ...property,
+            category: (property as any).category || 'primary',
+            updated_at: (property as any).updated_at || property.created_at
+          })}
           height="500px"
         />
       )}
@@ -838,7 +855,11 @@ const Properties: React.FC = () => {
         }}
         onEdit={(property) => {
           setIsDetailModalOpen(false);
-          openEditDialog(property);
+          openEditDialog({
+            ...property,
+            category: (property as any).category || 'primary',
+            updated_at: (property as any).updated_at || property.created_at
+          });
         }}
       />
     </div>

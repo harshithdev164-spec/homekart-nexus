@@ -79,10 +79,7 @@ export const TodoPlanner: React.FC = () => {
 
     const { data, error } = await supabase
       .from('tasks')
-      .select(`
-        *,
-        assignee:assigned_to(full_name)
-      `)
+      .select('*')
       .or(`assigned_to.eq.${profile.id},created_by.eq.${profile.id}`)
       .order('created_at', { ascending: false });
 
@@ -94,7 +91,21 @@ export const TodoPlanner: React.FC = () => {
         variant: 'destructive'
       });
     } else {
-      setTasks(data || []);
+      // Fetch assignee names separately
+      const tasksWithAssignee = await Promise.all((data || []).map(async (task) => {
+        const { data: assigneeProfile } = await supabase
+          .from('profiles')
+          .select('full_name')
+          .eq('id', task.assigned_to)
+          .single();
+        
+        return {
+          ...task,
+          priority: task.priority as 'low' | 'medium' | 'high',
+          assignee: assigneeProfile || { full_name: 'Unknown' }
+        };
+      }));
+      setTasks(tasksWithAssignee);
     }
     setLoading(false);
   };
