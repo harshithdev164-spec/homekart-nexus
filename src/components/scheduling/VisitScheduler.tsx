@@ -19,6 +19,8 @@ interface Visit {
   visit_date: string;
   status: 'scheduled' | 'completed' | 'cancelled' | 'rescheduled';
   notes?: string;
+  feedback?: string;
+  completion_rating?: number;
   visitor_name: string;
   visitor_phone: string;
   visitor_email?: string;
@@ -64,6 +66,11 @@ export const VisitScheduler: React.FC = () => {
     visitor_phone: '',
     visitor_email: '',
     notes: ''
+  });
+
+  const [feedbackData, setFeedbackData] = useState({
+    feedback: '',
+    completion_rating: 0
   });
 
   useEffect(() => {
@@ -197,10 +204,17 @@ export const VisitScheduler: React.FC = () => {
     setIsLoading(false);
   };
 
-  const updateVisitStatus = async (visitId: string, status: string) => {
+  const updateVisitStatus = async (visitId: string, status: string, withFeedback = false) => {
+    let updateData: any = { status };
+    
+    if (withFeedback && status === 'completed') {
+      updateData.feedback = feedbackData.feedback;
+      updateData.completion_rating = feedbackData.completion_rating;
+    }
+
     const { error } = await supabase
       .from('visit_schedules')
-      .update({ status })
+      .update(updateData)
       .eq('id', visitId);
 
     if (error) {
@@ -214,6 +228,7 @@ export const VisitScheduler: React.FC = () => {
         title: 'Success',
         description: 'Visit status updated'
       });
+      setFeedbackData({ feedback: '', completion_rating: 0 });
     }
   };
 
@@ -394,6 +409,7 @@ export const VisitScheduler: React.FC = () => {
                 <TableHead>Property</TableHead>
                 <TableHead>Assigned To</TableHead>
                 <TableHead>Status</TableHead>
+                <TableHead>Feedback</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -431,23 +447,58 @@ export const VisitScheduler: React.FC = () => {
                   <TableCell>{visit.assigned_user?.full_name}</TableCell>
                   <TableCell>{getStatusBadge(visit.status)}</TableCell>
                   <TableCell>
+                    {visit.status === 'completed' && (
+                      <div className="space-y-1">
+                        {visit.completion_rating && (
+                          <div className="flex items-center gap-1">
+                            <span className="text-sm">Rating:</span>
+                            <Badge variant="secondary">{visit.completion_rating}/5</Badge>
+                          </div>
+                        )}
+                        {visit.feedback && (
+                          <p className="text-sm text-muted-foreground max-w-xs truncate">
+                            {visit.feedback}
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </TableCell>
+                  <TableCell>
                     <div className="flex gap-1">
                       {visit.status === 'scheduled' && (
                         <>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => updateVisitStatus(visit.id, 'completed')}
-                          >
-                            Complete
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => updateVisitStatus(visit.id, 'cancelled')}
-                          >
-                            Cancel
-                          </Button>
+                          <div className="space-y-2 min-w-[200px]">
+                            <Input
+                              placeholder="Feedback..."
+                              value={feedbackData.feedback}
+                              onChange={(e) => setFeedbackData(prev => ({ ...prev, feedback: e.target.value }))}
+                              className="text-sm"
+                            />
+                            <Input
+                              type="number"
+                              min="1"
+                              max="5"
+                              placeholder="Rating (1-5)"
+                              value={feedbackData.completion_rating || ''}
+                              onChange={(e) => setFeedbackData(prev => ({ ...prev, completion_rating: parseInt(e.target.value) || 0 }))}
+                              className="text-sm"
+                            />
+                            <div className="flex gap-1">
+                              <Button
+                                size="sm"
+                                onClick={() => updateVisitStatus(visit.id, 'completed', true)}
+                              >
+                                Complete
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => updateVisitStatus(visit.id, 'cancelled')}
+                              >
+                                Cancel
+                              </Button>
+                            </div>
+                          </div>
                         </>
                       )}
                     </div>

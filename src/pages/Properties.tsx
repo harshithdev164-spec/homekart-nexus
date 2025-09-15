@@ -30,6 +30,7 @@ interface Property {
   price: number;
   property_type: string;
   status: string;
+  category: 'primary' | 'resale' | 'rent';
   area?: number;
   bedrooms?: number;
   bathrooms?: number;
@@ -43,6 +44,7 @@ interface Property {
   latitude?: number;
   longitude?: number;
   created_at: string;
+  updated_at: string;
   created_by: string;
   profiles?: {
     full_name: string;

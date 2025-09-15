@@ -414,6 +414,7 @@ export type Database = {
           area: number | null
           bathrooms: number | null
           bedrooms: number | null
+          category: string | null
           city: string
           created_at: string
           created_by: string
@@ -438,6 +439,7 @@ export type Database = {
           area?: number | null
           bathrooms?: number | null
           bedrooms?: number | null
+          category?: string | null
           city: string
           created_at?: string
           created_by: string
@@ -462,6 +464,7 @@ export type Database = {
           area?: number | null
           bathrooms?: number | null
           bedrooms?: number | null
+          category?: string | null
           city?: string
           created_at?: string
           created_by?: string
@@ -642,6 +645,45 @@ export type Database = {
           },
         ]
       }
+      tasks: {
+        Row: {
+          assigned_to: string
+          created_at: string
+          created_by: string
+          description: string | null
+          due_date: string | null
+          id: string
+          is_completed: boolean
+          priority: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          assigned_to: string
+          created_at?: string
+          created_by: string
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          is_completed?: boolean
+          priority?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          assigned_to?: string
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          is_completed?: boolean
+          priority?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       team_members: {
         Row: {
           id: string
@@ -782,7 +824,9 @@ export type Database = {
       visit_schedules: {
         Row: {
           assigned_to: string
+          completion_rating: number | null
           created_at: string
+          feedback: string | null
           id: string
           lead_id: string
           notes: string | null
@@ -797,7 +841,9 @@ export type Database = {
         }
         Insert: {
           assigned_to: string
+          completion_rating?: number | null
           created_at?: string
+          feedback?: string | null
           id?: string
           lead_id: string
           notes?: string | null
@@ -812,7 +858,9 @@ export type Database = {
         }
         Update: {
           assigned_to?: string
+          completion_rating?: number | null
           created_at?: string
+          feedback?: string | null
           id?: string
           lead_id?: string
           notes?: string | null
