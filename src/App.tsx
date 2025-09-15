@@ -11,6 +11,7 @@ import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import Leads from "./pages/Leads";
 import Properties from "./pages/Properties";
+import EnhancedProperties from "./pages/EnhancedProperties";
 import Activities from "./pages/Activities";
 import Team from "./pages/Team";
 import Messages from "./pages/Messages";
@@ -83,6 +84,7 @@ const App: React.FC = () => {
                 <Route path="/dashboard" element={<DashboardLayout><Dashboard /></DashboardLayout>} />
                 <Route path="/leads" element={<DashboardLayout><Leads /></DashboardLayout>} />
                 <Route path="/properties" element={<DashboardLayout><Properties /></DashboardLayout>} />
+                <Route path="/enhanced-properties" element={<DashboardLayout><EnhancedProperties /></DashboardLayout>} />
                 <Route path="/activities" element={<DashboardLayout><Activities /></DashboardLayout>} />
                 <Route path="/team" element={<DashboardLayout><Team /></DashboardLayout>} />
                 <Route path="/reports" element={<DashboardLayout><Reports /></DashboardLayout>} />

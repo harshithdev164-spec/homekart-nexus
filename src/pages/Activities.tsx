@@ -12,6 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { format } from 'date-fns';
+import { RealtimeIndicator } from '@/components/collaboration/RealtimeIndicator';
 
 interface Activity {
   id: string;
@@ -240,7 +241,10 @@ const Activities: React.FC = () => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="space-y-1">
-          <h1 className="text-3xl font-bold">Activities</h1>
+          <div className="flex items-center gap-4">
+            <h1 className="text-3xl font-bold">Activities</h1>
+            <RealtimeIndicator channel="activities" />
+          </div>
           <p className="text-muted-foreground">Manage your tasks and scheduled activities</p>
         </div>
         <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
