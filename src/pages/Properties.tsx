@@ -3,13 +3,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { supabase } from '@/integrations/supabase/client';
-import { Plus, Search, MapPin, Home, Bed, Bath, Square, IndianRupee, Filter, Users } from 'lucide-react';
+import { Plus, Search, MapPin, Home, Bed, Bath, Square, IndianRupee, Filter, Users, Star, Clock } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { RealtimeIndicator } from '@/components/collaboration/RealtimeIndicator';
 import { PropertyMap } from '@/components/maps/PropertyMap';
 import { PropertyDetailModal } from '@/components/properties/PropertyDetailModal';
+import { format } from 'date-fns';
 import {
   Dialog,
   DialogContent,
@@ -30,7 +32,7 @@ interface Property {
   price: number;
   property_type: string;
   status: string;
-  category: 'primary' | 'resale' | 'rent';
+  category?: 'primary' | 'resale' | 'rent';
   area?: number;
   bedrooms?: number;
   bathrooms?: number;
@@ -44,7 +46,7 @@ interface Property {
   latitude?: number;
   longitude?: number;
   created_at: string;
-  updated_at: string;
+  updated_at?: string;
   created_by: string;
   profiles?: {
     full_name: string;
@@ -63,12 +65,14 @@ const Properties: React.FC = () => {
   const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
   const [showMap, setShowMap] = useState(false);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState('all');
   
   // Form state
   const [formData, setFormData] = useState({
     title: '',
     description: '',
     property_type: '',
+    category: 'primary' as 'primary' | 'resale' | 'rent',
     price: '',
     area: '',
     bedrooms: '',
@@ -101,13 +105,14 @@ const Properties: React.FC = () => {
 
   const fetchProperties = async () => {
     try {
+      setLoading(true);
       const { data, error } = await supabase
         .from('properties')
         .select(`
           *,
           profiles!properties_created_by_fkey(full_name)
         `)
-        .order('created_at', { ascending: false });
+        .order('updated_at', { ascending: false });
 
       if (error) {
         console.error('Error fetching properties:', error);
@@ -124,6 +129,7 @@ const Properties: React.FC = () => {
         category: (property.category as 'primary' | 'resale' | 'rent') || 'primary',
         updated_at: property.updated_at || property.created_at
       }));
+      
       setProperties(propertiesWithTypedCategory);
     } catch (error) {
       console.error('Error fetching properties:', error);
@@ -172,6 +178,7 @@ const Properties: React.FC = () => {
         title: '',
         description: '',
         property_type: '',
+        category: 'primary',
         price: '',
         area: '',
         bedrooms: '',
@@ -272,6 +279,7 @@ const Properties: React.FC = () => {
       title: property.title,
       description: property.description || '',
       property_type: property.property_type,
+      category: property.category || 'primary',
       price: property.price.toString(),
       area: property.area?.toString() || '',
       bedrooms: property.bedrooms?.toString() || '',
@@ -319,10 +327,102 @@ const Properties: React.FC = () => {
     }
   };
 
-  const filteredProperties = properties.filter(property =>
-    property.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    property.location.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    property.city.toLowerCase().includes(searchTerm.toLowerCase())
+  const getCategoryColor = (category: string) => {
+    switch (category) {
+      case 'primary': return 'bg-blue-100 text-blue-800';
+      case 'resale': return 'bg-orange-100 text-orange-800';
+      case 'rent': return 'bg-green-100 text-green-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const filteredProperties = properties.filter(property => {
+    const matchesSearch = property.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         property.location.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         property.city.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    if (activeTab === 'all') return matchesSearch;
+    if (activeTab === 'my-properties') return matchesSearch && property.created_by === profile?.id;
+    return matchesSearch && property.category === activeTab;
+  });
+
+  // Separate properties by category for better organization
+  const primaryProperties = filteredProperties.filter(p => p.category === 'primary');
+  const resaleProperties = filteredProperties.filter(p => p.category === 'resale');
+  const rentProperties = filteredProperties.filter(p => p.category === 'rent');
+  const myProperties = filteredProperties.filter(p => p.created_by === profile?.id);
+
+  const renderPropertyCard = (property: Property) => (
+    <Card key={property.id} className="cursor-pointer hover:shadow-md transition-shadow">
+      <CardContent className="p-4">
+        <div className="flex justify-between items-start mb-2">
+          <h3 className="font-semibold text-lg truncate">{property.title}</h3>
+          <div className="flex gap-1">
+            <Badge className={getCategoryColor(property.category)}>
+              {property.category}
+            </Badge>
+            <Badge className={getStatusColor(property.status)}>
+              {property.status}
+            </Badge>
+          </div>
+        </div>
+        
+        <div className="flex items-center gap-2 text-sm text-gray-600 mb-2">
+          <MapPin className="h-4 w-4" />
+          <span className="truncate">{property.location}, {property.city}</span>
+        </div>
+
+        <div className="flex items-center gap-4 mb-2">
+          <div className="flex items-center gap-1">
+            <IndianRupee className="h-4 w-4" />
+            <span className="font-medium">₹{property.price.toLocaleString()}</span>
+          </div>
+          {property.area && (
+            <div className="flex items-center gap-1">
+              <Square className="h-4 w-4" />
+              <span>{property.area} sq ft</span>
+            </div>
+          )}
+        </div>
+
+        {(property.bedrooms || property.bathrooms) && (
+          <div className="flex items-center gap-4 mb-2">
+            {property.bedrooms && (
+              <div className="flex items-center gap-1">
+                <Bed className="h-4 w-4" />
+                <span>{property.bedrooms} BHK</span>
+              </div>
+            )}
+            {property.bathrooms && (
+              <div className="flex items-center gap-1">
+                <Bath className="h-4 w-4" />
+                <span>{property.bathrooms} Bath</span>
+              </div>
+            )}
+          </div>
+        )}
+
+        <div className="flex items-center justify-between text-sm text-gray-500">
+          <div className="flex items-center gap-1">
+            <Users className="h-4 w-4" />
+            <span>{property.profiles?.full_name || 'Unknown'}</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <Clock className="h-4 w-4" />
+            <span>Updated {format(new Date(property.updated_at), 'MMM dd')}</span>
+          </div>
+        </div>
+
+        {property.created_by === profile?.id && (
+          <div className="mt-2">
+            <Badge variant="outline" className="text-xs">
+              <Star className="h-3 w-3 mr-1" />
+              Your Property
+            </Badge>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 
   if (loading) {
@@ -342,7 +442,7 @@ const Properties: React.FC = () => {
             <h1 className="text-3xl font-bold">Property Management</h1>
             <RealtimeIndicator channel="properties" />
           </div>
-          <p className="text-muted-foreground">Manage your property inventory and listings</p>
+          <p className="text-muted-foreground">Segmented property inventory with owner highlighting</p>
         </div>
         <div className="flex gap-2">
           <Button 
@@ -364,19 +464,34 @@ const Properties: React.FC = () => {
             <DialogHeader>
               <DialogTitle>Add New Property</DialogTitle>
               <DialogDescription>
-                Add a new property to your inventory. Fill in the details below.
+                Add a new property to your inventory. Choose the appropriate category.
               </DialogDescription>
             </DialogHeader>
             <form onSubmit={handleCreateProperty} className="space-y-4 max-h-96 overflow-y-auto">
-              <div className="space-y-2">
-                <Label htmlFor="title">Property Title *</Label>
-                <Input
-                  id="title"
-                  placeholder="Enter property title"
-                  value={formData.title}
-                  onChange={(e) => setFormData({...formData, title: e.target.value})}
-                  required
-                />
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="title">Property Title *</Label>
+                  <Input
+                    id="title"
+                    placeholder="Enter property title"
+                    value={formData.title}
+                    onChange={(e) => setFormData({...formData, title: e.target.value})}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="category">Category *</Label>
+                  <Select value={formData.category} onValueChange={(value: 'primary' | 'resale' | 'rent') => setFormData({...formData, category: value})} required>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="primary">Primary</SelectItem>
+                      <SelectItem value="resale">Resale</SelectItem>
+                      <SelectItem value="rent">Rent</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -503,155 +618,6 @@ const Properties: React.FC = () => {
             </form>
           </DialogContent>
         </Dialog>
-
-        {/* Edit Property Dialog */}
-        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-          <DialogContent className="sm:max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>Edit Property</DialogTitle>
-              <DialogDescription>
-                Update property details below.
-              </DialogDescription>
-            </DialogHeader>
-            <form onSubmit={handleEditProperty} className="space-y-4 max-h-96 overflow-y-auto">
-              <div className="space-y-2">
-                <Label htmlFor="edit-title">Property Title *</Label>
-                <Input
-                  id="edit-title"
-                  placeholder="Enter property title"
-                  value={formData.title}
-                  onChange={(e) => setFormData({...formData, title: e.target.value})}
-                  required
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="edit-property_type">Property Type *</Label>
-                  <Select value={formData.property_type} onValueChange={(value) => setFormData({...formData, property_type: value})} required>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="apartment">Apartment</SelectItem>
-                      <SelectItem value="villa">Villa</SelectItem>
-                      <SelectItem value="plot">Plot</SelectItem>
-                      <SelectItem value="commercial">Commercial</SelectItem>
-                      <SelectItem value="office">Office</SelectItem>
-                      <SelectItem value="warehouse">Warehouse</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="edit-price">Price (₹) *</Label>
-                  <Input
-                    id="edit-price"
-                    type="number"
-                    placeholder="Property price"
-                    value={formData.price}
-                    onChange={(e) => setFormData({...formData, price: e.target.value})}
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="edit-area">Area (sq ft)</Label>
-                  <Input
-                    id="edit-area"
-                    type="number"
-                    placeholder="Area"
-                    value={formData.area}
-                    onChange={(e) => setFormData({...formData, area: e.target.value})}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="edit-bedrooms">Bedrooms</Label>
-                  <Input
-                    id="edit-bedrooms"
-                    type="number"
-                    placeholder="Bedrooms"
-                    value={formData.bedrooms}
-                    onChange={(e) => setFormData({...formData, bedrooms: e.target.value})}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="edit-bathrooms">Bathrooms</Label>
-                  <Input
-                    id="edit-bathrooms"
-                    type="number"
-                    placeholder="Bathrooms"
-                    value={formData.bathrooms}
-                    onChange={(e) => setFormData({...formData, bathrooms: e.target.value})}
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="edit-location">Location *</Label>
-                  <Input
-                    id="edit-location"
-                    placeholder="Location/Area"
-                    value={formData.location}
-                    onChange={(e) => setFormData({...formData, location: e.target.value})}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="edit-city">City *</Label>
-                  <Input
-                    id="edit-city"
-                    placeholder="City"
-                    value={formData.city}
-                    onChange={(e) => setFormData({...formData, city: e.target.value})}
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="edit-state">State *</Label>
-                  <Input
-                    id="edit-state"
-                    placeholder="State"
-                    value={formData.state}
-                    onChange={(e) => setFormData({...formData, state: e.target.value})}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="edit-address">Full Address</Label>
-                  <Input
-                    id="edit-address"
-                    placeholder="Complete address"
-                    value={formData.address}
-                    onChange={(e) => setFormData({...formData, address: e.target.value})}
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="edit-description">Description</Label>
-                <Textarea
-                  id="edit-description"
-                  placeholder="Property description"
-                  value={formData.description}
-                  onChange={(e) => setFormData({...formData, description: e.target.value})}
-                />
-              </div>
-
-              <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setIsEditDialogOpen(false)}>
-                  Cancel
-                </Button>
-                <Button type="submit">Update Property</Button>
-              </DialogFooter>
-            </form>
-          </DialogContent>
-        </Dialog>
         </div>
       </div>
 
@@ -719,130 +685,69 @@ const Properties: React.FC = () => {
         </Card>
       </div>
 
-      {/* Properties Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredProperties.map((property) => {
-          const PropertyIcon = getPropertyTypeIcon(property.property_type);
-          return (
-             <Card 
-               key={property.id} 
-               className={`hover:shadow-medium transition-all duration-300 cursor-pointer ${
-                 selectedProperty?.id === property.id ? 'ring-2 ring-primary' : ''
-               }`}
-               onClick={() => {
-                 console.log('Property card clicked:', property.title);
-                 openDetailModal(property);
-               }}
-             >
-              <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <div className="flex items-center justify-between w-full">
-                <span className="text-lg line-clamp-1">{property.title}</span>
-                <Badge className={getStatusColor(property.status)}>
-                  {property.status.replace('_', ' ')}
-                </Badge>
-              </div>
-            </CardTitle>
-            {property.profiles && (
-              <div className="flex items-center gap-2 text-xs text-primary">
-                <Users className="h-3 w-3" />
-                Listed by: {property.profiles.full_name}
-              </div>
-            )}
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <PropertyIcon className="h-4 w-4" />
-                  {property.property_type.charAt(0).toUpperCase() + property.property_type.slice(1)}
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  <div className="flex items-center gap-1 text-lg font-bold text-primary">
-                    <IndianRupee className="h-4 w-4" />
-                    {Number(property.price).toLocaleString('en-IN')}
-                  </div>
-                  
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <MapPin className="h-4 w-4" />
-                    {property.location}, {property.city}
-                  </div>
+      {/* Tabbed Property View */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="grid w-full grid-cols-5">
+          <TabsTrigger value="all">All ({properties.length})</TabsTrigger>
+          <TabsTrigger value="my-properties">My Properties ({myProperties.length})</TabsTrigger>
+          <TabsTrigger value="primary">Primary ({primaryProperties.length})</TabsTrigger>
+          <TabsTrigger value="resale">Resale ({resaleProperties.length})</TabsTrigger>
+          <TabsTrigger value="rent">Rent ({rentProperties.length})</TabsTrigger>
+        </TabsList>
 
-                  {(property.bedrooms || property.bathrooms || property.area) && (
-                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                      {property.bedrooms && (
-                        <div className="flex items-center gap-1">
-                          <Bed className="h-4 w-4" />
-                          {property.bedrooms}
-                        </div>
-                      )}
-                      {property.bathrooms && (
-                        <div className="flex items-center gap-1">
-                          <Bath className="h-4 w-4" />
-                          {property.bathrooms}
-                        </div>
-                      )}
-                      {property.area && (
-                        <div className="flex items-center gap-1">
-                          <Square className="h-4 w-4" />
-                          {property.area} sq ft
-                        </div>
-                      )}
-                    </div>
-                  )}
+        <TabsContent value="all" className="mt-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredProperties.map(renderPropertyCard)}
+          </div>
+        </TabsContent>
 
-                  {property.description && (
-                    <p className="text-sm text-muted-foreground line-clamp-2">
-                      {property.description}
-                    </p>
-                  )}
-                </div>
-                 <div className="flex gap-2 mt-4">
-                   <Button 
-                     size="sm" 
-                     variant="outline" 
-                     className="flex-1"
-                     onClick={(e) => {
-                       e.stopPropagation();
-                       openEditDialog(property);
-                     }}
-                   >
-                     Edit
-                   </Button>
-                   <Select 
-                     value={property.status} 
-                     onValueChange={(newStatus: 'available' | 'under_contract' | 'sold' | 'rented' | 'off_market') => handleStatusUpdate(property.id, newStatus)}
-                   >
-                     <SelectTrigger className="flex-1" onClick={(e) => e.stopPropagation()}>
-                       <SelectValue />
-                     </SelectTrigger>
-                     <SelectContent>
-                       <SelectItem value="available">Available</SelectItem>
-                       <SelectItem value="under_contract">Under Contract</SelectItem>
-                       <SelectItem value="sold">Sold</SelectItem>
-                       <SelectItem value="rented">Rented</SelectItem>
-                       <SelectItem value="off_market">Off Market</SelectItem>
-                     </SelectContent>
-                   </Select>
-                 </div>
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
+        <TabsContent value="my-properties" className="mt-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredProperties.map(renderPropertyCard)}
+          </div>
+          {myProperties.length === 0 && (
+            <div className="text-center py-12">
+              <p className="text-muted-foreground">You haven't created any properties yet.</p>
+            </div>
+          )}
+        </TabsContent>
 
+        <TabsContent value="primary" className="mt-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredProperties.map(renderPropertyCard)}
+          </div>
+        </TabsContent>
+
+        <TabsContent value="resale" className="mt-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredProperties.map(renderPropertyCard)}
+          </div>
+        </TabsContent>
+
+        <TabsContent value="rent" className="mt-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredProperties.map(renderPropertyCard)}
+          </div>
+        </TabsContent>
+      </Tabs>
+
+      {/* Empty State */}
       {filteredProperties.length === 0 && (
-        <Card>
-          <CardContent className="text-center py-12">
-            <p className="text-muted-foreground">
-              {searchTerm ? 'No properties found matching your search.' : 'No properties yet. Add your first property to get started.'}
-            </p>
-            {!searchTerm && (
-              <Button className="mt-4" onClick={() => setIsCreateDialogOpen(true)}>
-                <Plus className="h-4 w-4 mr-2" />
-                Add Your First Property
-              </Button>
-            )}
-          </CardContent>
-        </Card>
+        <div className="text-center py-12">
+          <div className="mx-auto h-24 w-24 text-muted-foreground mb-4">
+            <Home className="h-full w-full" />
+          </div>
+          <h3 className="text-lg font-medium mb-2">No properties found</h3>
+          <p className="text-muted-foreground mb-4">
+            {searchTerm ? 'Try adjusting your search terms.' : 'Get started by adding your first property.'}
+          </p>
+          {!searchTerm && (
+            <Button onClick={() => setIsCreateDialogOpen(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              Add Your First Property
+            </Button>
+          )}
+        </div>
       )}
 
       {/* Property Detail Modal */}
@@ -853,14 +758,7 @@ const Properties: React.FC = () => {
           setIsDetailModalOpen(false);
           setSelectedProperty(null);
         }}
-        onEdit={(property) => {
-          setIsDetailModalOpen(false);
-          openEditDialog({
-            ...property,
-            category: (property as any).category || 'primary',
-            updated_at: (property as any).updated_at || property.created_at
-          });
-        }}
+        onEdit={openEditDialog}
       />
     </div>
   );
