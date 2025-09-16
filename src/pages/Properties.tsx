@@ -33,6 +33,7 @@ interface Property {
   property_type: string;
   status: string;
   category?: 'primary' | 'resale' | 'rent';
+  source_type?: 'agent' | 'owner';
   area?: number;
   bedrooms?: number;
   bathrooms?: number;
@@ -73,6 +74,7 @@ const Properties: React.FC = () => {
     description: '',
     property_type: '',
     category: 'primary' as 'primary' | 'resale' | 'rent',
+    source_type: 'owner' as 'agent' | 'owner',
     price: '',
     area: '',
     bedrooms: '',
@@ -127,6 +129,7 @@ const Properties: React.FC = () => {
       const propertiesWithTypedCategory = (data || []).map(property => ({
         ...property,
         category: (property.category as 'primary' | 'resale' | 'rent') || 'primary',
+        source_type: (property.source_type as 'agent' | 'owner') || 'owner',
         updated_at: property.updated_at || property.created_at
       }));
       
@@ -179,6 +182,7 @@ const Properties: React.FC = () => {
         description: '',
         property_type: '',
         category: 'primary',
+        source_type: 'owner',
         price: '',
         area: '',
         bedrooms: '',
@@ -280,6 +284,7 @@ const Properties: React.FC = () => {
       description: property.description || '',
       property_type: property.property_type,
       category: property.category || 'primary',
+      source_type: property.source_type || 'owner',
       price: property.price.toString(),
       area: property.area?.toString() || '',
       bedrooms: property.bedrooms?.toString() || '',
@@ -336,6 +341,14 @@ const Properties: React.FC = () => {
     }
   };
 
+  const getSourceTypeColor = (sourceType: string) => {
+    switch (sourceType) {
+      case 'agent': return 'bg-purple-100 text-purple-800';
+      case 'owner': return 'bg-cyan-100 text-cyan-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
   const filteredProperties = properties.filter(property => {
     const matchesSearch = property.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          property.location.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -357,10 +370,15 @@ const Properties: React.FC = () => {
       <CardContent className="p-4">
         <div className="flex justify-between items-start mb-2">
           <h3 className="font-semibold text-lg truncate">{property.title}</h3>
-          <div className="flex gap-1">
+          <div className="flex gap-1 flex-wrap">
             <Badge className={getCategoryColor(property.category)}>
               {property.category}
             </Badge>
+            {property.source_type && (
+              <Badge className={getSourceTypeColor(property.source_type)}>
+                {property.source_type}
+              </Badge>
+            )}
             <Badge className={getStatusColor(property.status)}>
               {property.status}
             </Badge>
@@ -464,10 +482,43 @@ const Properties: React.FC = () => {
             <DialogHeader>
               <DialogTitle>Add New Property</DialogTitle>
               <DialogDescription>
-                Add a new property to your inventory. Choose the appropriate category.
+                Specify property details, category (Primary/Resale/Rent), and source type (Agent/Owner).
               </DialogDescription>
             </DialogHeader>
             <form onSubmit={handleCreateProperty} className="space-y-4 max-h-96 overflow-y-auto">
+              {/* Property Classification Section */}
+              <div className="bg-muted/50 p-4 rounded-lg space-y-4">
+                <h4 className="font-medium text-sm text-foreground">Property Classification</h4>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="category">Category *</Label>
+                    <Select value={formData.category} onValueChange={(value: 'primary' | 'resale' | 'rent') => setFormData({...formData, category: value})} required>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select category" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="primary">🏗️ Primary (New Construction)</SelectItem>
+                        <SelectItem value="resale">🔄 Resale (Pre-owned)</SelectItem>
+                        <SelectItem value="rent">🏠 Rent (Rental Property)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="source_type">Source Type *</Label>
+                    <Select value={formData.source_type} onValueChange={(value: 'agent' | 'owner') => setFormData({...formData, source_type: value})} required>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select source" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="agent">🏢 Agent (Broker/Agency)</SelectItem>
+                        <SelectItem value="owner">👤 Owner (Direct Owner)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </div>
+
+              {/* Basic Property Details */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="title">Property Title *</Label>
@@ -479,22 +530,6 @@ const Properties: React.FC = () => {
                     required
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="category">Category *</Label>
-                  <Select value={formData.category} onValueChange={(value: 'primary' | 'resale' | 'rent') => setFormData({...formData, category: value})} required>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select category" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="primary">Primary</SelectItem>
-                      <SelectItem value="resale">Resale</SelectItem>
-                      <SelectItem value="rent">Rent</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="property_type">Property Type *</Label>
                   <Select value={formData.property_type} onValueChange={(value) => setFormData({...formData, property_type: value})} required>

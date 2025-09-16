@@ -481,6 +481,7 @@ export type Database = {
           pincode: string | null
           price: number
           property_type: Database["public"]["Enums"]["property_type"]
+          source_type: string | null
           state: string
           status: Database["public"]["Enums"]["property_status"]
           title: string
@@ -506,6 +507,7 @@ export type Database = {
           pincode?: string | null
           price: number
           property_type: Database["public"]["Enums"]["property_type"]
+          source_type?: string | null
           state: string
           status?: Database["public"]["Enums"]["property_status"]
           title: string
@@ -531,6 +533,7 @@ export type Database = {
           pincode?: string | null
           price?: number
           property_type?: Database["public"]["Enums"]["property_type"]
+          source_type?: string | null
           state?: string
           status?: Database["public"]["Enums"]["property_status"]
           title?: string
