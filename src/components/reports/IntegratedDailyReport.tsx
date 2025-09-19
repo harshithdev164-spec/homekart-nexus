@@ -35,6 +35,49 @@ export const IntegratedDailyReport: React.FC = () => {
   const [editingReport, setEditingReport] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
+    // Core Lead Management
+    leads_registered: 0,
+    leads_called: 0,
+    leads_called_status: false,
+    follow_ups: 30,
+    follow_ups_status: true,
+    follow_ups_description: '',
+    
+    // Inventory & Site Visits
+    inventories_found: 0,
+    inventories_found_status: false,
+    primary_sites_visited: 0,
+    client_visit: 0,
+    
+    // Agent & Developer Calls
+    calls_to_agents: 0,
+    calls_to_agents_status: false,
+    agent_names: 'Harsh, Shivani, Saumya, Rumana',
+    calls_to_developers: 0,
+    calls_to_developers_status: false,
+    calls_to_developers_description: '',
+    
+    // Digital Marketing Activities
+    whatsapp_postings: 0,
+    agents_added: 0,
+    agents_contacted: 0,
+    facebook_postings: 0,
+    facebook_postings_status: false,
+    instagram_posting: 0,
+    acres_99_postings: 0,
+    acres_99_status: false,
+    google_reviews: 0,
+    google_reviews_status: false,
+    surrendered_leads: 0,
+    surrendered_leads_status: false,
+    mb_postings: 0,
+    website_postings: 0,
+    
+    // Communication
+    mails_sent: 0,
+    cross_pitching_mails: 0,
+    
+    // Legacy fields for backward compatibility
     leads_contacted: 0,
     meetings_scheduled: 0,
     site_visits: 0,
@@ -130,6 +173,7 @@ export const IntegratedDailyReport: React.FC = () => {
     }
 
     if (error) {
+      console.error('Save error:', error);
       toast({
         title: 'Error',
         description: 'Failed to save report',
@@ -142,12 +186,56 @@ export const IntegratedDailyReport: React.FC = () => {
       });
       setEditingReport(null);
       resetForm();
+      fetchReports();
     }
   };
 
   const startEditing = (report: DailyReportData) => {
     const reportData = report.data || {};
     setFormData({
+      // Core Lead Management
+      leads_registered: reportData.leads_registered || 0,
+      leads_called: reportData.leads_called || 0,
+      leads_called_status: reportData.leads_called_status || false,
+      follow_ups: reportData.follow_ups || 30,
+      follow_ups_status: reportData.follow_ups_status || true,
+      follow_ups_description: reportData.follow_ups_description || '',
+      
+      // Inventory & Site Visits
+      inventories_found: reportData.inventories_found || 0,
+      inventories_found_status: reportData.inventories_found_status || false,
+      primary_sites_visited: reportData.primary_sites_visited || 0,
+      client_visit: reportData.client_visit || 0,
+      
+      // Agent & Developer Calls
+      calls_to_agents: reportData.calls_to_agents || 0,
+      calls_to_agents_status: reportData.calls_to_agents_status || false,
+      agent_names: reportData.agent_names || 'Harsh, Shivani, Saumya, Rumana',
+      calls_to_developers: reportData.calls_to_developers || 0,
+      calls_to_developers_status: reportData.calls_to_developers_status || false,
+      calls_to_developers_description: reportData.calls_to_developers_description || '',
+      
+      // Digital Marketing Activities
+      whatsapp_postings: reportData.whatsapp_postings || 0,
+      agents_added: reportData.agents_added || 0,
+      agents_contacted: reportData.agents_contacted || 0,
+      facebook_postings: reportData.facebook_postings || 0,
+      facebook_postings_status: reportData.facebook_postings_status || false,
+      instagram_posting: reportData.instagram_posting || 0,
+      acres_99_postings: reportData.acres_99_postings || 0,
+      acres_99_status: reportData.acres_99_status || false,
+      google_reviews: reportData.google_reviews || 0,
+      google_reviews_status: reportData.google_reviews_status || false,
+      surrendered_leads: reportData.surrendered_leads || 0,
+      surrendered_leads_status: reportData.surrendered_leads_status || false,
+      mb_postings: reportData.mb_postings || 0,
+      website_postings: reportData.website_postings || 0,
+      
+      // Communication
+      mails_sent: reportData.mails_sent || 0,
+      cross_pitching_mails: reportData.cross_pitching_mails || 0,
+      
+      // Legacy fields for backward compatibility
       leads_contacted: reportData.leads_contacted || 0,
       meetings_scheduled: reportData.meetings_scheduled || 0,
       site_visits: reportData.site_visits || 0,
@@ -164,6 +252,49 @@ export const IntegratedDailyReport: React.FC = () => {
 
   const resetForm = () => {
     setFormData({
+      // Core Lead Management
+      leads_registered: 0,
+      leads_called: 0,
+      leads_called_status: false,
+      follow_ups: 30,
+      follow_ups_status: true,
+      follow_ups_description: '',
+      
+      // Inventory & Site Visits
+      inventories_found: 0,
+      inventories_found_status: false,
+      primary_sites_visited: 0,
+      client_visit: 0,
+      
+      // Agent & Developer Calls
+      calls_to_agents: 0,
+      calls_to_agents_status: false,
+      agent_names: 'Harsh, Shivani, Saumya, Rumana',
+      calls_to_developers: 0,
+      calls_to_developers_status: false,
+      calls_to_developers_description: '',
+      
+      // Digital Marketing Activities
+      whatsapp_postings: 0,
+      agents_added: 0,
+      agents_contacted: 0,
+      facebook_postings: 0,
+      facebook_postings_status: false,
+      instagram_posting: 0,
+      acres_99_postings: 0,
+      acres_99_status: false,
+      google_reviews: 0,
+      google_reviews_status: false,
+      surrendered_leads: 0,
+      surrendered_leads_status: false,
+      mb_postings: 0,
+      website_postings: 0,
+      
+      // Communication
+      mails_sent: 0,
+      cross_pitching_mails: 0,
+      
+      // Legacy fields for backward compatibility
       leads_contacted: 0,
       meetings_scheduled: 0,
       site_visits: 0,
@@ -179,21 +310,25 @@ export const IntegratedDailyReport: React.FC = () => {
 
   const exportToCSV = () => {
     const csvContent = [
-      ['Date', 'Reporter', 'Leads Contacted', 'Meetings Scheduled', 'Site Visits', 'Follow-ups Pending', 'Deals Closed', 'Revenue Generated', 'Challenges', 'Achievements', 'Next Day Plan'].join(','),
+      ['Date', 'Reporter', 'Leads Registered', 'Leads Called', 'Follow Ups', 'Inventories Found', 'Primary Sites Visited', 'Client Visit', 'Calls to Agents', 'Calls to Developers', 'WhatsApp Postings', 'Facebook Postings', 'Instagram Postings', 'Mails Sent', 'Cross Pitching Mails'].join(','),
       ...reports.map(report => {
         const data = report.data || {};
         return [
           report.generated_at.split('T')[0],
           report.reporter?.full_name || 'Unknown',
-          data.leads_contacted || 0,
-          data.meetings_scheduled || 0,
-          data.site_visits || 0,
-          data.follow_ups_pending || 0,
-          data.deals_closed || 0,
-          data.revenue_generated || 0,
-          `"${(data.challenges_faced || '').replace(/"/g, '""')}"`,
-          `"${(data.achievements || '').replace(/"/g, '""')}"`,
-          `"${(data.next_day_plan || '').replace(/"/g, '""')}"`,
+          data.leads_registered || 0,
+          data.leads_called || 0,
+          data.follow_ups || 0,
+          data.inventories_found || 0,
+          data.primary_sites_visited || 0,
+          data.client_visit || 0,
+          data.calls_to_agents || 0,
+          data.calls_to_developers || 0,
+          data.whatsapp_postings || 0,
+          data.facebook_postings || 0,
+          data.instagram_posting || 0,
+          data.mails_sent || 0,
+          data.cross_pitching_mails || 0,
         ].join(',');
       })
     ].join('\n');
@@ -260,60 +395,399 @@ export const IntegratedDailyReport: React.FC = () => {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Leads Contacted</label>
-              <Input
-                type="number"
-                value={formData.leads_contacted}
-                onChange={(e) => setFormData(prev => ({ ...prev, leads_contacted: parseInt(e.target.value) || 0 }))}
-                placeholder="0"
-              />
+          {/* Lead Management Section */}
+          <div className="mb-8">
+            <h3 className="text-lg font-semibold mb-4 text-primary">1. Lead Management</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">1.1 Leads Registered (minimum)</label>
+                <Input
+                  type="number"
+                  value={formData.leads_registered}
+                  onChange={(e) => setFormData(prev => ({ ...prev, leads_registered: parseInt(e.target.value) || 0 }))}
+                  placeholder="0"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">1.2 Leads Called</label>
+                <div className="flex gap-2">
+                  <Input
+                    type="number"
+                    value={formData.leads_called}
+                    onChange={(e) => setFormData(prev => ({ ...prev, leads_called: parseInt(e.target.value) || 0 }))}
+                    placeholder="0"
+                    className="flex-1"
+                  />
+                  <select
+                    value={formData.leads_called_status ? 'yes' : 'no'}
+                    onChange={(e) => setFormData(prev => ({ ...prev, leads_called_status: e.target.value === 'yes' }))}
+                    className="px-3 py-2 border rounded-md bg-background"
+                  >
+                    <option value="yes">Yes</option>
+                    <option value="no">No</option>
+                  </select>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">1.3 Follow Ups</label>
+                <div className="space-y-2">
+                  <div className="flex gap-2">
+                    <Input
+                      type="number"
+                      value={formData.follow_ups}
+                      onChange={(e) => setFormData(prev => ({ ...prev, follow_ups: parseInt(e.target.value) || 0 }))}
+                      placeholder="30"
+                      className="flex-1"
+                    />
+                    <select
+                      value={formData.follow_ups_status ? 'yes' : 'no'}
+                      onChange={(e) => setFormData(prev => ({ ...prev, follow_ups_status: e.target.value === 'yes' }))}
+                      className="px-3 py-2 border rounded-md bg-background"
+                    >
+                      <option value="yes">Yes</option>
+                      <option value="no">No</option>
+                    </select>
+                  </div>
+                  <Input
+                    value={formData.follow_ups_description}
+                    onChange={(e) => setFormData(prev => ({ ...prev, follow_ups_description: e.target.value }))}
+                    placeholder="Description if required"
+                  />
+                </div>
+              </div>
             </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Meetings Scheduled</label>
-              <Input
-                type="number"
-                value={formData.meetings_scheduled}
-                onChange={(e) => setFormData(prev => ({ ...prev, meetings_scheduled: parseInt(e.target.value) || 0 }))}
-                placeholder="0"
-              />
+          </div>
+
+          {/* Inventory & Site Visits Section */}
+          <div className="mb-8">
+            <h3 className="text-lg font-semibold mb-4 text-primary">2. Inventory & Site Visits</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">2.1 Inventories Found</label>
+                <div className="flex gap-2">
+                  <Input
+                    type="number"
+                    value={formData.inventories_found}
+                    onChange={(e) => setFormData(prev => ({ ...prev, inventories_found: parseInt(e.target.value) || 0 }))}
+                    placeholder="15"
+                    className="flex-1"
+                  />
+                  <select
+                    value={formData.inventories_found_status ? 'yes' : 'no'}
+                    onChange={(e) => setFormData(prev => ({ ...prev, inventories_found_status: e.target.value === 'yes' }))}
+                    className="px-3 py-2 border rounded-md bg-background"
+                  >
+                    <option value="yes">Yes</option>
+                    <option value="no">No</option>
+                  </select>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">2.2 Primary Sites Visited</label>
+                <Input
+                  type="number"
+                  value={formData.primary_sites_visited}
+                  onChange={(e) => setFormData(prev => ({ ...prev, primary_sites_visited: parseInt(e.target.value) || 0 }))}
+                  placeholder="0"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">2.3 Client Visit</label>
+                <Input
+                  type="number"
+                  value={formData.client_visit}
+                  onChange={(e) => setFormData(prev => ({ ...prev, client_visit: parseInt(e.target.value) || 0 }))}
+                  placeholder="0"
+                />
+              </div>
             </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Site Visits</label>
-              <Input
-                type="number"
-                value={formData.site_visits}
-                onChange={(e) => setFormData(prev => ({ ...prev, site_visits: parseInt(e.target.value) || 0 }))}
-                placeholder="0"
-              />
+          </div>
+
+          {/* Communications Section */}
+          <div className="mb-8">
+            <h3 className="text-lg font-semibold mb-4 text-primary">3. Communications</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">3.1 Calls Made to Agents</label>
+                <div className="space-y-2">
+                  <div className="flex gap-2">
+                    <Input
+                      type="number"
+                      value={formData.calls_to_agents}
+                      onChange={(e) => setFormData(prev => ({ ...prev, calls_to_agents: parseInt(e.target.value) || 0 }))}
+                      placeholder="4"
+                      className="flex-1"
+                    />
+                    <select
+                      value={formData.calls_to_agents_status ? 'yes' : 'no'}
+                      onChange={(e) => setFormData(prev => ({ ...prev, calls_to_agents_status: e.target.value === 'yes' }))}
+                      className="px-3 py-2 border rounded-md bg-background"
+                    >
+                      <option value="yes">Yes</option>
+                      <option value="no">No</option>
+                    </select>
+                  </div>
+                  <Input
+                    value={formData.agent_names}
+                    onChange={(e) => setFormData(prev => ({ ...prev, agent_names: e.target.value }))}
+                    placeholder="Agent names"
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">3.2 Calls Made to Developers</label>
+                <div className="space-y-2">
+                  <div className="flex gap-2">
+                    <Input
+                      type="number"
+                      value={formData.calls_to_developers}
+                      onChange={(e) => setFormData(prev => ({ ...prev, calls_to_developers: parseInt(e.target.value) || 0 }))}
+                      placeholder="3"
+                      className="flex-1"
+                    />
+                    <select
+                      value={formData.calls_to_developers_status ? 'yes' : 'no'}
+                      onChange={(e) => setFormData(prev => ({ ...prev, calls_to_developers_status: e.target.value === 'yes' }))}
+                      className="px-3 py-2 border rounded-md bg-background"
+                    >
+                      <option value="yes">Yes</option>
+                      <option value="no">No</option>
+                    </select>
+                  </div>
+                  <Input
+                    value={formData.calls_to_developers_description}
+                    onChange={(e) => setFormData(prev => ({ ...prev, calls_to_developers_description: e.target.value }))}
+                    placeholder="Description (mentioned in workload report)"
+                  />
+                </div>
+              </div>
             </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Follow-ups Pending</label>
-              <Input
-                type="number"
-                value={formData.follow_ups_pending}
-                onChange={(e) => setFormData(prev => ({ ...prev, follow_ups_pending: parseInt(e.target.value) || 0 }))}
-                placeholder="0"
-              />
+          </div>
+
+          {/* Digital Marketing Section */}
+          <div className="mb-8">
+            <h3 className="text-lg font-semibold mb-4 text-primary">4. Digital Marketing Activities</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">4.1 WhatsApp Postings</label>
+                <Input
+                  type="number"
+                  value={formData.whatsapp_postings}
+                  onChange={(e) => setFormData(prev => ({ ...prev, whatsapp_postings: parseInt(e.target.value) || 0 }))}
+                  placeholder="0"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">4.2 Agents Added</label>
+                <Input
+                  type="number"
+                  value={formData.agents_added}
+                  onChange={(e) => setFormData(prev => ({ ...prev, agents_added: parseInt(e.target.value) || 0 }))}
+                  placeholder="0"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">4.3 Agents Contacted</label>
+                <Input
+                  type="number"
+                  value={formData.agents_contacted}
+                  onChange={(e) => setFormData(prev => ({ ...prev, agents_contacted: parseInt(e.target.value) || 0 }))}
+                  placeholder="2"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">4.4 Facebook Postings</label>
+                <div className="flex gap-2">
+                  <Input
+                    type="number"
+                    value={formData.facebook_postings}
+                    onChange={(e) => setFormData(prev => ({ ...prev, facebook_postings: parseInt(e.target.value) || 0 }))}
+                    placeholder="0"
+                    className="flex-1"
+                  />
+                  <select
+                    value={formData.facebook_postings_status ? 'yes' : 'no'}
+                    onChange={(e) => setFormData(prev => ({ ...prev, facebook_postings_status: e.target.value === 'yes' }))}
+                    className="px-3 py-2 border rounded-md bg-background"
+                  >
+                    <option value="yes">Yes</option>
+                    <option value="no">No</option>
+                  </select>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">4.5 Instagram Posting</label>
+                <Input
+                  type="number"
+                  value={formData.instagram_posting}
+                  onChange={(e) => setFormData(prev => ({ ...prev, instagram_posting: parseInt(e.target.value) || 0 }))}
+                  placeholder="0"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">4.6 99 Acres</label>
+                <div className="flex gap-2">
+                  <Input
+                    type="number"
+                    value={formData.acres_99_postings}
+                    onChange={(e) => setFormData(prev => ({ ...prev, acres_99_postings: parseInt(e.target.value) || 0 }))}
+                    placeholder="0"
+                    className="flex-1"
+                  />
+                  <select
+                    value={formData.acres_99_status ? 'yes' : 'no'}
+                    onChange={(e) => setFormData(prev => ({ ...prev, acres_99_status: e.target.value === 'yes' }))}
+                    className="px-3 py-2 border rounded-md bg-background"
+                  >
+                    <option value="yes">Yes</option>
+                    <option value="no">No</option>
+                  </select>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">4.7 Google Reviews</label>
+                <div className="flex gap-2">
+                  <Input
+                    type="number"
+                    value={formData.google_reviews}
+                    onChange={(e) => setFormData(prev => ({ ...prev, google_reviews: parseInt(e.target.value) || 0 }))}
+                    placeholder="0"
+                    className="flex-1"
+                  />
+                  <select
+                    value={formData.google_reviews_status ? 'yes' : 'no'}
+                    onChange={(e) => setFormData(prev => ({ ...prev, google_reviews_status: e.target.value === 'yes' }))}
+                    className="px-3 py-2 border rounded-md bg-background"
+                  >
+                    <option value="yes">Yes</option>
+                    <option value="no">No</option>
+                  </select>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">4.8 Surrendered Leads</label>
+                <div className="flex gap-2">
+                  <Input
+                    type="number"
+                    value={formData.surrendered_leads}
+                    onChange={(e) => setFormData(prev => ({ ...prev, surrendered_leads: parseInt(e.target.value) || 0 }))}
+                    placeholder="0"
+                    className="flex-1"
+                  />
+                  <select
+                    value={formData.surrendered_leads_status ? 'yes' : 'no'}
+                    onChange={(e) => setFormData(prev => ({ ...prev, surrendered_leads_status: e.target.value === 'yes' }))}
+                    className="px-3 py-2 border rounded-md bg-background"
+                  >
+                    <option value="yes">Yes</option>
+                    <option value="no">No</option>
+                  </select>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">4.9 MB Postings</label>
+                <Input
+                  type="number"
+                  value={formData.mb_postings}
+                  onChange={(e) => setFormData(prev => ({ ...prev, mb_postings: parseInt(e.target.value) || 0 }))}
+                  placeholder="0"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">4.10 Website Postings</label>
+                <Input
+                  type="number"
+                  value={formData.website_postings}
+                  onChange={(e) => setFormData(prev => ({ ...prev, website_postings: parseInt(e.target.value) || 0 }))}
+                  placeholder="0"
+                />
+              </div>
             </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Deals Closed</label>
-              <Input
-                type="number"
-                value={formData.deals_closed}
-                onChange={(e) => setFormData(prev => ({ ...prev, deals_closed: parseInt(e.target.value) || 0 }))}
-                placeholder="0"
-              />
+          </div>
+
+          {/* Email Communications Section */}
+          <div className="mb-8">
+            <h3 className="text-lg font-semibold mb-4 text-primary">5. Email Communications</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">5.1 Mails Sent</label>
+                <Input
+                  type="number"
+                  value={formData.mails_sent}
+                  onChange={(e) => setFormData(prev => ({ ...prev, mails_sent: parseInt(e.target.value) || 0 }))}
+                  placeholder="01"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">5.2 Cross Pitching Mails</label>
+                <Input
+                  type="number"
+                  value={formData.cross_pitching_mails}
+                  onChange={(e) => setFormData(prev => ({ ...prev, cross_pitching_mails: parseInt(e.target.value) || 0 }))}
+                  placeholder="0"
+                />
+              </div>
             </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Revenue Generated (₹)</label>
-              <Input
-                type="number"
-                value={formData.revenue_generated}
-                onChange={(e) => setFormData(prev => ({ ...prev, revenue_generated: parseInt(e.target.value) || 0 }))}
-                placeholder="0"
-              />
+          </div>
+
+          {/* Legacy Performance Metrics */}
+          <div className="mb-8">
+            <h3 className="text-lg font-semibold mb-4 text-primary">6. Performance Metrics</h3>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Leads Contacted</label>
+                <Input
+                  type="number"
+                  value={formData.leads_contacted}
+                  onChange={(e) => setFormData(prev => ({ ...prev, leads_contacted: parseInt(e.target.value) || 0 }))}
+                  placeholder="0"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Meetings Scheduled</label>
+                <Input
+                  type="number"
+                  value={formData.meetings_scheduled}
+                  onChange={(e) => setFormData(prev => ({ ...prev, meetings_scheduled: parseInt(e.target.value) || 0 }))}
+                  placeholder="0"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Site Visits</label>
+                <Input
+                  type="number"
+                  value={formData.site_visits}
+                  onChange={(e) => setFormData(prev => ({ ...prev, site_visits: parseInt(e.target.value) || 0 }))}
+                  placeholder="0"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Follow-ups Pending</label>
+                <Input
+                  type="number"
+                  value={formData.follow_ups_pending}
+                  onChange={(e) => setFormData(prev => ({ ...prev, follow_ups_pending: parseInt(e.target.value) || 0 }))}
+                  placeholder="0"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Deals Closed</label>
+                <Input
+                  type="number"
+                  value={formData.deals_closed}
+                  onChange={(e) => setFormData(prev => ({ ...prev, deals_closed: parseInt(e.target.value) || 0 }))}
+                  placeholder="0"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Revenue Generated (₹)</label>
+                <Input
+                  type="number"
+                  value={formData.revenue_generated}
+                  onChange={(e) => setFormData(prev => ({ ...prev, revenue_generated: parseInt(e.target.value) || 0 }))}
+                  placeholder="0"
+                />
+              </div>
             </div>
           </div>
 
@@ -375,11 +849,11 @@ export const IntegratedDailyReport: React.FC = () => {
               <TableRow>
                 <TableHead>Date</TableHead>
                 <TableHead>Reporter</TableHead>
-                <TableHead>Leads</TableHead>
-                <TableHead>Meetings</TableHead>
-                <TableHead>Visits</TableHead>
-                <TableHead>Deals</TableHead>
-                <TableHead>Revenue</TableHead>
+                <TableHead>Leads Reg.</TableHead>
+                <TableHead>Inventories</TableHead>
+                <TableHead>Site Visits</TableHead>
+                <TableHead>Agent Calls</TableHead>
+                <TableHead>Developer Calls</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -389,18 +863,20 @@ export const IntegratedDailyReport: React.FC = () => {
                   <TableCell>{format(new Date(report.generated_at), 'dd MMM')}</TableCell>
                   <TableCell>{report.reporter?.full_name || 'Unknown'}</TableCell>
                   <TableCell>
-                    <Badge variant="outline">{report.data?.leads_contacted || 0}</Badge>
+                    <Badge variant="outline">{report.data?.leads_registered || 0}</Badge>
                   </TableCell>
                   <TableCell>
-                    <Badge variant="outline">{report.data?.meetings_scheduled || 0}</Badge>
+                    <Badge variant="outline">{report.data?.inventories_found || 0}</Badge>
                   </TableCell>
                   <TableCell>
-                    <Badge variant="outline">{report.data?.site_visits || 0}</Badge>
+                    <Badge variant="outline">{report.data?.primary_sites_visited || 0}</Badge>
                   </TableCell>
                   <TableCell>
-                    <Badge variant="secondary">{report.data?.deals_closed || 0}</Badge>
+                    <Badge variant="secondary">{report.data?.calls_to_agents || 0}</Badge>
                   </TableCell>
-                  <TableCell>₹{(report.data?.revenue_generated || 0).toLocaleString()}</TableCell>
+                  <TableCell>
+                    <Badge variant="secondary">{report.data?.calls_to_developers || 0}</Badge>
+                  </TableCell>
                   <TableCell>
                     <Button
                       size="sm"
