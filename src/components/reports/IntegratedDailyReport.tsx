@@ -118,7 +118,7 @@ export const IntegratedDailyReport: React.FC = () => {
     const { data, error } = await supabase
       .from('reports')
       .select('*')
-      .eq('report_type', 'daily_report')
+      .eq('report_type', 'team_performance')
       .gte('generated_at', format(startOfMonth, 'yyyy-MM-dd'))
       .lte('generated_at', format(endOfMonth, 'yyyy-MM-dd'))
       .order('generated_at', { ascending: false });
@@ -154,7 +154,7 @@ export const IntegratedDailyReport: React.FC = () => {
 
     const reportData = {
       title: `Daily Report - ${format(selectedDate, 'dd MMM yyyy')}`,
-      report_type: 'daily_report',
+      report_type: 'team_performance',
       data: formData,
       generated_by: profile.id,
       filters: { report_date: format(selectedDate, 'yyyy-MM-dd') }
