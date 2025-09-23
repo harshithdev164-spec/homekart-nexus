@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { supabase } from '@/integrations/supabase/client';
-import { Plus, Search, Phone, Mail, MapPin, Calendar, Filter, Users, Upload, Database } from 'lucide-react';
+import { Plus, Search, Phone, Mail, MapPin, Calendar, Filter, Users, Upload, Database, CalendarDays, Clock, AlertCircle } from 'lucide-react';
 import { RealtimeIndicator } from '@/components/collaboration/RealtimeIndicator';
 import { LeadTransfer } from '@/components/leads/LeadTransfer';
 import { MessageTemplates } from '@/components/templates/MessageTemplates';
@@ -29,6 +29,9 @@ import {
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Calendar as CalendarComponent } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { format, isToday, isPast, parseISO, isWithinInterval, startOfDay, endOfDay } from 'date-fns';
 
 interface Lead {
   id: string;
@@ -60,6 +63,15 @@ const Leads: React.FC = () => {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [dateFilter, setDateFilter] = useState<{
+    startDate: Date | null;
+    endDate: Date | null;
+    followUpFilter: 'all' | 'today' | 'overdue' | 'upcoming';
+  }>({
+    startDate: null,
+    endDate: null,
+    followUpFilter: 'all'
+  });
   
   // Debounce search term to prevent excessive filtering
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
@@ -86,6 +98,7 @@ const Leads: React.FC = () => {
     preferred_location: '',
     property_type: '',
     notes: '',
+    next_followup: '',
   });
 
   // Memoized fetch function to prevent unnecessary re-renders
@@ -181,6 +194,7 @@ const Leads: React.FC = () => {
         budget_min: formData.budget_min ? parseFloat(formData.budget_min) : null,
         budget_max: formData.budget_max ? parseFloat(formData.budget_max) : null,
         property_type: formData.property_type as 'apartment' | 'villa' | 'plot' | 'commercial' | 'office' | 'warehouse' | undefined,
+        next_followup: formData.next_followup ? new Date(formData.next_followup).toISOString() : null,
         created_by: profile.id,
       };
 
@@ -214,6 +228,7 @@ const Leads: React.FC = () => {
         preferred_location: '',
         property_type: '',
         notes: '',
+        next_followup: '',
       });
         fetchLeads();
       setIsCreateDialogOpen(false);
@@ -227,6 +242,7 @@ const Leads: React.FC = () => {
         preferred_location: '',
         property_type: '',
         notes: '',
+        next_followup: '',
       });
       // Don't call fetchLeads here as real-time will handle it
     } catch (error) {
@@ -247,25 +263,73 @@ const Leads: React.FC = () => {
     }
   };
 
-  // Memoized filtered leads with debounced search
+  // Memoized filtered leads with debounced search and date filters
   const filteredLeads = useMemo(() => {
-    if (!debouncedSearchTerm) return leads;
+    let filtered = leads;
     
-    const searchLower = debouncedSearchTerm.toLowerCase();
-    return leads.filter(lead =>
-      lead.name.toLowerCase().includes(searchLower) ||
-      lead.phone.includes(debouncedSearchTerm) ||
-      (lead.email && lead.email.toLowerCase().includes(searchLower))
-    );
-  }, [leads, debouncedSearchTerm]);
+    // Apply search filter
+    if (debouncedSearchTerm) {
+      const searchLower = debouncedSearchTerm.toLowerCase();
+      filtered = filtered.filter(lead =>
+        lead.name.toLowerCase().includes(searchLower) ||
+        lead.phone.includes(debouncedSearchTerm) ||
+        (lead.email && lead.email.toLowerCase().includes(searchLower))
+      );
+    }
+    
+    // Apply date range filter
+    if (dateFilter.startDate && dateFilter.endDate) {
+      filtered = filtered.filter(lead => {
+        const createdDate = parseISO(lead.created_at);
+        return isWithinInterval(createdDate, {
+          start: startOfDay(dateFilter.startDate!),
+          end: endOfDay(dateFilter.endDate!)
+        });
+      });
+    }
+    
+    // Apply follow-up filter
+    if (dateFilter.followUpFilter !== 'all') {
+      filtered = filtered.filter(lead => {
+        if (!lead.next_followup) return dateFilter.followUpFilter === 'all';
+        
+        const followUpDate = parseISO(lead.next_followup);
+        const today = new Date();
+        
+        switch (dateFilter.followUpFilter) {
+          case 'today':
+            return isToday(followUpDate);
+          case 'overdue':
+            return isPast(followUpDate) && !isToday(followUpDate);
+          case 'upcoming':
+            return followUpDate > today;
+          default:
+            return true;
+        }
+      });
+    }
+    
+    return filtered;
+  }, [leads, debouncedSearchTerm, dateFilter]);
 
   // Memoized stats to prevent recalculation on every render
-  const stats = useMemo(() => ({
-    total: leads.length,
-    new: leads.filter(lead => lead.status === 'new').length,
-    active: leads.filter(lead => ['qualified', 'proposal', 'negotiation'].includes(lead.status)).length,
-    closed_won: leads.filter(lead => lead.status === 'closed_won').length,
-  }), [leads]);
+  const stats = useMemo(() => {
+    const todayFollowUps = leads.filter(lead => 
+      lead.next_followup && isToday(parseISO(lead.next_followup))
+    );
+    const overdueFollowUps = leads.filter(lead => 
+      lead.next_followup && isPast(parseISO(lead.next_followup)) && !isToday(parseISO(lead.next_followup))
+    );
+    
+    return {
+      total: leads.length,
+      new: leads.filter(lead => lead.status === 'new').length,
+      active: leads.filter(lead => ['qualified', 'proposal', 'negotiation'].includes(lead.status)).length,
+      closed_won: leads.filter(lead => lead.status === 'closed_won').length,
+      todayFollowUps: todayFollowUps.length,
+      overdueFollowUps: overdueFollowUps.length,
+    };
+  }, [leads]);
 
   if (loading) {
     return (
@@ -430,14 +494,25 @@ const Leads: React.FC = () => {
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="notes">Notes</Label>
-                <Textarea
-                  id="notes"
-                  placeholder="Additional notes about the lead"
-                  value={formData.notes}
-                  onChange={(e) => setFormData({...formData, notes: e.target.value})}
-                />
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="notes">Notes</Label>
+                  <Textarea
+                    id="notes"
+                    placeholder="Additional notes about the lead"
+                    value={formData.notes}
+                    onChange={(e) => setFormData({...formData, notes: e.target.value})}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="next_followup">Next Follow-up Date</Label>
+                  <Input
+                    id="next_followup"
+                    type="datetime-local"
+                    value={formData.next_followup}
+                    onChange={(e) => setFormData({...formData, next_followup: e.target.value})}
+                  />
+                </div>
               </div>
 
               <DialogFooter>
@@ -450,8 +525,8 @@ const Leads: React.FC = () => {
       </div>
 
       {/* Search and Filters */}
-      <div className="flex items-center gap-4">
-        <div className="relative flex-1">
+      <div className="flex items-center gap-4 flex-wrap">
+        <div className="relative flex-1 min-w-[300px]">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Search leads by name, phone, or email..."
@@ -460,9 +535,71 @@ const Leads: React.FC = () => {
             className="pl-10"
           />
         </div>
-        <Button variant="outline" size="icon">
-          <Filter className="h-4 w-4" />
-        </Button>
+        
+        {/* Date Range Filter */}
+        <div className="flex items-center gap-2">
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" className="gap-2">
+                <CalendarDays className="h-4 w-4" />
+                {dateFilter.startDate && dateFilter.endDate
+                  ? `${format(dateFilter.startDate, 'MMM dd')} - ${format(dateFilter.endDate, 'MMM dd')}`
+                  : 'Date Range'
+                }
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <div className="p-3 space-y-2">
+                <div className="flex gap-2">
+                  <div>
+                    <p className="text-sm font-medium mb-2">Start Date</p>
+                    <CalendarComponent
+                      mode="single"
+                      selected={dateFilter.startDate || undefined}
+                      onSelect={(date) => setDateFilter(prev => ({ ...prev, startDate: date || null }))}
+                    />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium mb-2">End Date</p>
+                    <CalendarComponent
+                      mode="single"
+                      selected={dateFilter.endDate || undefined}
+                      onSelect={(date) => setDateFilter(prev => ({ ...prev, endDate: date || null }))}
+                      disabled={(date) => dateFilter.startDate ? date < dateFilter.startDate : false}
+                    />
+                  </div>
+                </div>
+                <div className="flex gap-2 pt-2">
+                  <Button 
+                    size="sm" 
+                    variant="outline"
+                    onClick={() => setDateFilter(prev => ({ ...prev, startDate: null, endDate: null }))}
+                  >
+                    Clear
+                  </Button>
+                </div>
+              </div>
+            </PopoverContent>
+          </Popover>
+        </div>
+
+        {/* Follow-up Filter */}
+        <Select 
+          value={dateFilter.followUpFilter} 
+          onValueChange={(value: 'all' | 'today' | 'overdue' | 'upcoming') => 
+            setDateFilter(prev => ({ ...prev, followUpFilter: value }))
+          }
+        >
+          <SelectTrigger className="w-[140px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Follow-ups</SelectItem>
+            <SelectItem value="today">Today's Follow-ups</SelectItem>
+            <SelectItem value="overdue">Overdue</SelectItem>
+            <SelectItem value="upcoming">Upcoming</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       {/* Lead Assignment Indicator */}
@@ -478,7 +615,7 @@ const Leads: React.FC = () => {
       />
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-6">
         <Card>
           <CardContent className="pt-6">
             <div className="text-2xl font-bold">{stats.total}</div>
@@ -501,6 +638,24 @@ const Leads: React.FC = () => {
           <CardContent className="pt-6">
             <div className="text-2xl font-bold">{stats.closed_won}</div>
             <p className="text-xs text-muted-foreground">Closed Won</p>
+          </CardContent>
+        </Card>
+        <Card className="border-orange-200 bg-orange-50">
+          <CardContent className="pt-6">
+            <div className="text-2xl font-bold text-orange-600 flex items-center gap-2">
+              {stats.todayFollowUps}
+              <Clock className="h-5 w-5" />
+            </div>
+            <p className="text-xs text-orange-600">Today's Follow-ups</p>
+          </CardContent>
+        </Card>
+        <Card className="border-red-200 bg-red-50">
+          <CardContent className="pt-6">
+            <div className="text-2xl font-bold text-red-600 flex items-center gap-2">
+              {stats.overdueFollowUps}
+              <AlertCircle className="h-5 w-5" />
+            </div>
+            <p className="text-xs text-red-600">Overdue Follow-ups</p>
           </CardContent>
         </Card>
       </div>
@@ -564,6 +719,20 @@ const Leads: React.FC = () => {
                   <Calendar className="h-3 w-3" />
                   Created: {new Date(lead.created_at).toLocaleDateString()}
                 </div>
+                {lead.next_followup && (
+                  <div className={`flex items-center gap-2 text-xs ${
+                    isToday(parseISO(lead.next_followup)) 
+                      ? 'text-orange-600 font-medium' 
+                      : isPast(parseISO(lead.next_followup)) && !isToday(parseISO(lead.next_followup))
+                      ? 'text-red-600 font-medium'
+                      : 'text-muted-foreground'
+                  }`}>
+                    <Clock className="h-3 w-3" />
+                    Follow-up: {new Date(lead.next_followup).toLocaleDateString()}
+                    {isToday(parseISO(lead.next_followup)) && <span className="text-orange-600">(Today)</span>}
+                    {isPast(parseISO(lead.next_followup)) && !isToday(parseISO(lead.next_followup)) && <span className="text-red-600">(Overdue)</span>}
+                  </div>
+                )}
                 {lead.notes && (
                   <p className="text-sm text-muted-foreground line-clamp-2">
                     {lead.notes}
