@@ -35,7 +35,7 @@ const Reports: React.FC = () => {
         .from('reports')
         .select(`
           *,
-          profiles!inner(full_name, role)
+          profiles!reports_generated_by_fkey(full_name, role)
         `)
         .eq('report_type', 'team_performance')
         .order('generated_at', { ascending: false })
