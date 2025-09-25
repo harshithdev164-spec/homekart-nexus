@@ -40,7 +40,7 @@ const Dashboard: React.FC = () => {
         .from('reports')
         .select(`
           *,
-          profiles!reports_generated_by_fkey(full_name, role)
+          profiles!inner(full_name, role)
         `)
         .eq('report_type', 'team_performance')
         .gte('generated_at', sevenDaysAgo.toISOString())
