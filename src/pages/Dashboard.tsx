@@ -163,7 +163,7 @@ const Dashboard: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="w-full max-w-full space-y-6">
       <div>
         <h1 className="text-3xl font-bold">CRM Dashboard</h1>
         <p className="text-muted-foreground">Manage your daily tasks, reports, and visits</p>

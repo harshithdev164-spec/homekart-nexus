@@ -98,7 +98,7 @@ export const Sidebar: React.FC = () => {
   );
 
   return (
-    <div className="flex h-full w-64 flex-col bg-card border-r border-border">
+    <div className="flex h-full w-64 flex-shrink-0 flex-col bg-card border-r border-border">
       <div className="flex-1 flex flex-col pt-5 pb-4 overflow-y-auto">
         <nav className="mt-5 flex-1 px-2 space-y-1">
           {filteredNavigation.map((item) => {

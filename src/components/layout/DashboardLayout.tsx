@@ -32,9 +32,9 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
       <NotificationSystem />
       <EnhancedNotificationCenter />
       <CookieConsent />
-      <div className="flex h-[calc(100vh-73px)]">
+      <div className="flex h-[calc(100vh-73px)] overflow-hidden">
         <Sidebar />
-        <main className="flex-1 overflow-y-auto p-6">
+        <main className="flex-1 overflow-y-auto overflow-x-hidden p-6">
           {children}
         </main>
       </div>
