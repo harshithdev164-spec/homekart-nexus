@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { TodoPlanner } from '@/components/tasks/TodoPlanner';
 import { IntegratedDailyReport } from '@/components/reports/IntegratedDailyReport';
 import { VisitScheduler } from '@/components/scheduling/VisitScheduler';
@@ -18,7 +17,16 @@ const Dashboard: React.FC = () => {
   const { profile } = useAuth();
   const { toast } = useToast();
   const [teamReports, setTeamReports] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loadingTeamReports, setLoadingTeamReports] = useState(false);
+  
+  // Performance metrics state
+  const [performanceMetrics, setPerformanceMetrics] = useState([
+    { name: 'Leads Called', value: 0, target: 10, weight: 20 },
+    { name: 'Follow Ups', value: 0, target: 30, weight: 30 },
+    { name: 'Site Visits', value: 0, target: 5, weight: 25 },
+    { name: 'Calls to Agents', value: 0, target: 10, weight: 15 },
+    { name: 'Inventories Found', value: 0, target: 15, weight: 10 },
+  ]);
 
   // Check if user is admin or HR (manager)
   const canViewTeamReports = profile?.role === 'admin' || profile?.role === 'manager';
@@ -27,10 +35,51 @@ const Dashboard: React.FC = () => {
     if (canViewTeamReports) {
       fetchTeamReports();
     }
-  }, [canViewTeamReports]);
+    if (profile) {
+      fetchUserPerformance();
+    }
+  }, [canViewTeamReports, profile]);
+
+  const fetchUserPerformance = async () => {
+    if (!profile) return;
+    
+    try {
+      const today = new Date();
+      const { data, error } = await supabase
+        .from('reports')
+        .select('*')
+        .eq('generated_by', profile.id)
+        .eq('report_type', 'team_performance')
+        .gte('generated_at', format(today, 'yyyy-MM-dd'))
+        .maybeSingle();
+
+      if (data && data.data) {
+        const reportData = data.data as any;
+        setPerformanceMetrics([
+          { name: 'Leads Called', value: reportData.leads_called || 0, target: 10, weight: 20 },
+          { name: 'Follow Ups', value: reportData.follow_ups || 0, target: 30, weight: 30 },
+          { name: 'Site Visits', value: (reportData.primary_sites_visited || 0) + (reportData.client_visit || 0), target: 5, weight: 25 },
+          { name: 'Calls to Agents', value: reportData.calls_to_agents || 0, target: 10, weight: 15 },
+          { name: 'Inventories Found', value: reportData.inventories_found || 0, target: 15, weight: 10 },
+        ]);
+      }
+    } catch (error) {
+      console.error('Error fetching performance:', error);
+    }
+  };
+
+  const calculatePerformanceScore = () => {
+    let score = 0;
+    performanceMetrics.forEach(metric => {
+      if (metric.value >= metric.target) {
+        score += metric.weight;
+      }
+    });
+    return score;
+  };
 
   const fetchTeamReports = async () => {
-    setLoading(true);
+    setLoadingTeamReports(true);
     try {
       // Get reports from the last 7 days
       const sevenDaysAgo = new Date();
@@ -60,7 +109,7 @@ const Dashboard: React.FC = () => {
     } catch (error) {
       console.error('Error:', error);
     } finally {
-      setLoading(false);
+      setLoadingTeamReports(false);
     }
   };
 
@@ -114,226 +163,153 @@ const Dashboard: React.FC = () => {
   };
 
   return (
-    <DashboardLayout>
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold">CRM Dashboard</h1>
-          <p className="text-muted-foreground">Manage your daily tasks, reports, and visits</p>
-        </div>
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-3xl font-bold">CRM Dashboard</h1>
+        <p className="text-muted-foreground">Manage your daily tasks, reports, and visits</p>
+      </div>
 
-        <Tabs defaultValue="planner" className="w-full">
-          <TabsList className={`grid w-full ${canViewTeamReports ? 'grid-cols-5' : 'grid-cols-4'}`}>
-            <TabsTrigger value="planner" className="flex items-center gap-2">
-              <CheckSquare className="h-4 w-4" />
-              Planner
-            </TabsTrigger>
-            <TabsTrigger value="reports" className="flex items-center gap-2">
-              <FileText className="h-4 w-4" />
-              Reports
-            </TabsTrigger>
-            <TabsTrigger value="visits" className="flex items-center gap-2">
-              <Calendar className="h-4 w-4" />
-              Visits
-            </TabsTrigger>
-            <TabsTrigger value="analytics" className="flex items-center gap-2">
-              <BarChart3 className="h-4 w-4" />
-              Analytics
-            </TabsTrigger>
-            {canViewTeamReports && (
-              <TabsTrigger value="team-reports" className="flex items-center gap-2">
-                <Users className="h-4 w-4" />
-                Team Reports
-              </TabsTrigger>
-            )}
-          </TabsList>
-          
-          <TabsContent value="planner">
-            <TodoPlanner />
-          </TabsContent>
-          
-          <TabsContent value="reports">
-            <IntegratedDailyReport />
-          </TabsContent>
-          
-          <TabsContent value="visits">
-            <VisitScheduler />
-          </TabsContent>
-          
-          <TabsContent value="analytics">
+      <Tabs defaultValue="planner" className="w-full">
+        <TabsList className={`grid w-full ${canViewTeamReports ? 'grid-cols-5' : 'grid-cols-4'}`}>
+          <TabsTrigger value="planner">Daily Planner</TabsTrigger>
+          <TabsTrigger value="reports">Daily Report</TabsTrigger>
+          <TabsTrigger value="visits">Site Visits</TabsTrigger>
+          <TabsTrigger value="performance">My Performance</TabsTrigger>
+          {canViewTeamReports && (
+            <TabsTrigger value="team-reports">Reports from Team</TabsTrigger>
+          )}
+        </TabsList>
+
+        <TabsContent value="planner" className="space-y-0">
+          <TodoPlanner />
+        </TabsContent>
+
+        <TabsContent value="reports" className="space-y-0">
+          <IntegratedDailyReport />
+        </TabsContent>
+
+        <TabsContent value="visits" className="space-y-0">
+          <VisitScheduler />
+        </TabsContent>
+
+        <TabsContent value="performance" className="space-y-0">
+          <Card>
+            <CardHeader>
+              <CardTitle>Performance Score</CardTitle>
+              <CardDescription>Based on your daily report metrics</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium">Overall Score</span>
+                  <Badge variant="outline" className="text-lg">
+                    {calculatePerformanceScore()}/100
+                  </Badge>
+                </div>
+                <div className="space-y-2">
+                  {performanceMetrics.map((metric) => (
+                    <div key={metric.name} className="flex items-center justify-between">
+                      <span className="text-sm">{metric.name}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-muted-foreground">{metric.value}</span>
+                        <Badge variant={metric.value >= metric.target ? "default" : "secondary"}>
+                          {metric.value >= metric.target ? "✓" : "✗"}
+                        </Badge>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {canViewTeamReports && (
+          <TabsContent value="team-reports" className="space-y-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-2xl font-bold">Team Daily Reports</h2>
+                <p className="text-muted-foreground">View reports from all team members</p>
+              </div>
+              <Button onClick={exportTeamReports} variant="outline">
+                <Download className="mr-2 h-4 w-4" />
+                Export Reports
+              </Button>
+            </div>
+
             <Card>
               <CardHeader>
-                <CardTitle>Analytics Dashboard</CardTitle>
-                <CardDescription>View your performance metrics and insights</CardDescription>
+                <CardTitle>Recent Team Reports</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-muted-foreground">Analytics dashboard coming soon...</p>
+                {loadingTeamReports ? (
+                  <div className="flex items-center justify-center h-32">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                  </div>
+                ) : teamReports.length > 0 ? (
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Date</TableHead>
+                          <TableHead>Employee</TableHead>
+                          <TableHead>Role</TableHead>
+                          <TableHead>Leads</TableHead>
+                          <TableHead>Calls</TableHead>
+                          <TableHead>Follow Ups</TableHead>
+                          <TableHead>Site Visits</TableHead>
+                          <TableHead>Score</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {teamReports.map((report) => {
+                          const data = report.data || {};
+                          const reportDate = new Date(report.generated_at);
+                          
+                          return (
+                            <TableRow key={report.id}>
+                              <TableCell>
+                                {reportDate.toLocaleDateString()}
+                              </TableCell>
+                              <TableCell className="font-medium">
+                                {report.profiles?.full_name || 'Unknown'}
+                              </TableCell>
+                              <TableCell>
+                                <Badge variant="outline">{report.profiles?.role || 'Unknown'}</Badge>
+                              </TableCell>
+                              <TableCell>{data.leads_registered || 0}</TableCell>
+                              <TableCell>{data.leads_called || 0}</TableCell>
+                              <TableCell>{data.follow_ups || 0}</TableCell>
+                              <TableCell>
+                                {(data.primary_sites_visited || 0) + (data.client_visit || 0)}
+                              </TableCell>
+                              <TableCell>
+                                <Badge variant="default">
+                                  {/* Calculate score based on metrics */}
+                                  {Math.min(100, 
+                                    (data.leads_registered || 0) * 10 + 
+                                    (data.leads_called || 0) * 5 + 
+                                    (data.follow_ups || 0)
+                                  )}
+                                </Badge>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    No team reports found for the last 7 days.
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
-
-          {canViewTeamReports && (
-            <TabsContent value="team-reports" className="space-y-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-2xl font-bold">Reports from Team</h2>
-                  <p className="text-muted-foreground">Monitor daily reports and performance from all team members</p>
-                </div>
-                <Button onClick={exportTeamReports} variant="outline">
-                  <Download className="mr-2 h-4 w-4" />
-                  Export Reports
-                </Button>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                <Card>
-                  <CardContent className="pt-6">
-                    <div className="text-2xl font-bold">{teamReports.length}</div>
-                    <p className="text-xs text-muted-foreground">Reports This Week</p>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardContent className="pt-6">
-                    <div className="text-2xl font-bold">
-                      {teamReports.filter(r => new Date(r.generated_at).toDateString() === new Date().toDateString()).length}
-                    </div>
-                    <p className="text-xs text-muted-foreground">Reports Today</p>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardContent className="pt-6">
-                    <div className="text-2xl font-bold">
-                      {Math.round(teamReports.reduce((acc, r) => acc + getReportScore(r.data || {}), 0) / Math.max(teamReports.length, 1))}
-                    </div>
-                    <p className="text-xs text-muted-foreground">Avg Performance Score</p>
-                  </CardContent>
-                </Card>
-              </div>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Users className="h-5 w-5" />
-                    Recent Team Reports (Last 7 Days)
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {loading ? (
-                    <div className="flex items-center justify-center h-32">
-                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                    </div>
-                  ) : teamReports.length > 0 ? (
-                    <div className="overflow-x-auto">
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Date</TableHead>
-                            <TableHead>Employee</TableHead>
-                            <TableHead>Role</TableHead>
-                            <TableHead>Leads</TableHead>
-                            <TableHead>Calls</TableHead>
-                            <TableHead>Follow-ups</TableHead>
-                            <TableHead>Inventories</TableHead>
-                            <TableHead>Visits</TableHead>
-                            <TableHead>Performance</TableHead>
-                            <TableHead>Status</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {teamReports.map((report) => {
-                            const data = report.data || {};
-                            const reportDate = new Date(report.generated_at);
-                            const isToday = new Date().toDateString() === reportDate.toDateString();
-                            const performanceScore = getReportScore(data);
-                            
-                            return (
-                              <TableRow key={report.id}>
-                                <TableCell>
-                                  <div className="flex items-center gap-2">
-                                    <Calendar className="h-4 w-4 text-muted-foreground" />
-                                    {reportDate.toLocaleDateString()}
-                                  </div>
-                                </TableCell>
-                                <TableCell className="font-medium">
-                                  {report.profiles?.full_name || 'Unknown'}
-                                </TableCell>
-                                <TableCell>
-                                  <Badge variant="outline">{report.profiles?.role || 'Unknown'}</Badge>
-                                </TableCell>
-                                <TableCell>
-                                  <div className="flex items-center gap-1">
-                                    <span>{data.leads_registered || 0}</span>
-                                    {(data.leads_registered || 0) > 0 && (
-                                      <Badge className="bg-green-100 text-green-800 text-xs px-1">R</Badge>
-                                    )}
-                                    <span className="text-muted-foreground">/</span>
-                                    <span>{data.leads_called || 0}</span>
-                                    {data.leads_called_status && (
-                                      <Badge className="bg-blue-100 text-blue-800 text-xs px-1">C</Badge>
-                                    )}
-                                  </div>
-                                </TableCell>
-                                <TableCell>
-                                  <div className="flex items-center gap-2">
-                                    {(data.calls_to_agents || 0) + (data.calls_to_developers || 0)}
-                                    {(data.calls_to_agents_status || data.calls_to_developers_status) && (
-                                      <Badge className="bg-green-100 text-green-800 text-xs">✓</Badge>
-                                    )}
-                                  </div>
-                                </TableCell>
-                                <TableCell>
-                                  <div className="flex items-center gap-2">
-                                    {data.follow_ups || 0}
-                                    {data.follow_ups_status && (
-                                      <Badge className="bg-green-100 text-green-800 text-xs">✓</Badge>
-                                    )}
-                                  </div>
-                                </TableCell>
-                                <TableCell>
-                                  <div className="flex items-center gap-2">
-                                    {data.inventories_found || 0}
-                                    {data.inventories_found_status && (
-                                      <Badge className="bg-green-100 text-green-800 text-xs">✓</Badge>
-                                    )}
-                                  </div>
-                                </TableCell>
-                                <TableCell>{(data.primary_sites_visited || 0) + (data.client_visit || 0)}</TableCell>
-                                <TableCell>
-                                  <div className="flex items-center gap-2">
-                                    <Badge 
-                                      variant={performanceScore >= 6 ? 'default' : performanceScore >= 3 ? 'secondary' : 'destructive'}
-                                    >
-                                      {performanceScore}/8
-                                    </Badge>
-                                    {performanceScore < 3 && (
-                                      <AlertCircle className="h-4 w-4 text-red-500" />
-                                    )}
-                                  </div>
-                                </TableCell>
-                                <TableCell>
-                                  <Badge variant={isToday ? 'default' : 'secondary'}>
-                                    {isToday ? 'Today' : 'Submitted'}
-                                  </Badge>
-                                </TableCell>
-                              </TableRow>
-                            );
-                          })}
-                        </TableBody>
-                      </Table>
-                    </div>
-                  ) : (
-                    <div className="text-center py-8 text-muted-foreground">
-                      <Users className="h-12 w-12 mx-auto mb-4 text-muted-foreground/50" />
-                      <p>No team reports found for the last 7 days.</p>
-                      <p className="text-sm">Team members need to submit their daily reports.</p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </TabsContent>
-          )}
-        </Tabs>
-      </div>
-    </DashboardLayout>
+        )}
+      </Tabs>
+    </div>
   );
 };
 

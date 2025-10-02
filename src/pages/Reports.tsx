@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { ReportGenerator } from '@/components/reports/ReportGenerator';
 import { IntegratedDailyReport } from '@/components/reports/IntegratedDailyReport';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -89,156 +88,154 @@ const Reports: React.FC = () => {
   };
 
   return (
-    <DashboardLayout>
-      <div className="p-6">
-        <Tabs defaultValue="daily" className="space-y-6">
-          <TabsList className={`grid w-full ${canViewTeamReports ? 'grid-cols-3' : 'grid-cols-2'}`}>
-            <TabsTrigger value="daily" className="flex items-center gap-2">
-              <FileText className="h-4 w-4" />
-              Daily Reports
-            </TabsTrigger>
-            <TabsTrigger value="analytics" className="flex items-center gap-2">
-              <BarChart3 className="h-4 w-4" />
-              Analytics & Reports
-            </TabsTrigger>
-            {canViewTeamReports && (
-              <TabsTrigger value="team" className="flex items-center gap-2">
-                <Users className="h-4 w-4" />
-                Team Reports
-              </TabsTrigger>
-            )}
-          </TabsList>
-          
-          <TabsContent value="daily" className="space-y-0">
-            <IntegratedDailyReport />
-          </TabsContent>
-          
-          <TabsContent value="analytics" className="space-y-0">
-            <ReportGenerator />
-          </TabsContent>
-
+    <div className="p-6">
+      <Tabs defaultValue="daily" className="space-y-6">
+        <TabsList className={`grid w-full ${canViewTeamReports ? 'grid-cols-3' : 'grid-cols-2'}`}>
+          <TabsTrigger value="daily" className="flex items-center gap-2">
+            <FileText className="h-4 w-4" />
+            Daily Reports
+          </TabsTrigger>
+          <TabsTrigger value="analytics" className="flex items-center gap-2">
+            <BarChart3 className="h-4 w-4" />
+            Analytics & Reports
+          </TabsTrigger>
           {canViewTeamReports && (
-            <TabsContent value="team" className="space-y-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-2xl font-bold">Team Daily Reports</h2>
-                  <p className="text-muted-foreground">View and manage daily reports from all team members</p>
-                </div>
-                <Button onClick={exportTeamReports} variant="outline">
-                  <Download className="mr-2 h-4 w-4" />
-                  Export Team Reports
-                </Button>
-              </div>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Users className="h-5 w-5" />
-                    Team Daily Reports Overview
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {loading ? (
-                    <div className="flex items-center justify-center h-32">
-                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                    </div>
-                  ) : teamReports.length > 0 ? (
-                    <div className="overflow-x-auto">
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Date</TableHead>
-                            <TableHead>Employee</TableHead>
-                            <TableHead>Role</TableHead>
-                            <TableHead>Leads Registered</TableHead>
-                            <TableHead>Leads Called</TableHead>
-                            <TableHead>Follow Ups</TableHead>
-                            <TableHead>Inventories</TableHead>
-                            <TableHead>Site Visits</TableHead>
-                            <TableHead>Agent Calls</TableHead>
-                            <TableHead>Developer Calls</TableHead>
-                            <TableHead>Digital Marketing</TableHead>
-                            <TableHead>Status</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {teamReports.map((report) => {
-                            const data = report.data || {};
-                            const reportDate = new Date(report.generated_at);
-                            const isToday = new Date().toDateString() === reportDate.toDateString();
-                            
-                            return (
-                              <TableRow key={report.id}>
-                                <TableCell>
-                                  <div className="flex items-center gap-2">
-                                    <Calendar className="h-4 w-4 text-muted-foreground" />
-                                    {reportDate.toLocaleDateString()}
-                                  </div>
-                                </TableCell>
-                                <TableCell className="font-medium">
-                                  {report.profiles?.full_name || 'Unknown'}
-                                </TableCell>
-                                <TableCell>
-                                  <Badge variant="outline">{report.profiles?.role || 'Unknown'}</Badge>
-                                </TableCell>
-                                <TableCell>{data.leads_registered || 0}</TableCell>
-                                <TableCell>
-                                  <div className="flex items-center gap-2">
-                                    {data.leads_called || 0}
-                                    {data.leads_called_status && <Badge className="bg-green-100 text-green-800 text-xs">✓</Badge>}
-                                  </div>
-                                </TableCell>
-                                <TableCell>
-                                  <div className="flex items-center gap-2">
-                                    {data.follow_ups || 0}
-                                    {data.follow_ups_status && <Badge className="bg-green-100 text-green-800 text-xs">✓</Badge>}
-                                  </div>
-                                </TableCell>
-                                <TableCell>
-                                  <div className="flex items-center gap-2">
-                                    {data.inventories_found || 0}
-                                    {data.inventories_found_status && <Badge className="bg-green-100 text-green-800 text-xs">✓</Badge>}
-                                  </div>
-                                </TableCell>
-                                <TableCell>{(data.primary_sites_visited || 0) + (data.client_visit || 0)}</TableCell>
-                                <TableCell>
-                                  <div className="flex items-center gap-2">
-                                    {data.calls_to_agents || 0}
-                                    {data.calls_to_agents_status && <Badge className="bg-green-100 text-green-800 text-xs">✓</Badge>}
-                                  </div>
-                                </TableCell>
-                                <TableCell>
-                                  <div className="flex items-center gap-2">
-                                    {data.calls_to_developers || 0}
-                                    {data.calls_to_developers_status && <Badge className="bg-green-100 text-green-800 text-xs">✓</Badge>}
-                                  </div>
-                                </TableCell>
-                                <TableCell>
-                                  {(data.whatsapp_postings || 0) + (data.facebook_postings || 0) + (data.instagram_posting || 0)}
-                                </TableCell>
-                                <TableCell>
-                                  <Badge variant={isToday ? 'default' : 'secondary'}>
-                                    {isToday ? 'Today' : 'Submitted'}
-                                  </Badge>
-                                </TableCell>
-                              </TableRow>
-                            );
-                          })}
-                        </TableBody>
-                      </Table>
-                    </div>
-                  ) : (
-                    <div className="text-center py-8 text-muted-foreground">
-                      No team reports found. Team members need to submit their daily reports first.
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </TabsContent>
+            <TabsTrigger value="team" className="flex items-center gap-2">
+              <Users className="h-4 w-4" />
+              Team Reports
+            </TabsTrigger>
           )}
-        </Tabs>
-      </div>
-    </DashboardLayout>
+        </TabsList>
+        
+        <TabsContent value="daily" className="space-y-0">
+          <IntegratedDailyReport />
+        </TabsContent>
+        
+        <TabsContent value="analytics" className="space-y-0">
+          <ReportGenerator />
+        </TabsContent>
+
+        {canViewTeamReports && (
+          <TabsContent value="team" className="space-y-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-2xl font-bold">Team Daily Reports</h2>
+                <p className="text-muted-foreground">View and manage daily reports from all team members</p>
+              </div>
+              <Button onClick={exportTeamReports} variant="outline">
+                <Download className="mr-2 h-4 w-4" />
+                Export Team Reports
+              </Button>
+            </div>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Users className="h-5 w-5" />
+                  Team Daily Reports Overview
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {loading ? (
+                  <div className="flex items-center justify-center h-32">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                  </div>
+                ) : teamReports.length > 0 ? (
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Date</TableHead>
+                          <TableHead>Employee</TableHead>
+                          <TableHead>Role</TableHead>
+                          <TableHead>Leads Registered</TableHead>
+                          <TableHead>Leads Called</TableHead>
+                          <TableHead>Follow Ups</TableHead>
+                          <TableHead>Inventories</TableHead>
+                          <TableHead>Site Visits</TableHead>
+                          <TableHead>Agent Calls</TableHead>
+                          <TableHead>Developer Calls</TableHead>
+                          <TableHead>Digital Marketing</TableHead>
+                          <TableHead>Status</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {teamReports.map((report) => {
+                          const data = report.data || {};
+                          const reportDate = new Date(report.generated_at);
+                          const isToday = new Date().toDateString() === reportDate.toDateString();
+                          
+                          return (
+                            <TableRow key={report.id}>
+                              <TableCell>
+                                <div className="flex items-center gap-2">
+                                  <Calendar className="h-4 w-4 text-muted-foreground" />
+                                  {reportDate.toLocaleDateString()}
+                                </div>
+                              </TableCell>
+                              <TableCell className="font-medium">
+                                {report.profiles?.full_name || 'Unknown'}
+                              </TableCell>
+                              <TableCell>
+                                <Badge variant="outline">{report.profiles?.role || 'Unknown'}</Badge>
+                              </TableCell>
+                              <TableCell>{data.leads_registered || 0}</TableCell>
+                              <TableCell>
+                                <div className="flex items-center gap-2">
+                                  {data.leads_called || 0}
+                                  {data.leads_called_status && <Badge className="bg-green-100 text-green-800 text-xs">✓</Badge>}
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <div className="flex items-center gap-2">
+                                  {data.follow_ups || 0}
+                                  {data.follow_ups_status && <Badge className="bg-green-100 text-green-800 text-xs">✓</Badge>}
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <div className="flex items-center gap-2">
+                                  {data.inventories_found || 0}
+                                  {data.inventories_found_status && <Badge className="bg-green-100 text-green-800 text-xs">✓</Badge>}
+                                </div>
+                              </TableCell>
+                              <TableCell>{(data.primary_sites_visited || 0) + (data.client_visit || 0)}</TableCell>
+                              <TableCell>
+                                <div className="flex items-center gap-2">
+                                  {data.calls_to_agents || 0}
+                                  {data.calls_to_agents_status && <Badge className="bg-green-100 text-green-800 text-xs">✓</Badge>}
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <div className="flex items-center gap-2">
+                                  {data.calls_to_developers || 0}
+                                  {data.calls_to_developers_status && <Badge className="bg-green-100 text-green-800 text-xs">✓</Badge>}
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                {(data.whatsapp_postings || 0) + (data.facebook_postings || 0) + (data.instagram_posting || 0)}
+                              </TableCell>
+                              <TableCell>
+                                <Badge variant={isToday ? 'default' : 'secondary'}>
+                                  {isToday ? 'Today' : 'Submitted'}
+                                </Badge>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    No team reports found. Team members need to submit their daily reports first.
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        )}
+      </Tabs>
+    </div>
   );
 };
 
