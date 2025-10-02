@@ -117,7 +117,10 @@ export const IntegratedDailyReport: React.FC = () => {
 
     const { data, error } = await supabase
       .from('reports')
-      .select('*')
+      .select(`
+        *,
+        reporter:profiles!reports_generated_by_fkey(full_name)
+      `)
       .eq('report_type', 'team_performance')
       .gte('generated_at', format(startOfMonth, 'yyyy-MM-dd'))
       .lte('generated_at', format(endOfMonth, 'yyyy-MM-dd'))
@@ -130,21 +133,9 @@ export const IntegratedDailyReport: React.FC = () => {
         description: 'Failed to fetch daily reports',
         variant: 'destructive'
       });
+      setReports([]);
     } else {
-      // Fetch reporter names separately
-      const reportsWithReporter = await Promise.all((data || []).map(async (report) => {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('full_name')
-          .eq('id', report.generated_by)
-          .single();
-        
-        return {
-          ...report,
-          reporter: profile || { full_name: 'Unknown' }
-        };
-      }));
-      setReports(reportsWithReporter);
+      setReports(data || []);
     }
     setLoading(false);
   };
