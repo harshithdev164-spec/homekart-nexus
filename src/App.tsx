@@ -8,6 +8,7 @@ import { AuthProvider } from "@/components/auth/AuthProvider";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import LandingPage from "./pages/LandingPage";
 import Auth from "./pages/Auth";
+import AdminSetup from "./pages/AdminSetup";
 import Dashboard from "./pages/Dashboard";
 import Leads from "./pages/Leads";
 import Properties from "./pages/Properties";
@@ -81,6 +82,7 @@ const App: React.FC = () => {
               <Routes>
                 <Route path="/" element={<LandingPage />} />
                 <Route path="/auth" element={<Auth />} />
+                <Route path="/admin-setup" element={<AdminSetup />} />
                 <Route path="/dashboard" element={<DashboardLayout><Dashboard /></DashboardLayout>} />
                 <Route path="/leads" element={<DashboardLayout><Leads /></DashboardLayout>} />
                 <Route path="/properties" element={<DashboardLayout><Properties /></DashboardLayout>} />

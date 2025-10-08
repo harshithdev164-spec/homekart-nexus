@@ -58,3 +58,6 @@ verify_jwt = false
 
 [functions.zoho-mail]
 verify_jwt = false
+
+[functions.update-user-password]
+verify_jwt = false
