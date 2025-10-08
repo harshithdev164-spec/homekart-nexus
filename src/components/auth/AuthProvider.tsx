@@ -54,6 +54,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     try {
+      console.log('Fetching profile for user:', userId);
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
@@ -62,21 +63,37 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (error) {
         console.error('Error fetching profile:', error);
+        toast({
+          title: "Profile Error",
+          description: `Failed to load profile: ${error.message}`,
+          variant: "destructive",
+        });
         return;
       }
 
       if (!data) {
         console.log('No profile found for user:', userId);
+        toast({
+          title: "Profile Not Found",
+          description: "Your profile could not be found. Please contact support.",
+          variant: "destructive",
+        });
         return;
       }
 
+      console.log('Profile loaded successfully:', data);
       // Cache the profile
       setProfileCache(prev => new Map(prev).set(userId, data));
       setProfile(data);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching profile:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to load profile",
+        variant: "destructive",
+      });
     }
-  }, [profileCache]);
+  }, [profileCache, toast]);
 
   useEffect(() => {
     let mounted = true;
@@ -152,20 +169,34 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    try {
+      console.log('Attempting login for:', email);
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
 
-    if (error) {
+      if (error) {
+        console.error('Login error:', error);
+        toast({
+          title: "Error",
+          description: error.message,
+          variant: "destructive",
+        });
+      } else {
+        console.log('Login successful');
+      }
+
+      return { error };
+    } catch (error: any) {
+      console.error('Unexpected login error:', error);
       toast({
         title: "Error",
-        description: error.message,
+        description: error.message || "An unexpected error occurred",
         variant: "destructive",
       });
+      return { error };
     }
-
-    return { error };
   };
 
   const signOut = async () => {
