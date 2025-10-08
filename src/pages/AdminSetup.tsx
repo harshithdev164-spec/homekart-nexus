@@ -1,78 +1,82 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { useNavigate } from "react-router-dom";
 
 export default function AdminSetup() {
-  const [email, setEmail] = useState("shalini@homekart.co");
-  const [password, setPassword] = useState("Homekart@123");
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [success, setSuccess] = useState(false);
+  const navigate = useNavigate();
 
-  const handleUpdatePassword = async () => {
-    setLoading(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('update-user-password', {
-        body: { email, password }
-      });
+  useEffect(() => {
+    const updatePassword = async () => {
+      try {
+        const { data, error } = await supabase.functions.invoke('update-user-password', {
+          body: { 
+            email: "shalini@homekart.co", 
+            password: "Homekart@123" 
+          }
+        });
 
-      if (error) throw error;
+        if (error) throw error;
 
-      toast.success("Password updated successfully! You can now log in.");
-    } catch (error: any) {
-      console.error('Error updating password:', error);
-      toast.error(error.message || "Failed to update password");
-    } finally {
-      setLoading(false);
-    }
-  };
+        setSuccess(true);
+        toast.success("Password updated successfully!");
+        
+        // Auto-redirect to login after 2 seconds
+        setTimeout(() => {
+          navigate('/auth');
+        }, 2000);
+      } catch (error: any) {
+        console.error('Error updating password:', error);
+        toast.error(error.message || "Failed to update password");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    updatePassword();
+  }, [navigate]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
-      <Card className="w-full max-w-md p-6 space-y-4">
-        <h1 className="text-2xl font-bold">Admin Password Setup</h1>
-        <p className="text-sm text-muted-foreground">
-          Update the password for an existing admin account
-        </p>
+      <Card className="w-full max-w-md p-6 space-y-4 text-center">
+        <h1 className="text-2xl font-bold">Admin Setup</h1>
         
-        <div className="space-y-4">
-          <div>
-            <label className="text-sm font-medium">Email</label>
-            <Input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="admin@example.com"
-            />
-          </div>
-          
-          <div>
-            <label className="text-sm font-medium">New Password</label>
-            <Input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Enter new password"
-            />
-          </div>
+        {loading && (
+          <>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+            <p className="text-muted-foreground">Updating admin password...</p>
+          </>
+        )}
 
-          <Button 
-            onClick={handleUpdatePassword} 
-            disabled={loading}
-            className="w-full"
-          >
-            {loading ? "Updating..." : "Update Password"}
-          </Button>
+        {!loading && success && (
+          <>
+            <div className="text-6xl">✓</div>
+            <p className="text-lg font-medium text-green-600">Password Updated Successfully!</p>
+            <p className="text-sm text-muted-foreground">
+              Email: shalini@homekart.co<br />
+              Password: Homekart@123
+            </p>
+            <p className="text-sm text-muted-foreground">Redirecting to login...</p>
+          </>
+        )}
 
-          <Button 
-            variant="outline" 
-            onClick={() => window.location.href = '/auth'}
-            className="w-full"
-          >
-            Go to Login
-          </Button>
-        </div>
+        {!loading && !success && (
+          <>
+            <div className="text-6xl">✗</div>
+            <p className="text-lg font-medium text-red-600">Update Failed</p>
+            <Button 
+              variant="outline" 
+              onClick={() => navigate('/auth')}
+              className="w-full"
+            >
+              Go to Login
+            </Button>
+          </>
+        )}
       </Card>
     </div>
   );
