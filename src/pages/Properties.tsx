@@ -366,10 +366,15 @@ const Properties: React.FC = () => {
   const myProperties = filteredProperties.filter(p => p.created_by === profile?.id);
 
   const renderPropertyCard = (property: Property) => (
-    <Card key={property.id} className="cursor-pointer hover:shadow-md transition-shadow">
+    <Card key={property.id} className="hover:shadow-md transition-shadow">
       <CardContent className="p-4">
         <div className="flex justify-between items-start mb-2">
-          <h3 className="font-semibold text-lg truncate">{property.title}</h3>
+          <h3 
+            className="font-semibold text-lg truncate cursor-pointer hover:text-primary" 
+            onClick={() => openDetailModal(property)}
+          >
+            {property.title}
+          </h3>
           <div className="flex gap-1 flex-wrap">
             <Badge className={getCategoryColor(property.category)}>
               {property.category}
@@ -420,7 +425,7 @@ const Properties: React.FC = () => {
           </div>
         )}
 
-        <div className="flex items-center justify-between text-sm text-gray-500">
+        <div className="flex items-center justify-between text-sm text-gray-500 mb-2">
           <div className="flex items-center gap-1">
             <Users className="h-4 w-4" />
             <span>{property.profiles?.full_name || 'Unknown'}</span>
@@ -431,14 +436,32 @@ const Properties: React.FC = () => {
           </div>
         </div>
 
-        {property.created_by === profile?.id && (
-          <div className="mt-2">
+        <div className="flex items-center justify-between gap-2">
+          {property.created_by === profile?.id && (
             <Badge variant="outline" className="text-xs">
               <Star className="h-3 w-3 mr-1" />
               Your Property
             </Badge>
+          )}
+          <div className="flex gap-2 ml-auto">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => openDetailModal(property)}
+            >
+              View Details
+            </Button>
+            {(property.created_by === profile?.id || profile?.role === 'admin') && (
+              <Button
+                size="sm"
+                variant="default"
+                onClick={() => openEditDialog(property)}
+              >
+                Edit
+              </Button>
+            )}
           </div>
-        )}
+        </div>
       </CardContent>
     </Card>
   );
@@ -795,6 +818,192 @@ const Properties: React.FC = () => {
         }}
         onEdit={openEditDialog}
       />
+
+      {/* Edit Property Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Edit Property</DialogTitle>
+            <DialogDescription>
+              Update property details and information.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleEditProperty} className="space-y-4 max-h-96 overflow-y-auto">
+            {/* Property Classification Section */}
+            <div className="bg-muted/50 p-4 rounded-lg space-y-4">
+              <h4 className="font-medium text-sm text-foreground">Property Classification</h4>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="edit-category">Category *</Label>
+                  <Select value={formData.category} onValueChange={(value: 'primary' | 'resale' | 'rent') => setFormData({...formData, category: value})} required>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="primary">🏗️ Primary (New Construction)</SelectItem>
+                      <SelectItem value="resale">🔄 Resale (Pre-owned)</SelectItem>
+                      <SelectItem value="rent">🏠 Rent (Rental Property)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-source_type">Source Type *</Label>
+                  <Select value={formData.source_type} onValueChange={(value: 'agent' | 'owner') => setFormData({...formData, source_type: value})} required>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select source" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="agent">🏢 Agent (Broker/Agency)</SelectItem>
+                      <SelectItem value="owner">👤 Owner (Direct Owner)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </div>
+
+            {/* Basic Property Details */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-title">Property Title *</Label>
+                <Input
+                  id="edit-title"
+                  placeholder="Enter property title"
+                  value={formData.title}
+                  onChange={(e) => setFormData({...formData, title: e.target.value})}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-property_type">Property Type *</Label>
+                <Select value={formData.property_type} onValueChange={(value) => setFormData({...formData, property_type: value})} required>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="apartment">Apartment</SelectItem>
+                    <SelectItem value="villa">Villa</SelectItem>
+                    <SelectItem value="plot">Plot</SelectItem>
+                    <SelectItem value="commercial">Commercial</SelectItem>
+                    <SelectItem value="office">Office</SelectItem>
+                    <SelectItem value="warehouse">Warehouse</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-price">Price (₹) *</Label>
+                <Input
+                  id="edit-price"
+                  type="number"
+                  placeholder="Property price"
+                  value={formData.price}
+                  onChange={(e) => setFormData({...formData, price: e.target.value})}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-area">Area (sq ft)</Label>
+                <Input
+                  id="edit-area"
+                  type="number"
+                  placeholder="Area"
+                  value={formData.area}
+                  onChange={(e) => setFormData({...formData, area: e.target.value})}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-bedrooms">Bedrooms</Label>
+                <Input
+                  id="edit-bedrooms"
+                  type="number"
+                  placeholder="Bedrooms"
+                  value={formData.bedrooms}
+                  onChange={(e) => setFormData({...formData, bedrooms: e.target.value})}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-bathrooms">Bathrooms</Label>
+                <Input
+                  id="edit-bathrooms"
+                  type="number"
+                  placeholder="Bathrooms"
+                  value={formData.bathrooms}
+                  onChange={(e) => setFormData({...formData, bathrooms: e.target.value})}
+                />
+              </div>
+            </div>
+
+            {/* Location Details */}
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="edit-location">Location *</Label>
+                  <Input
+                    id="edit-location"
+                    placeholder="Location/Area"
+                    value={formData.location}
+                    onChange={(e) => setFormData({...formData, location: e.target.value})}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-city">City *</Label>
+                  <Input
+                    id="edit-city"
+                    placeholder="City"
+                    value={formData.city}
+                    onChange={(e) => setFormData({...formData, city: e.target.value})}
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="edit-state">State *</Label>
+                <Input
+                  id="edit-state"
+                  placeholder="State"
+                  value={formData.state}
+                  onChange={(e) => setFormData({...formData, state: e.target.value})}
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="edit-address">Full Address</Label>
+                <Input
+                  id="edit-address"
+                  placeholder="Complete address"
+                  value={formData.address}
+                  onChange={(e) => setFormData({...formData, address: e.target.value})}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="edit-description">Description</Label>
+              <Textarea
+                id="edit-description"
+                placeholder="Property description"
+                value={formData.description}
+                onChange={(e) => setFormData({...formData, description: e.target.value})}
+              />
+            </div>
+
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit">Save Changes</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
