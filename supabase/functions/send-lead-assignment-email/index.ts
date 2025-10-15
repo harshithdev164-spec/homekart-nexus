@@ -131,8 +131,10 @@ const handler = async (req: Request): Promise<Response> => {
     `;
 
     // Send email
+    // IMPORTANT: Update this to use your verified domain from resend.com/domains
+    // Example: "CRM Notifications <noreply@yourdomain.com>"
     const emailResponse = await resend.emails.send({
-      from: "CRM Notifications <onboarding@resend.dev>",
+      from: Deno.env.get("RESEND_FROM_EMAIL") || "CRM Notifications <onboarding@resend.dev>",
       to: [assignedUser.email],
       subject: subject,
       html: html,
