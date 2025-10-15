@@ -665,22 +665,24 @@ const Leads: React.FC = () => {
       </div>
 
       {/* Leads Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
         {filteredLeads.map((lead) => (
           <Card 
             key={lead.id} 
-            className="hover:shadow-medium transition-all duration-300 cursor-pointer"
-            onClick={() => {
-              setSelectedLead(lead);
-              setShowLeadDetail(true);
-            }}
+            className="hover:shadow-lg transition-all duration-300"
           >
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-lg">
+            <CardHeader 
+              className="cursor-pointer"
+              onClick={() => {
+                setSelectedLead(lead);
+                setShowLeadDetail(true);
+              }}
+            >
+              <div className="flex items-center justify-between gap-2">
+                <CardTitle className="text-base sm:text-lg">
                   <span className="font-bold">{lead.name}</span>
                   {(lead as any).project_name && (
-                    <span className="font-normal text-muted-foreground ml-2">
+                    <span className="font-normal text-muted-foreground text-sm ml-2">
                       - {(lead as any).project_name}
                     </span>
                   )}
@@ -690,8 +692,14 @@ const Leads: React.FC = () => {
                 </Badge>
               </div>
             </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
+            <CardContent 
+              className="cursor-pointer"
+              onClick={() => {
+                setSelectedLead(lead);
+                setShowLeadDetail(true);
+              }}
+            >
+              <div className="space-y-2.5">
                 {lead.profiles && (
                   <div className="flex items-center gap-2 text-xs text-primary">
                     <Users className="h-3 w-3" />
@@ -743,45 +751,58 @@ const Leads: React.FC = () => {
                   </p>
                 )}
               </div>
-              <div className="flex flex-col sm:flex-row gap-2 mt-4">
-                <CallButton
-                  phoneNumber={lead.phone}
-                  leadId={lead.id}
-                  name={lead.name}
-                  variant="default"
-                  size="sm"
-                  className="flex-1"
-                />
-                <Button 
-                  size="sm" 
-                  variant="outline" 
-                  className="flex-1"
-                  onClick={() => {
-                    setSelectedLead(lead);
-                    setIsMessagingDialogOpen(true);
-                  }}
-                >
-                  <Mail className="h-4 w-4 sm:mr-2" />
-                  <span className="hidden sm:inline">Message</span>
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => {
-                    setCallLogsLeadId(lead.id);
-                    setShowCallLogs(true);
-                  }}
-                  className="flex-1 sm:flex-initial"
-                >
-                  <PhoneCall className="h-4 w-4 sm:mr-2" />
-                  <span className="hidden sm:inline">Logs</span>
-                </Button>
-                <LeadTransfer 
-                  leadId={lead.id}
-                  leadName={lead.name}
-                  currentOwner={lead.profiles?.full_name}
-                  onTransferSuccess={fetchLeads}
-                />
+
+              {/* Action Buttons - Two rows for better spacing */}
+              <div className="space-y-2 mt-4 pt-4 border-t" onClick={(e) => e.stopPropagation()}>
+                {/* Primary Actions Row */}
+                <div className="grid grid-cols-2 gap-2">
+                  <CallButton
+                    phoneNumber={lead.phone}
+                    leadId={lead.id}
+                    name={lead.name}
+                    variant="default"
+                    size="sm"
+                    className="w-full"
+                  />
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    className="w-full"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedLead(lead);
+                      setIsMessagingDialogOpen(true);
+                    }}
+                  >
+                    <Mail className="h-4 w-4 mr-1" />
+                    Message
+                  </Button>
+                </div>
+                
+                {/* Secondary Actions Row */}
+                <div className="grid grid-cols-2 gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setCallLogsLeadId(lead.id);
+                      setShowCallLogs(true);
+                    }}
+                    className="w-full"
+                  >
+                    <PhoneCall className="h-4 w-4 mr-1" />
+                    Logs
+                  </Button>
+                  <div onClick={(e) => e.stopPropagation()}>
+                    <LeadTransfer 
+                      leadId={lead.id}
+                      leadName={lead.name}
+                      currentOwner={lead.profiles?.full_name}
+                      onTransferSuccess={fetchLeads}
+                    />
+                  </div>
+                </div>
               </div>
             </CardContent>
           </Card>
