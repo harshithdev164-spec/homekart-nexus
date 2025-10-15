@@ -81,6 +81,70 @@ export type Database = {
           },
         ]
       }
+      call_logs: {
+        Row: {
+          agent_id: string | null
+          call_status: string | null
+          call_type: string
+          called_by: string
+          created_at: string
+          duration: number | null
+          id: string
+          lead_id: string | null
+          notes: string | null
+          phone_number: string
+          updated_at: string
+        }
+        Insert: {
+          agent_id?: string | null
+          call_status?: string | null
+          call_type: string
+          called_by: string
+          created_at?: string
+          duration?: number | null
+          id?: string
+          lead_id?: string | null
+          notes?: string | null
+          phone_number: string
+          updated_at?: string
+        }
+        Update: {
+          agent_id?: string | null
+          call_status?: string | null
+          call_type?: string
+          called_by?: string
+          created_at?: string
+          duration?: number | null
+          id?: string
+          lead_id?: string | null
+          notes?: string | null
+          phone_number?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "call_logs_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "call_logs_called_by_fkey"
+            columns: ["called_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "call_logs_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clients: {
         Row: {
           created_at: string

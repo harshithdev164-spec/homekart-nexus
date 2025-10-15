@@ -5,7 +5,9 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { supabase } from '@/integrations/supabase/client';
-import { Plus, Search, Phone, Mail, MapPin, Calendar, Filter, Users, Upload, Database, CalendarDays, Clock, AlertCircle } from 'lucide-react';
+import { Plus, Search, Phone, Mail, MapPin, Calendar, Filter, Users, Upload, Database, CalendarDays, Clock, AlertCircle, PhoneCall } from 'lucide-react';
+import { CallButton } from '@/components/calls/CallButton';
+import { CallLogs } from '@/components/calls/CallLogs';
 import { RealtimeIndicator } from '@/components/collaboration/RealtimeIndicator';
 import { LeadTransfer } from '@/components/leads/LeadTransfer';
 import { MessageTemplates } from '@/components/templates/MessageTemplates';
@@ -86,6 +88,8 @@ const Leads: React.FC = () => {
   const [showDynamicImport, setShowDynamicImport] = useState(false);
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [showLeadDetail, setShowLeadDetail] = useState(false);
+  const [showCallLogs, setShowCallLogs] = useState(false);
+  const [callLogsLeadId, setCallLogsLeadId] = useState<string | null>(null);
   
   // Form state
   const [formData, setFormData] = useState({
@@ -340,17 +344,17 @@ const Leads: React.FC = () => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6 p-2 sm:p-0">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="space-y-1">
-          <div className="flex items-center gap-4">
-            <h1 className="text-3xl font-bold">Lead Management</h1>
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+            <h1 className="text-2xl sm:text-3xl font-bold">Lead Management</h1>
             <RealtimeIndicator channel="leads" />
           </div>
-          <p className="text-muted-foreground">Track and manage your leads through the sales pipeline</p>
+          <p className="text-sm text-muted-foreground">Track and manage your leads through the sales pipeline</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button 
             variant="outline" 
             className="gap-2"
@@ -739,7 +743,15 @@ const Leads: React.FC = () => {
                   </p>
                 )}
               </div>
-              <div className="flex gap-2 mt-4">
+              <div className="flex flex-col sm:flex-row gap-2 mt-4">
+                <CallButton
+                  phoneNumber={lead.phone}
+                  leadId={lead.id}
+                  name={lead.name}
+                  variant="default"
+                  size="sm"
+                  className="flex-1"
+                />
                 <Button 
                   size="sm" 
                   variant="outline" 
@@ -749,7 +761,20 @@ const Leads: React.FC = () => {
                     setIsMessagingDialogOpen(true);
                   }}
                 >
-                  Message
+                  <Mail className="h-4 w-4 sm:mr-2" />
+                  <span className="hidden sm:inline">Message</span>
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    setCallLogsLeadId(lead.id);
+                    setShowCallLogs(true);
+                  }}
+                  className="flex-1 sm:flex-initial"
+                >
+                  <PhoneCall className="h-4 w-4 sm:mr-2" />
+                  <span className="hidden sm:inline">Logs</span>
                 </Button>
                 <LeadTransfer 
                   leadId={lead.id}
@@ -859,6 +884,19 @@ const Leads: React.FC = () => {
           setSelectedLead(null);
         }}
       />
+
+      {/* Call Logs Dialog */}
+      <Dialog open={showCallLogs} onOpenChange={setShowCallLogs}>
+        <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-auto">
+          <DialogHeader>
+            <DialogTitle>Call History</DialogTitle>
+            <DialogDescription>
+              View all call logs for this lead
+            </DialogDescription>
+          </DialogHeader>
+          <CallLogs leadId={callLogsLeadId || undefined} />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

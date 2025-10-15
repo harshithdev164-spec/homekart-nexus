@@ -6,7 +6,8 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { supabase } from '@/integrations/supabase/client';
-import { Plus, Search, MapPin, Home, Bed, Bath, Square, IndianRupee, Filter, Users, Star, Clock } from 'lucide-react';
+import { Plus, Search, MapPin, Home, Bed, Bath, Square, IndianRupee, Filter, Users, Star, Clock, Phone } from 'lucide-react';
+import { CallButton } from '@/components/calls/CallButton';
 import { useToast } from '@/hooks/use-toast';
 import { RealtimeIndicator } from '@/components/collaboration/RealtimeIndicator';
 import { PropertyMap } from '@/components/maps/PropertyMap';
@@ -50,6 +51,7 @@ interface Property {
   created_by: string;
   profiles?: {
     full_name: string;
+    phone?: string;
   };
 }
 
@@ -106,11 +108,11 @@ const EnhancedProperties: React.FC = () => {
   const fetchProperties = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
+      const { data, error} = await supabase
         .from('properties')
         .select(`
           *,
-          profiles!properties_created_by_fkey(full_name)
+          profiles!properties_created_by_fkey(full_name, phone)
         `)
         .order('updated_at', { ascending: false });
 

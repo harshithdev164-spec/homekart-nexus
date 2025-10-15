@@ -4,7 +4,10 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Users, Search, Mail, Phone, UserCheck, Building2, Calendar } from 'lucide-react';
+import { Users, Search, Mail, Phone, UserCheck, Building2, Calendar, PhoneCall } from 'lucide-react';
+import { CallButton } from '@/components/calls/CallButton';
+import { CallLogs } from '@/components/calls/CallLogs';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { useToast } from '@/hooks/use-toast';
@@ -46,6 +49,8 @@ const Team: React.FC = () => {
   });
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [showCallLogs, setShowCallLogs] = useState(false);
+  const [callLogsAgentId, setCallLogsAgentId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchTeamMembers();
@@ -195,12 +200,12 @@ const Team: React.FC = () => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6 p-2 sm:p-0">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-2">
         <div className="space-y-1">
-          <h1 className="text-3xl font-bold">Team Members</h1>
-          <p className="text-muted-foreground">Manage your team and track performance</p>
+          <h1 className="text-2xl sm:text-3xl font-bold">Team Members</h1>
+          <p className="text-sm text-muted-foreground">Manage your team and track performance</p>
         </div>
       </div>
 
@@ -216,7 +221,7 @@ const Team: React.FC = () => {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 sm:gap-4">
         <Card>
           <CardContent className="pt-6">
             <div className="text-2xl font-bold">{stats.totalMembers}</div>
@@ -250,7 +255,7 @@ const Team: React.FC = () => {
       </div>
 
       {/* Team Members Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
         {filteredMembers.map((member) => (
           <Card key={member.id} className="hover:shadow-md transition-all">
             <CardHeader>
@@ -285,16 +290,42 @@ const Team: React.FC = () => {
                 {/* Contact Info */}
                 <div className="space-y-2">
                   <div className="flex items-center gap-2 text-sm">
-                    <Mail className="h-4 w-4 text-muted-foreground" />
+                    <Mail className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                     <span className="truncate">{member.email}</span>
                   </div>
                   {member.phone && (
                     <div className="flex items-center gap-2 text-sm">
-                      <Phone className="h-4 w-4 text-muted-foreground" />
+                      <Phone className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                       <span>{member.phone}</span>
                     </div>
                   )}
                 </div>
+
+                {/* Call Actions */}
+                {member.phone && (
+                  <div className="flex gap-2 pt-2">
+                    <CallButton
+                      phoneNumber={member.phone}
+                      agentId={member.id}
+                      name={member.full_name}
+                      variant="outline"
+                      size="sm"
+                      className="flex-1"
+                    />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setCallLogsAgentId(member.id);
+                        setShowCallLogs(true);
+                      }}
+                      className="flex-1"
+                    >
+                      <PhoneCall className="h-4 w-4 sm:mr-2" />
+                      <span className="hidden sm:inline">Logs</span>
+                    </Button>
+                  </div>
+                )}
 
                 {/* Performance Stats */}
                 <div className="grid grid-cols-2 gap-4 pt-4 border-t border-border">
@@ -320,9 +351,9 @@ const Team: React.FC = () => {
                   <span>Member since {new Date(member.created_at).toLocaleDateString()}</span>
                 </div>
 
-                {/* Actions */}
+                {/* Admin Actions */}
                 {profile?.role === 'admin' && (
-                  <div className="flex gap-2 pt-2">
+                  <div className="flex flex-col sm:flex-row gap-2 pt-2">
                     <Button variant="outline" size="sm" className="flex-1">
                       Edit
                     </Button>
@@ -351,6 +382,19 @@ const Team: React.FC = () => {
           </CardContent>
         </Card>
       )}
+
+      {/* Call Logs Dialog */}
+      <Dialog open={showCallLogs} onOpenChange={setShowCallLogs}>
+        <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-auto">
+          <DialogHeader>
+            <DialogTitle>Call History</DialogTitle>
+            <DialogDescription>
+              View all call logs for this team member
+            </DialogDescription>
+          </DialogHeader>
+          <CallLogs agentId={callLogsAgentId || undefined} />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
