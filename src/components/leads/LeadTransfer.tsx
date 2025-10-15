@@ -138,6 +138,22 @@ export const LeadTransfer: React.FC<LeadTransferProps> = ({
         description: `Lead transferred successfully to ${teamMembers.find(m => m.id === selectedUser)?.full_name}`,
       });
 
+      // Send email notification
+      try {
+        await supabase.functions.invoke("send-lead-assignment-email", {
+          body: {
+            leadId: leadId,
+            assignedToId: selectedUser,
+            assignedByName: profile?.full_name || "A team member",
+            reason: reason || undefined,
+            isTransfer: true,
+          },
+        });
+      } catch (emailError) {
+        console.error("Error sending email notification:", emailError);
+        // Don't fail the transfer if email fails
+      }
+
       setIsDialogOpen(false);
       setSelectedUser('');
       setReason('');

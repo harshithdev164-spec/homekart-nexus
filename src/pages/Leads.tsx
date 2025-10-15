@@ -202,9 +202,11 @@ const Leads: React.FC = () => {
         created_by: profile.id,
       };
 
-      const { error } = await supabase
+      const { data: insertedLead, error } = await supabase
         .from('leads')
-        .insert([leadData]);
+        .insert([leadData])
+        .select()
+        .single();
 
       if (error) {
         console.error('Error creating lead:', error);

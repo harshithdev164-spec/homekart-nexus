@@ -121,6 +121,21 @@ export const LeadAssignmentIndicator: React.FC<LeadAssignmentIndicatorProps> = R
         title: 'Success',
         description: 'Lead assigned to you successfully'
       });
+
+      // Send email notification
+      try {
+        await supabase.functions.invoke("send-lead-assignment-email", {
+          body: {
+            leadId: leadId,
+            assignedToId: currentUser.id,
+            assignedByName: currentUser.full_name || "A team member",
+            isTransfer: false,
+          },
+        });
+      } catch (emailError) {
+        console.error("Error sending email notification:", emailError);
+        // Don't fail the assignment if email fails
+      }
     }
   }, [currentUser, toast]);
 
