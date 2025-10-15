@@ -182,19 +182,69 @@ export const ReportGenerator: React.FC = () => {
         case 'leads':
           const { data: leadsData } = await supabase
             .from('leads')
-            .select('*')
+            .select(`
+              *,
+              assigned_to_profile:profiles!leads_assigned_to_fkey(full_name),
+              created_by_profile:profiles!leads_created_by_fkey(full_name)
+            `)
             .gte('created_at', dateFrom || '2020-01-01')
             .lte('created_at', dateTo || new Date().toISOString());
-          reportData = { leads: leadsData, summary: { total: leadsData?.length || 0 } };
+          
+          // Format leads data for export
+          const formattedLeads = leadsData?.map(lead => ({
+            Name: lead.name,
+            Phone: lead.phone,
+            Email: lead.email,
+            Status: lead.status,
+            Source: lead.source,
+            'Assigned To': lead.assigned_to_profile?.full_name || 'Unassigned',
+            'Created By': lead.created_by_profile?.full_name || 'Unknown',
+            'Budget Min': lead.budget_min,
+            'Budget Max': lead.budget_max,
+            'Property Type': lead.property_type,
+            'Preferred Location': lead.preferred_location,
+            'Created At': new Date(lead.created_at).toLocaleString(),
+            'Last Contacted': lead.last_contacted ? new Date(lead.last_contacted).toLocaleString() : 'Never',
+            Notes: lead.notes
+          }));
+          
+          reportData = { leads: formattedLeads, summary: { total: leadsData?.length || 0 } };
           break;
 
         case 'properties':
           const { data: propertiesData } = await supabase
             .from('properties')
-            .select('*')
+            .select(`
+              *,
+              created_by_profile:profiles!properties_created_by_fkey(full_name, phone),
+              updated_by_profile:profiles!properties_updated_by_fkey(full_name)
+            `)
             .gte('created_at', dateFrom || '2020-01-01')
             .lte('created_at', dateTo || new Date().toISOString());
-          reportData = { properties: propertiesData, summary: { total: propertiesData?.length || 0 } };
+          
+          // Format properties data for export
+          const formattedProperties = propertiesData?.map(property => ({
+            Title: property.title,
+            'Property Type': property.property_type,
+            Status: property.status,
+            Price: property.price,
+            Location: property.location,
+            City: property.city,
+            State: property.state,
+            Area: property.area,
+            Bedrooms: property.bedrooms,
+            Bathrooms: property.bathrooms,
+            'Posted By': property.created_by_profile?.full_name || 'Unknown',
+            'Contact': property.created_by_profile?.phone || 'N/A',
+            'Source Type': property.source_type,
+            Category: property.category,
+            'Created At': new Date(property.created_at).toLocaleString(),
+            'Updated At': new Date(property.updated_at).toLocaleString(),
+            'Updated By': property.updated_by_profile?.full_name || 'N/A',
+            Description: property.description
+          }));
+          
+          reportData = { properties: formattedProperties, summary: { total: propertiesData?.length || 0 } };
           break;
 
         case 'activities':
