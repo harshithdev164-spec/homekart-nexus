@@ -4,16 +4,15 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useAuth } from '@/components/auth/MongoDBAuthProvider';
-import { PropertyService } from '@/integrations/mongodb/services/PropertyService';
-import { IProperty, PropertyType, PropertyStatus } from '@/integrations/mongodb/models/Property';
-import { Plus, Search, MapPin, Home, Bed, Bath, Square, IndianRupee, Filter, Users, Star, Clock } from 'lucide-react';
+import { useAuth } from '@/components/auth/AuthProvider';
+import { supabase } from '@/integrations/supabase/client';
+import { Plus, Search, MapPin, Home, Bed, Bath, Square, IndianRupee, Filter, Users, Star, Clock, Phone } from 'lucide-react';
+import { CallButton } from '@/components/calls/CallButton';
 import { useToast } from '@/hooks/use-toast';
+import { RealtimeIndicator } from '@/components/collaboration/RealtimeIndicator';
 import { PropertyMap } from '@/components/maps/PropertyMap';
 import { PropertyDetailModal } from '@/components/properties/PropertyDetailModal';
-import { RealtimeIndicator } from '@/components/collaboration/RealtimeIndicator';
 import { format } from 'date-fns';
-import { useDebounce } from '@/hooks/useDebounce';
 import {
   Dialog,
   DialogContent,
@@ -27,41 +26,50 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
-interface PropertyWithId {
+interface Property {
   id: string;
   title: string;
   description?: string;
-  property_type: PropertyType;
-  category: 'primary' | 'resale' | 'rent';
-  source_type: 'agent' | 'owner';
-  status: PropertyStatus;
-  price?: number;
+  price: number;
+  property_type: string;
+  status: string;
+  category?: 'primary' | 'resale' | 'rent';
+  source_type?: 'agent' | 'owner';
   area?: number;
   bedrooms?: number;
   bathrooms?: number;
-  address: string;
-  city: string;
-  state?: string;
   location: string;
-  updated_at: Date;
+  address?: string;
+  city: string;
+  state: string;
+  pincode?: string;
+  amenities?: string[];
+  images?: string[];
+  latitude?: number;
+  longitude?: number;
+  created_at: string;
+  updated_at?: string;
   created_by: string;
-  profiles?: { full_name: string };
+  profiles?: {
+    full_name: string;
+    phone?: string;
+  };
 }
 
 const Properties: React.FC = () => {
   const { profile } = useAuth();
   const { toast } = useToast();
-  const [properties, setProperties] = useState<IProperty[]>([]);
+  const [properties, setProperties] = useState<Property[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [editingProperty, setEditingProperty] = useState<IProperty | null>(null);
-  const [selectedProperty, setSelectedProperty] = useState<IProperty | null>(null);
+  const [editingProperty, setEditingProperty] = useState<Property | null>(null);
+  const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
   const [showMap, setShowMap] = useState(false);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('all');
-
+  
   // Form state
   const [formData, setFormData] = useState({
     title: '',
@@ -79,74 +87,57 @@ const Properties: React.FC = () => {
     state: '',
   });
 
-  const debouncedSearchTerm = useDebounce(searchTerm, 300);
-
   useEffect(() => {
     fetchProperties();
+    
+    // Set up real-time subscription for properties
+    const channel = supabase
+      .channel('properties_changes')
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'properties' },
+        (payload) => {
+          console.log('Property change detected:', payload);
+          fetchProperties();
+        }
+      )
+      .subscribe();
 
-    // Set up polling for real-time updates (replacing Supabase subscriptions)
-    const interval = setInterval(fetchProperties, 30000); // Poll every 30 seconds
-
-    return () => clearInterval(interval);
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
-
-  useEffect(() => {
-    if (debouncedSearchTerm) {
-      searchProperties(debouncedSearchTerm);
-    } else {
-      fetchProperties();
-    }
-  }, [debouncedSearchTerm]);
 
   const fetchProperties = async () => {
     try {
       setLoading(true);
-      const { properties } = await PropertyService.getProperties();
+      const { data, error } = await supabase
+        .from('properties')
+        .select(`
+          *,
+          profiles!properties_created_by_fkey(full_name, phone)
+        `)
+        .order('updated_at', { ascending: false });
 
-      const propertiesWithTypedCategory = (properties || []).map(property => ({
-        ...property.toObject(),
-        id: property._id.toString(),
-        category: property.category || 'primary',
-        sourceType: property.sourceType || 'owner',
-        propertyType: property.propertyType,
-        updated_at: property.updatedAt || property.createdAt
+      if (error) {
+        console.error('Error fetching properties:', error);
+        toast({
+          title: 'Error',
+          description: 'Failed to fetch properties',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      const propertiesWithTypedCategory = (data || []).map(property => ({
+        ...property,
+        category: (property.category as 'primary' | 'resale' | 'rent') || 'primary',
+        source_type: (property.source_type as 'agent' | 'owner') || 'owner',
+        updated_at: property.updated_at || property.created_at
       }));
-
+      
       setProperties(propertiesWithTypedCategory);
     } catch (error) {
       console.error('Error fetching properties:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to fetch properties',
-        variant: 'destructive',
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const searchProperties = async (query: string) => {
-    try {
-      setLoading(true);
-      const { properties } = await PropertyService.searchProperties(query);
-
-      const propertiesWithTypedCategory = (properties || []).map(property => ({
-        ...property.toObject(),
-        id: property._id.toString(),
-        category: property.category || 'primary',
-        sourceType: property.sourceType || 'owner',
-        propertyType: property.propertyType,
-        updated_at: property.updatedAt || property.createdAt
-      }));
-
-      setProperties(propertiesWithTypedCategory);
-    } catch (error) {
-      console.error('Error searching properties:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to search properties',
-        variant: 'destructive',
-      });
     } finally {
       setLoading(false);
     }
@@ -154,27 +145,33 @@ const Properties: React.FC = () => {
 
   const handleCreateProperty = async (e: React.FormEvent) => {
     e.preventDefault();
-
+    
     if (!profile) return;
 
     try {
       const propertyData = {
-        title: formData.title,
-        description: formData.description,
-        propertyType: formData.property_type as 'apartment' | 'villa' | 'plot' | 'commercial' | 'office' | 'warehouse',
-        category: formData.category,
-        sourceType: formData.source_type,
+        ...formData,
+        property_type: formData.property_type as 'apartment' | 'villa' | 'plot' | 'commercial' | 'office' | 'warehouse',
         price: parseFloat(formData.price),
-        area: formData.area ? parseFloat(formData.area) : undefined,
-        bedrooms: formData.bedrooms ? parseInt(formData.bedrooms) : undefined,
-        bathrooms: formData.bathrooms ? parseInt(formData.bathrooms) : undefined,
-        address: formData.address || formData.location,
-        city: formData.city,
-        state: formData.state,
-        createdBy: profile.id,
+        area: formData.area ? parseFloat(formData.area) : null,
+        bedrooms: formData.bedrooms ? parseInt(formData.bedrooms) : null,
+        bathrooms: formData.bathrooms ? parseInt(formData.bathrooms) : null,
+        created_by: profile.id,
       };
 
-      await PropertyService.createProperty(propertyData);
+      const { error } = await supabase
+        .from('properties')
+        .insert([propertyData]);
+
+      if (error) {
+        console.error('Error creating property:', error);
+        toast({
+          title: 'Error',
+          description: 'Failed to create property',
+          variant: 'destructive',
+        });
+        return;
+      }
 
       toast({
         title: 'Success',
@@ -200,36 +197,39 @@ const Properties: React.FC = () => {
       fetchProperties();
     } catch (error) {
       console.error('Error creating property:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to create property',
-        variant: 'destructive',
-      });
     }
   };
 
   const handleEditProperty = async (e: React.FormEvent) => {
     e.preventDefault();
-
+    
     if (!profile || !editingProperty) return;
 
     try {
       const propertyData = {
-        title: formData.title,
-        description: formData.description,
-        propertyType: formData.property_type as 'apartment' | 'villa' | 'plot' | 'commercial' | 'office' | 'warehouse',
-        category: formData.category,
-        sourceType: formData.source_type,
+        ...formData,
+        property_type: formData.property_type as 'apartment' | 'villa' | 'plot' | 'commercial' | 'office' | 'warehouse',
         price: parseFloat(formData.price),
-        area: formData.area ? parseFloat(formData.area) : undefined,
-        bedrooms: formData.bedrooms ? parseInt(formData.bedrooms) : undefined,
-        bathrooms: formData.bathrooms ? parseInt(formData.bathrooms) : undefined,
-        address: formData.address || formData.location,
-        city: formData.city,
-        state: formData.state,
+        area: formData.area ? parseFloat(formData.area) : null,
+        bedrooms: formData.bedrooms ? parseInt(formData.bedrooms) : null,
+        bathrooms: formData.bathrooms ? parseInt(formData.bathrooms) : null,
+        updated_by: profile.id,
       };
 
-      await PropertyService.updateProperty(editingProperty.id, propertyData);
+      const { error } = await supabase
+        .from('properties')
+        .update(propertyData)
+        .eq('id', editingProperty.id);
+
+      if (error) {
+        console.error('Error updating property:', error);
+        toast({
+          title: 'Error',
+          description: 'Failed to update property',
+          variant: 'destructive',
+        });
+        return;
+      }
 
       toast({
         title: 'Success',
@@ -241,11 +241,6 @@ const Properties: React.FC = () => {
       fetchProperties();
     } catch (error) {
       console.error('Error updating property:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to update property',
-        variant: 'destructive',
-      });
     }
   };
 

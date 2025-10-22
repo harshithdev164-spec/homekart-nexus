@@ -1,8 +1,8 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
+import { Resend } from "npm:resend@2.0.0";
 
-const SENDGRID_API_KEY = Deno.env.get("SENDGRID_API_KEY");
-const SENDGRID_FROM_EMAIL = Deno.env.get("SENDGRID_FROM_EMAIL") || "noreply@yourdomain.com";
+const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -130,45 +130,20 @@ const handler = async (req: Request): Promise<Response> => {
       </div>
     `;
 
-    // Send email using SendGrid
-    const emailPayload = {
-      personalizations: [
-        {
-          to: [{ email: assignedUser.email, name: assignedUser.full_name }],
-          subject: subject,
-        },
-      ],
-      from: {
-        email: SENDGRID_FROM_EMAIL,
-        name: "CRM Notifications",
-      },
-      content: [
-        {
-          type: "text/html",
-          value: html,
-        },
-      ],
-    };
-
-    const emailResponse = await fetch("https://api.sendgrid.com/v3/mail/send", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${SENDGRID_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(emailPayload),
+    // Send email
+    // IMPORTANT: Update this to use your verified domain from resend.com/domains
+    // Example: "CRM Notifications <noreply@yourdomain.com>"
+    const emailResponse = await resend.emails.send({
+      from: Deno.env.get("RESEND_FROM_EMAIL") || "CRM Notifications <onboarding@resend.dev>",
+      to: [assignedUser.email],
+      subject: subject,
+      html: html,
     });
 
-    if (!emailResponse.ok) {
-      const errorText = await emailResponse.text();
-      console.error("SendGrid API error:", errorText);
-      throw new Error(`SendGrid API error: ${emailResponse.status} - ${errorText}`);
-    }
-
-    console.log("Email sent successfully via SendGrid");
+    console.log("Email sent successfully:", emailResponse);
 
     return new Response(
-      JSON.stringify({ success: true, message: "Email sent successfully" }),
+      JSON.stringify({ success: true, emailResponse }),
       {
         status: 200,
         headers: {
