@@ -18,6 +18,8 @@ const Dashboard: React.FC = () => {
   const { toast } = useToast();
   const [teamReports, setTeamReports] = useState<any[]>([]);
   const [loadingTeamReports, setLoadingTeamReports] = useState(false);
+  const [teamPlanners, setTeamPlanners] = useState<any[]>([]);
+  const [loadingTeamPlanners, setLoadingTeamPlanners] = useState(false);
   
   // Performance metrics state
   const [performanceMetrics, setPerformanceMetrics] = useState([
@@ -34,6 +36,7 @@ const Dashboard: React.FC = () => {
   useEffect(() => {
     if (canViewTeamReports) {
       fetchTeamReports();
+      fetchTeamPlanners();
     }
     if (profile) {
       fetchUserPerformance();
@@ -142,6 +145,62 @@ const Dashboard: React.FC = () => {
     window.URL.revokeObjectURL(url);
   };
 
+  const fetchTeamPlanners = async () => {
+    setLoadingTeamPlanners(true);
+    try {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      const { data, error } = await supabase
+        .from('tasks')
+        .select(`
+          *,
+          assigned_profile:profiles!tasks_assigned_to_fkey(full_name, role),
+          creator_profile:profiles!tasks_created_by_fkey(full_name)
+        `)
+        .gte('due_date', format(today, 'yyyy-MM-dd'))
+        .order('due_date', { ascending: true })
+        .limit(50);
+
+      if (error) {
+        console.error('Error fetching team planners:', error);
+        toast({
+          title: 'Error',
+          description: 'Failed to fetch team planners',
+          variant: 'destructive'
+        });
+      } else {
+        setTeamPlanners(data || []);
+      }
+    } catch (error) {
+      console.error('Error:', error);
+    } finally {
+      setLoadingTeamPlanners(false);
+    }
+  };
+
+  const exportTeamPlanners = () => {
+    const csvContent = [
+      ['Due Date', 'Task', 'Assigned To', 'Priority', 'Status', 'Created By'].join(','),
+      ...teamPlanners.map(task => [
+        task.due_date ? format(new Date(task.due_date), 'yyyy-MM-dd') : 'No date',
+        `"${task.title}"`,
+        task.assigned_profile?.full_name || 'Unknown',
+        task.priority || 'medium',
+        task.is_completed ? 'Completed' : 'Pending',
+        task.creator_profile?.full_name || 'Unknown'
+      ].join(','))
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `team_planners_${format(new Date(), 'yyyy_MM_dd')}.csv`;
+    a.click();
+    window.URL.revokeObjectURL(url);
+  };
+
   const getReportScore = (data: any) => {
     let score = 0;
     const metrics = [
@@ -170,13 +229,16 @@ const Dashboard: React.FC = () => {
       </div>
 
       <Tabs defaultValue="planner" className="w-full">
-        <TabsList className={`grid w-full ${canViewTeamReports ? 'grid-cols-5' : 'grid-cols-4'}`}>
+        <TabsList className={`grid w-full ${canViewTeamReports ? 'grid-cols-6' : 'grid-cols-4'}`}>
           <TabsTrigger value="planner">Daily Planner</TabsTrigger>
           <TabsTrigger value="reports">Daily Report</TabsTrigger>
           <TabsTrigger value="visits">Site Visits</TabsTrigger>
           <TabsTrigger value="performance">My Performance</TabsTrigger>
           {canViewTeamReports && (
-            <TabsTrigger value="team-reports">Reports from Team</TabsTrigger>
+            <TabsTrigger value="team-reports">Team Reports</TabsTrigger>
+          )}
+          {canViewTeamReports && (
+            <TabsTrigger value="team-planners">Team Planners</TabsTrigger>
           )}
         </TabsList>
 
@@ -302,6 +364,101 @@ const Dashboard: React.FC = () => {
                 ) : (
                   <div className="text-center py-8 text-muted-foreground">
                     No team reports found for the last 7 days.
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        )}
+
+        {canViewTeamReports && (
+          <TabsContent value="team-planners" className="space-y-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-2xl font-bold">Team Daily Planners</h2>
+                <p className="text-muted-foreground">View tasks and planners from all team members</p>
+              </div>
+              <Button onClick={exportTeamPlanners} variant="outline">
+                <Download className="mr-2 h-4 w-4" />
+                Export Planners
+              </Button>
+            </div>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Upcoming Team Tasks</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {loadingTeamPlanners ? (
+                  <div className="flex items-center justify-center h-32">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                  </div>
+                ) : teamPlanners.length > 0 ? (
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Due Date</TableHead>
+                          <TableHead>Task</TableHead>
+                          <TableHead>Assigned To</TableHead>
+                          <TableHead>Priority</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead>Created By</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {teamPlanners.map((task) => {
+                          const dueDate = task.due_date ? new Date(task.due_date) : null;
+                          const isOverdue = dueDate && dueDate < new Date() && !task.is_completed;
+                          
+                          return (
+                            <TableRow key={task.id}>
+                              <TableCell>
+                                {dueDate ? format(dueDate, 'MMM dd, yyyy') : 'No date'}
+                              </TableCell>
+                              <TableCell className="font-medium max-w-xs">
+                                <div>
+                                  <div>{task.title}</div>
+                                  {task.description && (
+                                    <div className="text-sm text-muted-foreground truncate">
+                                      {task.description}
+                                    </div>
+                                  )}
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                {task.assigned_profile?.full_name || 'Unassigned'}
+                              </TableCell>
+                              <TableCell>
+                                <Badge variant={
+                                  task.priority === 'high' ? 'destructive' : 
+                                  task.priority === 'medium' ? 'secondary' : 
+                                  'outline'
+                                }>
+                                  {task.priority || 'medium'}
+                                </Badge>
+                              </TableCell>
+                              <TableCell>
+                                {task.is_completed ? (
+                                  <Badge variant="default">Completed</Badge>
+                                ) : isOverdue ? (
+                                  <Badge variant="destructive">Overdue</Badge>
+                                ) : (
+                                  <Badge variant="secondary">Pending</Badge>
+                                )}
+                              </TableCell>
+                              <TableCell className="text-muted-foreground">
+                                {task.creator_profile?.full_name || 'Unknown'}
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    No upcoming team tasks found.
                   </div>
                 )}
               </CardContent>
