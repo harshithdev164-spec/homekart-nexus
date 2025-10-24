@@ -190,7 +190,14 @@ const Leads: React.FC = () => {
   const handleCreateLead = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!profile) return;
+    if (!profile) {
+      toast({
+        title: 'Error',
+        description: 'You must be logged in to create leads',
+        variant: 'destructive',
+      });
+      return;
+    }
 
     try {
       const leadData = {
@@ -202,7 +209,7 @@ const Leads: React.FC = () => {
         created_by: profile.id,
       };
 
-      const { data: insertedLead, error } = await supabase
+      const { error } = await supabase
         .from('leads')
         .insert([leadData])
         .select()
@@ -212,7 +219,7 @@ const Leads: React.FC = () => {
         console.error('Error creating lead:', error);
         toast({
           title: 'Error',
-          description: 'Failed to create lead',
+          description: error.message || 'Failed to create lead',
           variant: 'destructive',
         });
         return;
@@ -236,36 +243,27 @@ const Leads: React.FC = () => {
         notes: '',
         next_followup: '',
       });
-        fetchLeads();
-      setIsCreateDialogOpen(false);
-      setFormData({
-        name: '',
-        email: '',
-        phone: '',
-        source: '',
-        budget_min: '',
-        budget_max: '',
-        preferred_location: '',
-        property_type: '',
-        notes: '',
-        next_followup: '',
-      });
-      // Don't call fetchLeads here as real-time will handle it
+      fetchLeads();
     } catch (error) {
       console.error('Error creating lead:', error);
+      toast({
+        title: 'Error',
+        description: 'An unexpected error occurred',
+        variant: 'destructive',
+      });
     }
   };
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'new': return 'bg-blue-100 text-blue-800';
-      case 'contacted': return 'bg-yellow-100 text-yellow-800';
-      case 'qualified': return 'bg-green-100 text-green-800';
-      case 'proposal': return 'bg-purple-100 text-purple-800';
-      case 'negotiation': return 'bg-orange-100 text-orange-800';
-      case 'closed_won': return 'bg-emerald-100 text-emerald-800';
-      case 'closed_lost': return 'bg-red-100 text-red-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case 'new': return 'bg-primary/10 text-primary';
+      case 'contacted': return 'bg-warning/10 text-warning';
+      case 'qualified': return 'bg-success/10 text-success';
+      case 'proposal': return 'bg-accent/20 text-accent-foreground';
+      case 'negotiation': return 'bg-warning/10 text-warning';
+      case 'closed_won': return 'bg-success/10 text-success';
+      case 'closed_lost': return 'bg-destructive/10 text-destructive';
+      default: return 'bg-muted text-muted-foreground';
     }
   };
 
@@ -646,22 +644,22 @@ const Leads: React.FC = () => {
             <p className="text-xs text-muted-foreground">Closed Won</p>
           </CardContent>
         </Card>
-        <Card className="border-orange-200 bg-orange-50">
+        <Card className="border-warning/20 bg-warning/5">
           <CardContent className="pt-6">
-            <div className="text-2xl font-bold text-orange-600 flex items-center gap-2">
+            <div className="text-2xl font-bold text-warning flex items-center gap-2">
               {stats.todayFollowUps}
               <Clock className="h-5 w-5" />
             </div>
-            <p className="text-xs text-orange-600">Today's Follow-ups</p>
+            <p className="text-xs text-warning">Today's Follow-ups</p>
           </CardContent>
         </Card>
-        <Card className="border-red-200 bg-red-50">
+        <Card className="border-destructive/20 bg-destructive/5">
           <CardContent className="pt-6">
-            <div className="text-2xl font-bold text-red-600 flex items-center gap-2">
+            <div className="text-2xl font-bold text-destructive flex items-center gap-2">
               {stats.overdueFollowUps}
               <AlertCircle className="h-5 w-5" />
             </div>
-            <p className="text-xs text-red-600">Overdue Follow-ups</p>
+            <p className="text-xs text-destructive">Overdue Follow-ups</p>
           </CardContent>
         </Card>
       </div>
@@ -736,15 +734,15 @@ const Leads: React.FC = () => {
                 {lead.next_followup && (
                   <div className={`flex items-center gap-2 text-xs ${
                     isToday(parseISO(lead.next_followup)) 
-                      ? 'text-orange-600 font-medium' 
+                      ? 'text-warning font-medium' 
                       : isPast(parseISO(lead.next_followup)) && !isToday(parseISO(lead.next_followup))
-                      ? 'text-red-600 font-medium'
+                      ? 'text-destructive font-medium'
                       : 'text-muted-foreground'
                   }`}>
                     <Clock className="h-3 w-3" />
                     Follow-up: {new Date(lead.next_followup).toLocaleDateString()}
-                    {isToday(parseISO(lead.next_followup)) && <span className="text-orange-600">(Today)</span>}
-                    {isPast(parseISO(lead.next_followup)) && !isToday(parseISO(lead.next_followup)) && <span className="text-red-600">(Overdue)</span>}
+                    {isToday(parseISO(lead.next_followup)) && <span className="text-warning">(Today)</span>}
+                    {isPast(parseISO(lead.next_followup)) && !isToday(parseISO(lead.next_followup)) && <span className="text-destructive">(Overdue)</span>}
                   </div>
                 )}
                 {lead.notes && (
