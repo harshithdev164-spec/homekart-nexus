@@ -70,12 +70,16 @@ export const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
   const [createdByProfile, setCreatedByProfile] = useState<Profile | null>(null);
   const [activities, setActivities] = useState<any[]>([]);
   const [communications, setCommunications] = useState<any[]>([]);
+  const [transfers, setTransfers] = useState<any[]>([]);
+  const [relatedProperties, setRelatedProperties] = useState<any[]>([]);
 
   useEffect(() => {
     if (lead && isOpen) {
       fetchProfiles();
       fetchActivities();
       fetchCommunications();
+      fetchTransfers();
+      fetchRelatedProperties();
     }
   }, [lead, isOpen]);
 
@@ -129,6 +133,42 @@ export const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
 
     if (data) {
       setCommunications(data);
+    }
+  };
+
+  const fetchTransfers = async () => {
+    if (!lead) return;
+
+    const { data } = await supabase
+      .from('lead_transfers')
+      .select(`
+        *,
+        from_profile:profiles!lead_transfers_from_user_id_fkey(full_name),
+        to_profile:profiles!lead_transfers_to_user_id_fkey(full_name),
+        transferred_by_profile:profiles!lead_transfers_transferred_by_fkey(full_name)
+      `)
+      .eq('lead_id', lead.id)
+      .order('transferred_at', { ascending: false });
+
+    if (data) {
+      setTransfers(data);
+    }
+  };
+
+  const fetchRelatedProperties = async () => {
+    if (!lead) return;
+
+    const { data } = await supabase
+      .from('lead_property_interests')
+      .select(`
+        *,
+        properties(id, title, price, location, city, status, property_type)
+      `)
+      .eq('lead_id', lead.id)
+      .order('created_at', { ascending: false });
+
+    if (data) {
+      setRelatedProperties(data);
     }
   };
 
@@ -315,6 +355,25 @@ export const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
                         <p className="text-sm">{createdByProfile.full_name}</p>
                       </div>
                     )}
+                    
+                    {transfers.length > 0 && (
+                      <div className="pt-2 border-t">
+                        <span className="text-sm font-medium text-muted-foreground">Transfer History</span>
+                        <div className="space-y-2 mt-2">
+                          {transfers.map((transfer: any) => (
+                            <div key={transfer.id} className="text-xs bg-muted p-2 rounded">
+                              <p>
+                                <strong>{transfer.from_profile?.full_name}</strong> → <strong>{transfer.to_profile?.full_name}</strong>
+                              </p>
+                              <p className="text-muted-foreground">
+                                {format(new Date(transfer.transferred_at), 'MMM dd, yyyy')}
+                                {transfer.reason && ` - ${transfer.reason}`}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
 
@@ -400,6 +459,48 @@ export const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
                   </CardContent>
                 </Card>
               </div>
+
+              {/* Related Properties */}
+              {relatedProperties.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Building2 className="h-5 w-5" />
+                      Related Properties
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      {relatedProperties.map((interest: any) => (
+                        <div key={interest.id} className="border p-3 rounded-lg">
+                          <div className="flex items-start justify-between">
+                            <div>
+                              <p className="font-medium">{interest.properties?.title}</p>
+                              <p className="text-sm text-muted-foreground">
+                                {interest.properties?.location}, {interest.properties?.city}
+                              </p>
+                              <p className="text-sm font-medium">₹{interest.properties?.price?.toLocaleString()}</p>
+                            </div>
+                            <div className="text-right">
+                              <Badge variant="outline">{interest.properties?.status}</Badge>
+                              {interest.interest_level && (
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  Interest: {interest.interest_level}/10
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                          {interest.notes && (
+                            <p className="text-xs text-muted-foreground mt-2 bg-muted p-2 rounded">
+                              {interest.notes}
+                            </p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
             </TabsContent>
 
             {/* AI Insights Tab */}

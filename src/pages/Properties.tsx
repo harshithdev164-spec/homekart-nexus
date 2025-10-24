@@ -446,6 +446,23 @@ const Properties: React.FC = () => {
             </Badge>
           )}
           <div className="flex gap-2 ml-auto">
+            {(property.created_by === profile?.id || profile?.role === 'admin') && (
+              <Select 
+                value={property.status} 
+                onValueChange={(value) => handleStatusUpdate(property.id, value as any)}
+              >
+                <SelectTrigger className="w-[140px] h-8">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="available">Available</SelectItem>
+                  <SelectItem value="under_contract">Under Contract</SelectItem>
+                  <SelectItem value="sold">Sold</SelectItem>
+                  <SelectItem value="rented">Rented</SelectItem>
+                  <SelectItem value="off_market">Off Market</SelectItem>
+                </SelectContent>
+              </Select>
+            )}
             <Button
               size="sm"
               variant="outline"

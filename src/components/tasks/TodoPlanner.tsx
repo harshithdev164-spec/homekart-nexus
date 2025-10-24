@@ -36,6 +36,17 @@ interface TeamMember {
   full_name: string;
 }
 
+const DEFAULT_DAILY_TASKS = [
+  { title: 'Morning Team Meeting', description: 'Daily standup with team' },
+  { title: 'Check Email & Messages', description: 'Review all communications' },
+  { title: 'Follow-up Pending Leads', description: 'Contact leads requiring follow-up' },
+  { title: 'Update Lead Status', description: 'Update CRM with latest lead status' },
+  { title: 'Property Site Visits', description: 'Conduct scheduled site visits' },
+  { title: 'Client Meetings', description: 'Meet with prospective clients' },
+  { title: 'Call Log Updates', description: 'Update call logs and notes' },
+  { title: 'End of Day Report', description: 'Submit daily activity report' },
+];
+
 export const TodoPlanner: React.FC = () => {
   const { profile } = useAuth();
   const { toast } = useToast();
@@ -43,7 +54,9 @@ export const TodoPlanner: React.FC = () => {
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
+  const [showDefaultTasks, setShowDefaultTasks] = useState(false);
   const [dueDate, setDueDate] = useState<Date>();
+  const [selectedDefaultTasks, setSelectedDefaultTasks] = useState<string[]>([]);
 
   const [formData, setFormData] = useState({
     title: '',
@@ -185,6 +198,42 @@ export const TodoPlanner: React.FC = () => {
     }
   };
 
+  const handleDefaultTasksSubmit = async () => {
+    if (!profile || selectedDefaultTasks.length === 0) return;
+
+    const tasksToInsert = selectedDefaultTasks.map(title => {
+      const taskTemplate = DEFAULT_DAILY_TASKS.find(t => t.title === title);
+      return {
+        title: taskTemplate?.title || title,
+        description: taskTemplate?.description || '',
+        priority: 'medium' as 'medium',
+        assigned_to: profile.id,
+        created_by: profile.id,
+        due_date: format(new Date(), 'yyyy-MM-dd'),
+      };
+    });
+
+    const { error } = await supabase
+      .from('tasks')
+      .insert(tasksToInsert);
+
+    if (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to create daily plan',
+        variant: 'destructive'
+      });
+    } else {
+      toast({
+        title: 'Success',
+        description: `Daily plan created with ${selectedDefaultTasks.length} tasks`
+      });
+      setSelectedDefaultTasks([]);
+      setShowDefaultTasks(false);
+      fetchTasks();
+    }
+  };
+
   const resetForm = () => {
     setFormData({
       title: '',
@@ -240,11 +289,64 @@ export const TodoPlanner: React.FC = () => {
           <h2 className="text-2xl font-bold">Daily Planner</h2>
           <p className="text-muted-foreground">Manage your daily tasks and activities</p>
         </div>
-        <Button onClick={() => setShowForm(true)}>
-          <Plus className="h-4 w-4 mr-2" />
-          Add Task
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setShowDefaultTasks(true)}>
+            <CalendarIcon className="h-4 w-4 mr-2" />
+            Daily Plan
+          </Button>
+          <Button onClick={() => setShowForm(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Add Task
+          </Button>
+        </div>
       </div>
+
+      {showDefaultTasks && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Select Your Daily Plan</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3 mb-4">
+              {DEFAULT_DAILY_TASKS.map((task) => (
+                <div key={task.title} className="flex items-start gap-3 p-3 border rounded-lg">
+                  <Checkbox
+                    checked={selectedDefaultTasks.includes(task.title)}
+                    onCheckedChange={(checked) => {
+                      if (checked) {
+                        setSelectedDefaultTasks([...selectedDefaultTasks, task.title]);
+                      } else {
+                        setSelectedDefaultTasks(selectedDefaultTasks.filter(t => t !== task.title));
+                      }
+                    }}
+                  />
+                  <div className="flex-1">
+                    <p className="font-medium">{task.title}</p>
+                    <p className="text-sm text-muted-foreground">{task.description}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="flex gap-2">
+              <Button 
+                onClick={handleDefaultTasksSubmit}
+                disabled={selectedDefaultTasks.length === 0}
+              >
+                Create Daily Plan ({selectedDefaultTasks.length} tasks)
+              </Button>
+              <Button 
+                variant="outline" 
+                onClick={() => {
+                  setShowDefaultTasks(false);
+                  setSelectedDefaultTasks([]);
+                }}
+              >
+                Cancel
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {showForm && (
         <Card>
