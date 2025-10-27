@@ -164,6 +164,16 @@ export const TodoPlanner: React.FC = () => {
   };
 
   const toggleTaskCompletion = async (taskId: string, isCompleted: boolean) => {
+    // Only admins can mark tasks as complete
+    if (profile?.role !== 'admin') {
+      toast({
+        title: 'Permission Denied',
+        description: 'Only admins can mark tasks as complete',
+        variant: 'destructive'
+      });
+      return;
+    }
+
     const { error } = await supabase
       .from('tasks')
       .update({ is_completed: !isCompleted })
@@ -175,6 +185,12 @@ export const TodoPlanner: React.FC = () => {
         description: 'Failed to update task',
         variant: 'destructive'
       });
+    } else {
+      toast({
+        title: 'Success',
+        description: `Task marked as ${!isCompleted ? 'complete' : 'incomplete'}`,
+      });
+      fetchTasks();
     }
   };
 
@@ -199,38 +215,48 @@ export const TodoPlanner: React.FC = () => {
   };
 
   const handleDefaultTasksSubmit = async () => {
-    if (!profile || selectedDefaultTasks.length === 0) return;
-
-    const tasksToInsert = selectedDefaultTasks.map(title => {
-      const taskTemplate = DEFAULT_DAILY_TASKS.find(t => t.title === title);
-      return {
-        title: taskTemplate?.title || title,
-        description: taskTemplate?.description || '',
-        priority: 'medium' as 'medium',
-        assigned_to: profile.id,
-        created_by: profile.id,
-        due_date: format(new Date(), 'yyyy-MM-dd'),
-      };
-    });
-
-    const { error } = await supabase
-      .from('tasks')
-      .insert(tasksToInsert);
-
-    if (error) {
+    if (!profile || selectedDefaultTasks.length === 0) {
       toast({
         title: 'Error',
-        description: 'Failed to create daily plan',
+        description: 'Please select at least one task',
         variant: 'destructive'
       });
-    } else {
+      return;
+    }
+
+    try {
+      const tasksToInsert = selectedDefaultTasks.map(title => {
+        const taskTemplate = DEFAULT_DAILY_TASKS.find(t => t.title === title);
+        return {
+          title: taskTemplate?.title || title,
+          description: taskTemplate?.description || '',
+          priority: 'medium' as 'medium',
+          assigned_to: profile.id,
+          created_by: profile.id,
+          due_date: format(new Date(), 'yyyy-MM-dd'),
+        };
+      });
+
+      const { error } = await supabase
+        .from('tasks')
+        .insert(tasksToInsert);
+
+      if (error) throw error;
+
       toast({
         title: 'Success',
         description: `Daily plan created with ${selectedDefaultTasks.length} tasks`
       });
       setSelectedDefaultTasks([]);
       setShowDefaultTasks(false);
-      fetchTasks();
+      await fetchTasks();
+    } catch (error) {
+      console.error('Error creating daily plan:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to create daily plan',
+        variant: 'destructive'
+      });
     }
   };
 
@@ -287,7 +313,10 @@ export const TodoPlanner: React.FC = () => {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold">Daily Planner</h2>
-          <p className="text-muted-foreground">Manage your daily tasks and activities</p>
+          <p className="text-muted-foreground">
+            Manage your daily tasks and activities
+            {profile?.role !== 'admin' && ' • Only admins can mark tasks as complete'}
+          </p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={() => setShowDefaultTasks(true)}>
@@ -461,16 +490,30 @@ export const TodoPlanner: React.FC = () => {
             ) : (
               todayTasks.map(task => (
                 <div key={task.id} className="flex items-start gap-3 p-3 border rounded-lg">
-                  <Checkbox
-                    checked={task.is_completed}
-                    onCheckedChange={() => toggleTaskCompletion(task.id, task.is_completed)}
-                  />
+                  <div className="relative group">
+                    <Checkbox
+                      checked={task.is_completed}
+                      onCheckedChange={() => toggleTaskCompletion(task.id, task.is_completed)}
+                      disabled={profile?.role !== 'admin'}
+                      className={profile?.role !== 'admin' ? 'cursor-not-allowed opacity-50' : ''}
+                    />
+                    {profile?.role !== 'admin' && (
+                      <span className="absolute left-0 top-6 hidden group-hover:block bg-popover text-popover-foreground text-xs p-2 rounded shadow-md whitespace-nowrap z-10">
+                        Only admins can mark complete
+                      </span>
+                    )}
+                  </div>
                   <div className="flex-1 space-y-1">
                     <div className="flex items-center gap-2">
                       <span className={cn("font-medium", task.is_completed && "line-through text-muted-foreground")}>
                         {task.title}
                       </span>
                       <Badge variant={getPriorityColor(task.priority)}>{task.priority}</Badge>
+                      {task.is_completed && (
+                        <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                          ✓ Completed
+                        </Badge>
+                      )}
                     </div>
                     {task.description && (
                       <p className="text-sm text-muted-foreground">{task.description}</p>
@@ -506,10 +549,19 @@ export const TodoPlanner: React.FC = () => {
             ) : (
               overdueTasks.map(task => (
                 <div key={task.id} className="flex items-start gap-3 p-3 border border-destructive/20 rounded-lg bg-destructive/5">
-                  <Checkbox
-                    checked={task.is_completed}
-                    onCheckedChange={() => toggleTaskCompletion(task.id, task.is_completed)}
-                  />
+                  <div className="relative group">
+                    <Checkbox
+                      checked={task.is_completed}
+                      onCheckedChange={() => toggleTaskCompletion(task.id, task.is_completed)}
+                      disabled={profile?.role !== 'admin'}
+                      className={profile?.role !== 'admin' ? 'cursor-not-allowed opacity-50' : ''}
+                    />
+                    {profile?.role !== 'admin' && (
+                      <span className="absolute left-0 top-6 hidden group-hover:block bg-popover text-popover-foreground text-xs p-2 rounded shadow-md whitespace-nowrap z-10">
+                        Only admins can mark complete
+                      </span>
+                    )}
+                  </div>
                   <div className="flex-1 space-y-1">
                     <div className="flex items-center gap-2">
                       <span className="font-medium">{task.title}</span>
@@ -550,10 +602,19 @@ export const TodoPlanner: React.FC = () => {
             ) : (
               upcomingTasks.map(task => (
                 <div key={task.id} className="flex items-start gap-3 p-3 border rounded-lg">
-                  <Checkbox
-                    checked={task.is_completed}
-                    onCheckedChange={() => toggleTaskCompletion(task.id, task.is_completed)}
-                  />
+                  <div className="relative group">
+                    <Checkbox
+                      checked={task.is_completed}
+                      onCheckedChange={() => toggleTaskCompletion(task.id, task.is_completed)}
+                      disabled={profile?.role !== 'admin'}
+                      className={profile?.role !== 'admin' ? 'cursor-not-allowed opacity-50' : ''}
+                    />
+                    {profile?.role !== 'admin' && (
+                      <span className="absolute left-0 top-6 hidden group-hover:block bg-popover text-popover-foreground text-xs p-2 rounded shadow-md whitespace-nowrap z-10">
+                        Only admins can mark complete
+                      </span>
+                    )}
+                  </div>
                   <div className="flex-1 space-y-1">
                     <div className="flex items-center gap-2">
                       <span className={cn("font-medium", task.is_completed && "line-through text-muted-foreground")}>
@@ -567,7 +628,7 @@ export const TodoPlanner: React.FC = () => {
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
                       <User className="h-3 w-3" />
                       {task.assignee?.full_name || 'Unassigned'}
-                      <span>• Due: {format(new Date(task.due_date!), 'MMM dd')}</span>
+                      {task.due_date && <span>• Due: {format(new Date(task.due_date), 'MMM dd')}</span>}
                     </div>
                   </div>
                   <Button

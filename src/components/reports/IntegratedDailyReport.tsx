@@ -380,9 +380,32 @@ export const IntegratedDailyReport: React.FC = () => {
       {/* Today's Report Form */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <FileText className="h-5 w-5" />
-            Daily Report - {format(selectedDate, 'dd MMM yyyy')}
+          <CardTitle className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <FileText className="h-5 w-5" />
+              Daily Report - {format(selectedDate, 'dd MMM yyyy')}
+            </div>
+            {todaysReport && editingReport !== todaysReport.id && (
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => startEditing(todaysReport)}
+              >
+                Edit Report
+              </Button>
+            )}
+            {editingReport && (
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => {
+                  setEditingReport(null);
+                  resetForm();
+                }}
+              >
+                Cancel Edit
+              </Button>
+            )}
           </CardTitle>
         </CardHeader>
         <CardContent>
