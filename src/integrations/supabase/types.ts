@@ -373,6 +373,7 @@ export type Database = {
           notes: string | null
           phone: string
           preferred_location: string | null
+          project_name: string | null
           property_type: Database["public"]["Enums"]["property_type"] | null
           source: string | null
           status: Database["public"]["Enums"]["lead_status"]
@@ -395,6 +396,7 @@ export type Database = {
           notes?: string | null
           phone: string
           preferred_location?: string | null
+          project_name?: string | null
           property_type?: Database["public"]["Enums"]["property_type"] | null
           source?: string | null
           status?: Database["public"]["Enums"]["lead_status"]
@@ -417,6 +419,7 @@ export type Database = {
           notes?: string | null
           phone?: string
           preferred_location?: string | null
+          project_name?: string | null
           property_type?: Database["public"]["Enums"]["property_type"] | null
           source?: string | null
           status?: Database["public"]["Enums"]["lead_status"]
@@ -537,6 +540,7 @@ export type Database = {
           created_at: string
           created_by: string
           description: string | null
+          floor: string | null
           id: string
           images: string[] | null
           latitude: number | null
@@ -549,8 +553,10 @@ export type Database = {
           state: string
           status: Database["public"]["Enums"]["property_status"]
           title: string
+          towers: number | null
           updated_at: string
           updated_by: string | null
+          wings: number | null
         }
         Insert: {
           address?: string | null
@@ -563,6 +569,7 @@ export type Database = {
           created_at?: string
           created_by: string
           description?: string | null
+          floor?: string | null
           id?: string
           images?: string[] | null
           latitude?: number | null
@@ -575,8 +582,10 @@ export type Database = {
           state: string
           status?: Database["public"]["Enums"]["property_status"]
           title: string
+          towers?: number | null
           updated_at?: string
           updated_by?: string | null
+          wings?: number | null
         }
         Update: {
           address?: string | null
@@ -589,6 +598,7 @@ export type Database = {
           created_at?: string
           created_by?: string
           description?: string | null
+          floor?: string | null
           id?: string
           images?: string[] | null
           latitude?: number | null
@@ -601,8 +611,10 @@ export type Database = {
           state?: string
           status?: Database["public"]["Enums"]["property_status"]
           title?: string
+          towers?: number | null
           updated_at?: string
           updated_by?: string | null
+          wings?: number | null
         }
         Relationships: [
           {
@@ -615,50 +627,6 @@ export type Database = {
           {
             foreignKeyName: "properties_updated_by_fkey"
             columns: ["updated_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      purva_atmosphere__1_: {
-        Row: {
-          client_name: string
-          contact_number: string
-          created_at: string
-          created_by: string | null
-          email_id: string | null
-          id: string
-          project_name: string
-          slno: number
-          updated_at: string
-        }
-        Insert: {
-          client_name: string
-          contact_number: string
-          created_at?: string
-          created_by?: string | null
-          email_id?: string | null
-          id?: string
-          project_name: string
-          slno: number
-          updated_at?: string
-        }
-        Update: {
-          client_name?: string
-          contact_number?: string
-          created_at?: string
-          created_by?: string | null
-          email_id?: string | null
-          id?: string
-          project_name?: string
-          slno?: number
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "purva_atmosphere__1__created_by_fkey"
-            columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -1009,10 +977,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      exec_sql: {
-        Args: { sql_query: string }
-        Returns: string
-      }
+      exec_sql: { Args: { sql_query: string }; Returns: string }
       get_user_profile: {
         Args: { user_uuid?: string }
         Returns: {
@@ -1029,15 +994,18 @@ export type Database = {
           updated_at: string
           user_id: string
         }
+        SetofOptions: {
+          from: "*"
+          to: "profiles"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       has_role: {
         Args: { required_role: Database["public"]["Enums"]["user_role"] }
         Returns: boolean
       }
-      is_admin: {
-        Args: Record<PropertyKey, never>
-        Returns: boolean
-      }
+      is_admin: { Args: never; Returns: boolean }
     }
     Enums: {
       activity_type:

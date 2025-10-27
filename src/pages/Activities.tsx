@@ -242,10 +242,10 @@ const Activities: React.FC = () => {
       <div className="flex items-center justify-between">
         <div className="space-y-1">
           <div className="flex items-center gap-4">
-            <h1 className="text-3xl font-bold">Activities</h1>
+            <h1 className="text-3xl font-bold">Activities & Daily Frame</h1>
             <RealtimeIndicator channel="activities" />
           </div>
-          <p className="text-muted-foreground">Manage your tasks and scheduled activities</p>
+          <p className="text-muted-foreground">Track daily tasks, site visits, and team activities in a structured frame</p>
         </div>
         <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
           <DialogTrigger asChild>

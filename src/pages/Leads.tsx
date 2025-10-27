@@ -97,6 +97,7 @@ const Leads: React.FC = () => {
     email: '',
     phone: '',
     source: '',
+    project_name: '',
     budget_min: '',
     budget_max: '',
     preferred_location: '',
@@ -202,6 +203,7 @@ const Leads: React.FC = () => {
     try {
       const leadData = {
         ...formData,
+        project_name: formData.project_name || null,
         budget_min: formData.budget_min ? parseFloat(formData.budget_min) : null,
         budget_max: formData.budget_max ? parseFloat(formData.budget_max) : null,
         property_type: formData.property_type as 'apartment' | 'villa' | 'plot' | 'commercial' | 'office' | 'warehouse' | undefined,
@@ -236,6 +238,7 @@ const Leads: React.FC = () => {
         email: '',
         phone: '',
         source: '',
+        project_name: '',
         budget_min: '',
         budget_max: '',
         preferred_location: '',
@@ -445,6 +448,16 @@ const Leads: React.FC = () => {
                     onChange={(e) => setFormData({...formData, source: e.target.value})}
                   />
                 </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="project_name">Project Name</Label>
+                <Input
+                  id="project_name"
+                  placeholder="e.g., Sunrise Apartments, Downtown Complex"
+                  value={formData.project_name}
+                  onChange={(e) => setFormData({...formData, project_name: e.target.value})}
+                />
               </div>
 
               <div className="grid grid-cols-2 gap-4">

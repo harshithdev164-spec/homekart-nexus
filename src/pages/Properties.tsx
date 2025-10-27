@@ -85,6 +85,9 @@ const Properties: React.FC = () => {
     address: '',
     city: '',
     state: '',
+    wings: '',
+    towers: '',
+    floor: '',
   });
 
   useEffect(() => {
@@ -156,6 +159,9 @@ const Properties: React.FC = () => {
         area: formData.area ? parseFloat(formData.area) : null,
         bedrooms: formData.bedrooms ? parseInt(formData.bedrooms) : null,
         bathrooms: formData.bathrooms ? parseInt(formData.bathrooms) : null,
+        wings: formData.wings ? parseInt(formData.wings) : null,
+        towers: formData.towers ? parseInt(formData.towers) : null,
+        floor: formData.floor || null,
         created_by: profile.id,
       };
 
@@ -193,6 +199,9 @@ const Properties: React.FC = () => {
         address: '',
         city: '',
         state: '',
+        wings: '',
+        towers: '',
+        floor: '',
       });
       fetchProperties();
     } catch (error) {
@@ -213,6 +222,9 @@ const Properties: React.FC = () => {
         area: formData.area ? parseFloat(formData.area) : null,
         bedrooms: formData.bedrooms ? parseInt(formData.bedrooms) : null,
         bathrooms: formData.bathrooms ? parseInt(formData.bathrooms) : null,
+        wings: formData.wings ? parseInt(formData.wings) : null,
+        towers: formData.towers ? parseInt(formData.towers) : null,
+        floor: formData.floor || null,
         updated_by: profile.id,
       };
 
@@ -295,8 +307,41 @@ const Properties: React.FC = () => {
       address: property.address || '',
       city: property.city,
       state: property.state,
+      wings: (property as any).wings?.toString() || '',
+      towers: (property as any).towers?.toString() || '',
+      floor: (property as any).floor || '',
     });
     setIsEditDialogOpen(true);
+  };
+
+  const handleStatusChange = async (propertyId: string, newStatus: 'available' | 'sold' | 'under_contract' | 'rented' | 'off_market') => {
+    if (!profile) return;
+    
+    try {
+      const { error } = await supabase
+        .from('properties')
+        .update({ 
+          status: newStatus,
+          updated_by: profile.id 
+        })
+        .eq('id', propertyId);
+
+      if (error) throw error;
+
+      toast({
+        title: 'Success',
+        description: 'Property status updated',
+      });
+
+      fetchProperties();
+    } catch (error) {
+      console.error('Error:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to update status',
+        variant: 'destructive',
+      });
+    }
   };
 
   const openDetailModal = (property: Property) => {
@@ -630,6 +675,38 @@ const Properties: React.FC = () => {
                     placeholder="Bathrooms"
                     value={formData.bathrooms}
                     onChange={(e) => setFormData({...formData, bathrooms: e.target.value})}
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="wings">Wings</Label>
+                  <Input
+                    id="wings"
+                    type="number"
+                    placeholder="Number of wings"
+                    value={formData.wings}
+                    onChange={(e) => setFormData({...formData, wings: e.target.value})}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="towers">Towers</Label>
+                  <Input
+                    id="towers"
+                    type="number"
+                    placeholder="Number of towers"
+                    value={formData.towers}
+                    onChange={(e) => setFormData({...formData, towers: e.target.value})}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="floor">Floor</Label>
+                  <Input
+                    id="floor"
+                    placeholder="e.g., 5th Floor, Ground"
+                    value={formData.floor}
+                    onChange={(e) => setFormData({...formData, floor: e.target.value})}
                   />
                 </div>
               </div>
