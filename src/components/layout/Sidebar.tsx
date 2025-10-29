@@ -13,6 +13,7 @@ import {
   MessageSquare,
   FileText,
   Calendar,
+  Store,
 } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
@@ -38,6 +39,11 @@ const navigation: NavItem[] = [
     title: 'Properties',
     href: '/properties',
     icon: Building2,
+  },
+  {
+    title: 'Magicbricks',
+    href: '/magicbricks',
+    icon: Store,
   },
   {
     title: 'Activities',
