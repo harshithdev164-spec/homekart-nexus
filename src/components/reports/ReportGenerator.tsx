@@ -190,23 +190,57 @@ export const ReportGenerator: React.FC = () => {
             .gte('created_at', dateFrom || '2020-01-01')
             .lte('created_at', dateTo || new Date().toISOString());
           
+          // Fetch transfer history for all leads
+          const leadIds = leadsData?.map(lead => lead.id) || [];
+          const { data: transfersData } = await supabase
+            .from('lead_transfers')
+            .select('*')
+            .in('lead_id', leadIds)
+            .order('transferred_at', { ascending: false });
+          
+          // Fetch profile names for transfers
+          const profileIds = new Set<string>();
+          transfersData?.forEach(t => {
+            if (t.from_user_id) profileIds.add(t.from_user_id);
+            if (t.to_user_id) profileIds.add(t.to_user_id);
+            if (t.transferred_by) profileIds.add(t.transferred_by);
+          });
+          
+          const { data: profilesData } = await supabase
+            .from('profiles')
+            .select('id, full_name')
+            .in('id', Array.from(profileIds));
+          
+          const profilesMap = new Map(profilesData?.map(p => [p.id, p.full_name]));
+          
           // Format leads data for export
-          const formattedLeads = leadsData?.map(lead => ({
-            Name: lead.name,
-            Phone: lead.phone,
-            Email: lead.email,
-            Status: lead.status,
-            Source: lead.source,
-            'Assigned To': lead.assigned_to_profile?.full_name || 'Unassigned',
-            'Created By': lead.created_by_profile?.full_name || 'Unknown',
-            'Budget Min': lead.budget_min,
-            'Budget Max': lead.budget_max,
-            'Property Type': lead.property_type,
-            'Preferred Location': lead.preferred_location,
-            'Created At': new Date(lead.created_at).toLocaleString(),
-            'Last Contacted': lead.last_contacted ? new Date(lead.last_contacted).toLocaleString() : 'Never',
-            Notes: lead.notes
-          }));
+          const formattedLeads = leadsData?.map(lead => {
+            const leadTransfers = transfersData?.filter(t => t.lead_id === lead.id) || [];
+            const transferHistory = leadTransfers.map(t => {
+              const fromUser = profilesMap.get(t.from_user_id) || 'Unknown';
+              const toUser = profilesMap.get(t.to_user_id) || 'Unknown';
+              const transferredBy = profilesMap.get(t.transferred_by) || 'Unknown';
+              return `${new Date(t.transferred_at).toLocaleString()}: From ${fromUser} to ${toUser} by ${transferredBy}${t.reason ? ` (${t.reason})` : ''}`;
+            }).join(' | ');
+            
+            return {
+              Name: lead.name,
+              Phone: lead.phone,
+              Email: lead.email,
+              Status: lead.status,
+              Source: lead.source,
+              'Assigned To': lead.assigned_to_profile?.full_name || 'Unassigned',
+              'Created By': lead.created_by_profile?.full_name || 'Unknown',
+              'Budget Min': lead.budget_min,
+              'Budget Max': lead.budget_max,
+              'Property Type': lead.property_type,
+              'Preferred Location': lead.preferred_location,
+              'Created At': new Date(lead.created_at).toLocaleString(),
+              'Last Contacted': lead.last_contacted ? new Date(lead.last_contacted).toLocaleString() : 'Never',
+              'Transfer History': transferHistory || 'No transfers',
+              Notes: lead.notes
+            };
+          });
           
           reportData = { leads: formattedLeads, summary: { total: leadsData?.length || 0 } };
           break;

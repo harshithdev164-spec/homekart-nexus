@@ -543,6 +543,7 @@ export type Database = {
           floor: string | null
           id: string
           images: string[] | null
+          is_magicbricks_listing: boolean
           latitude: number | null
           location: string
           longitude: number | null
@@ -572,6 +573,7 @@ export type Database = {
           floor?: string | null
           id?: string
           images?: string[] | null
+          is_magicbricks_listing?: boolean
           latitude?: number | null
           location: string
           longitude?: number | null
@@ -601,6 +603,7 @@ export type Database = {
           floor?: string | null
           id?: string
           images?: string[] | null
+          is_magicbricks_listing?: boolean
           latitude?: number | null
           location?: string
           longitude?: number | null

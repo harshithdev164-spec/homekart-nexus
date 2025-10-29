@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { supabase } from '@/integrations/supabase/client';
 import { Plus, Search, MapPin, Home, Bed, Bath, Square, IndianRupee, Filter, Users, Star, Clock, Phone } from 'lucide-react';
@@ -88,6 +89,7 @@ const Properties: React.FC = () => {
     wings: '',
     towers: '',
     floor: '',
+    is_magicbricks_listing: false,
   });
 
   useEffect(() => {
@@ -162,6 +164,7 @@ const Properties: React.FC = () => {
         wings: formData.wings ? parseInt(formData.wings) : null,
         towers: formData.towers ? parseInt(formData.towers) : null,
         floor: formData.floor || null,
+        is_magicbricks_listing: formData.is_magicbricks_listing,
         created_by: profile.id,
       };
 
@@ -202,6 +205,7 @@ const Properties: React.FC = () => {
         wings: '',
         towers: '',
         floor: '',
+        is_magicbricks_listing: false,
       });
       fetchProperties();
     } catch (error) {
@@ -225,6 +229,7 @@ const Properties: React.FC = () => {
         wings: formData.wings ? parseInt(formData.wings) : null,
         towers: formData.towers ? parseInt(formData.towers) : null,
         floor: formData.floor || null,
+        is_magicbricks_listing: formData.is_magicbricks_listing,
         updated_by: profile.id,
       };
 
@@ -310,6 +315,7 @@ const Properties: React.FC = () => {
       wings: (property as any).wings?.toString() || '',
       towers: (property as any).towers?.toString() || '',
       floor: (property as any).floor || '',
+      is_magicbricks_listing: (property as any).is_magicbricks_listing || false,
     });
     setIsEditDialogOpen(true);
   };
@@ -403,6 +409,7 @@ const Properties: React.FC = () => {
     
     if (activeTab === 'all') return matchesSearch;
     if (activeTab === 'my-properties') return matchesSearch && property.created_by === profile?.id;
+    if (activeTab === 'magicbricks') return matchesSearch && (property as any).is_magicbricks_listing === true;
     return matchesSearch && property.category === activeTab;
   });
 
@@ -411,6 +418,7 @@ const Properties: React.FC = () => {
   const resaleProperties = filteredProperties.filter(p => p.category === 'resale');
   const rentProperties = filteredProperties.filter(p => p.category === 'rent');
   const myProperties = filteredProperties.filter(p => p.created_by === profile?.id);
+  const magicbricksProperties = properties.filter(p => (p as any).is_magicbricks_listing === true);
 
   const renderPropertyCard = (property: Property) => (
     <Card key={property.id} className="hover:shadow-md transition-shadow">
@@ -766,6 +774,17 @@ const Properties: React.FC = () => {
                 />
               </div>
 
+              <div className="flex items-center space-x-2 bg-amber-50 dark:bg-amber-950 p-4 rounded-lg">
+                <Checkbox
+                  id="is_magicbricks_listing"
+                  checked={formData.is_magicbricks_listing}
+                  onCheckedChange={(checked) => setFormData({...formData, is_magicbricks_listing: checked as boolean})}
+                />
+                <Label htmlFor="is_magicbricks_listing" className="text-sm font-medium cursor-pointer">
+                  🏢 List this property on Magicbricks Active Listing
+                </Label>
+              </div>
+
               <DialogFooter>
                 <Button type="submit" className="w-full">Add Property</Button>
               </DialogFooter>
@@ -841,12 +860,13 @@ const Properties: React.FC = () => {
 
       {/* Tabbed Property View */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="all">All ({properties.length})</TabsTrigger>
           <TabsTrigger value="my-properties">My Properties ({myProperties.length})</TabsTrigger>
           <TabsTrigger value="primary">Primary ({primaryProperties.length})</TabsTrigger>
           <TabsTrigger value="resale">Resale ({resaleProperties.length})</TabsTrigger>
           <TabsTrigger value="rent">Rent ({rentProperties.length})</TabsTrigger>
+          <TabsTrigger value="magicbricks">Magicbricks ({magicbricksProperties.length})</TabsTrigger>
         </TabsList>
 
         <TabsContent value="all" className="mt-6">
@@ -882,6 +902,17 @@ const Properties: React.FC = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredProperties.map(renderPropertyCard)}
           </div>
+        </TabsContent>
+
+        <TabsContent value="magicbricks" className="mt-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredProperties.map(renderPropertyCard)}
+          </div>
+          {magicbricksProperties.length === 0 && (
+            <div className="text-center py-12">
+              <p className="text-muted-foreground">No Magicbricks active listings yet.</p>
+            </div>
+          )}
         </TabsContent>
       </Tabs>
 
@@ -1089,6 +1120,17 @@ const Properties: React.FC = () => {
                 value={formData.description}
                 onChange={(e) => setFormData({...formData, description: e.target.value})}
               />
+            </div>
+
+            <div className="flex items-center space-x-2 bg-amber-50 dark:bg-amber-950 p-4 rounded-lg">
+              <Checkbox
+                id="edit-is_magicbricks_listing"
+                checked={formData.is_magicbricks_listing}
+                onCheckedChange={(checked) => setFormData({...formData, is_magicbricks_listing: checked as boolean})}
+              />
+              <Label htmlFor="edit-is_magicbricks_listing" className="text-sm font-medium cursor-pointer">
+                🏢 List this property on Magicbricks Active Listing
+              </Label>
             </div>
 
             <DialogFooter>
