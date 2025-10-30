@@ -386,8 +386,11 @@ export const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div>
-                      <span className="text-sm font-medium text-muted-foreground">Created</span>
-                      <p className="text-sm">{format(new Date(lead.created_at), 'PPp')}</p>
+                      <span className="text-sm font-medium text-muted-foreground">Lead Created</span>
+                      <div className="flex items-center gap-2 mt-1">
+                        <Calendar className="h-4 w-4 text-primary" />
+                        <p className="text-sm font-medium">{format(new Date(lead.created_at), 'PPp')}</p>
+                      </div>
                     </div>
                     {lead.last_contacted && (
                       <div>

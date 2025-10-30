@@ -106,14 +106,31 @@ const Leads: React.FC = () => {
     next_followup: '',
   });
 
-  // Memoized fetch function to prevent unnecessary re-renders
+  // Optimized fetch function with minimal data load
   const fetchLeads = useCallback(async () => {
     try {
       setLoading(true);
       const { data, error } = await supabase
         .from('leads')
         .select(`
-          *,
+          id,
+          name,
+          email,
+          phone,
+          source,
+          status,
+          budget_min,
+          budget_max,
+          preferred_location,
+          property_type,
+          notes,
+          created_at,
+          updated_at,
+          next_followup,
+          last_contacted,
+          assigned_to,
+          created_by,
+          project_name,
           profiles!leads_assigned_to_fkey(full_name)
         `)
         .order('created_at', { ascending: false });
@@ -140,42 +157,75 @@ const Leads: React.FC = () => {
     fetchLeads();
   }, [fetchLeads]);
 
-  // Optimized real-time subscription
+  // Optimized real-time subscription with selective updates
   useEffect(() => {
     let debounceTimer: NodeJS.Timeout;
+    let updateCount = 0;
+    const MAX_UPDATES_BEFORE_FULL_FETCH = 10;
     
     const channel = supabase
-      .channel(`leads_changes_${Date.now()}`) // Unique channel name
+      .channel(`leads_changes_${Date.now()}`)
       .on('postgres_changes', 
-        { event: '*', schema: 'public', table: 'leads' },
-        (payload) => {
-          console.log('Lead change detected:', payload);
+        { event: 'INSERT', schema: 'public', table: 'leads' },
+        async (payload) => {
+          // For new leads, fetch and prepend to avoid full refresh
+          const { data } = await supabase
+            .from('leads')
+            .select(`
+              id,
+              name,
+              email,
+              phone,
+              source,
+              status,
+              budget_min,
+              budget_max,
+              preferred_location,
+              property_type,
+              notes,
+              created_at,
+              updated_at,
+              next_followup,
+              last_contacted,
+              assigned_to,
+              created_by,
+              project_name,
+              profiles!leads_assigned_to_fkey(full_name)
+            `)
+            .eq('id', payload.new.id)
+            .single();
           
-          // Debounce rapid updates to prevent excessive API calls
-          clearTimeout(debounceTimer);
-          debounceTimer = setTimeout(() => {
-            fetchLeads();
-          }, 500);
+          if (data) {
+            setLeads(prev => [data, ...prev]);
+          }
         }
       )
-      .on('broadcast', 
-        { event: 'status_updated' },
+      .on('postgres_changes', 
+        { event: 'UPDATE', schema: 'public', table: 'leads' },
         (payload) => {
-          console.log('Lead status updated:', payload);
+          // Update only the specific lead
+          setLeads(prev => prev.map(lead => 
+            lead.id === payload.new.id 
+              ? { ...lead, ...payload.new }
+              : lead
+          ));
           
-          // Show notification to other users
-          if (payload.payload?.updated_by && payload.payload?.updated_by !== profile?.full_name) {
-            toast({
-              title: "Lead Updated",
-              description: `${payload.payload.updated_by} updated a lead status`,
-            });
+          updateCount++;
+          // After multiple updates, do a full refresh to ensure consistency
+          if (updateCount >= MAX_UPDATES_BEFORE_FULL_FETCH) {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(() => {
+              fetchLeads();
+              updateCount = 0;
+            }, 1000);
           }
-          
-          // Debounced refresh
-          clearTimeout(debounceTimer);
-          debounceTimer = setTimeout(() => {
-            fetchLeads();
-          }, 300);
+        }
+      )
+      .on('postgres_changes', 
+        { event: 'DELETE', schema: 'public', table: 'leads' },
+        (payload) => {
+          // Remove the deleted lead
+          setLeads(prev => prev.filter(lead => lead.id !== payload.old.id));
         }
       )
       .subscribe();
@@ -184,7 +234,7 @@ const Leads: React.FC = () => {
       clearTimeout(debounceTimer);
       supabase.removeChannel(channel);
     };
-  }, [fetchLeads, profile?.full_name, toast]);
+  }, [fetchLeads]);
 
   // Remove duplicate fetchLeads function
 
