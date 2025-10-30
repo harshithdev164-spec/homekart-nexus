@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { supabase } from '@/integrations/supabase/client';
-import { Plus, Search, MapPin, IndianRupee, Users, Clock, Home, Bed, Bath, Square, Download } from 'lucide-react';
+import { Plus, Search, MapPin, IndianRupee, Users, Clock, Home, Bed, Bath, Square, Download, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { RealtimeIndicator } from '@/components/collaboration/RealtimeIndicator';
 import { format } from 'date-fns';
@@ -20,6 +20,16 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -70,6 +80,8 @@ const Magicbricks: React.FC = () => {
   const [editingProperty, setEditingProperty] = useState<Property | null>(null);
   const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+  const [deletePropertyId, setDeletePropertyId] = useState<string | null>(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   
   // Form state
   const [formData, setFormData] = useState({
@@ -285,6 +297,43 @@ const Magicbricks: React.FC = () => {
   const openDetailModal = (property: Property) => {
     setSelectedProperty(property);
     setIsDetailModalOpen(true);
+  };
+
+  const handleDeleteProperty = async () => {
+    if (!deletePropertyId) return;
+
+    try {
+      const { error } = await supabase
+        .from('properties')
+        .delete()
+        .eq('id', deletePropertyId);
+
+      if (error) {
+        console.error('Error deleting property:', error);
+        toast({
+          title: 'Error',
+          description: 'Failed to delete listing',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      toast({
+        title: 'Success',
+        description: 'Listing deleted successfully',
+      });
+
+      setIsDeleteDialogOpen(false);
+      setDeletePropertyId(null);
+      fetchMagicbricksProperties();
+    } catch (error) {
+      console.error('Error deleting property:', error);
+    }
+  };
+
+  const openDeleteDialog = (propertyId: string) => {
+    setDeletePropertyId(propertyId);
+    setIsDeleteDialogOpen(true);
   };
 
   const exportToExcel = () => {
@@ -602,13 +651,22 @@ const Magicbricks: React.FC = () => {
                   View Details
                 </Button>
                 {(property.created_by === profile?.id || profile?.role === 'admin') && (
-                  <Button
-                    size="sm"
-                    variant="default"
-                    onClick={() => openEditDialog(property)}
-                  >
-                    Edit
-                  </Button>
+                  <>
+                    <Button
+                      size="sm"
+                      variant="default"
+                      onClick={() => openEditDialog(property)}
+                    >
+                      Edit
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      onClick={() => openDeleteDialog(property.id)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </>
                 )}
               </div>
             </CardContent>
@@ -645,6 +703,24 @@ const Magicbricks: React.FC = () => {
         }}
         onEdit={openEditDialog}
       />
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Listing</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this Magicbricks listing? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setDeletePropertyId(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteProperty} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
