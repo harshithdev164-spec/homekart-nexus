@@ -651,23 +651,21 @@ const Magicbricks: React.FC = () => {
                   View Details
                 </Button>
                 {(property.created_by === profile?.id || profile?.role === 'admin') && (
-                  <>
-                    <Button
-                      size="sm"
-                      variant="default"
-                      onClick={() => openEditDialog(property)}
-                    >
-                      Edit
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="destructive"
-                      onClick={() => openDeleteDialog(property.id)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </>
+                  <Button
+                    size="sm"
+                    variant="default"
+                    onClick={() => openEditDialog(property)}
+                  >
+                    Edit
+                  </Button>
                 )}
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  onClick={() => openDeleteDialog(property.id)}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
               </div>
             </CardContent>
           </Card>

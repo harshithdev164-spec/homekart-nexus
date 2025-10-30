@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
@@ -210,10 +211,10 @@ export const PropertyDetailModal: React.FC<PropertyDetailModalProps> = ({
           <div className="flex items-start justify-between">
             <div className="space-y-2">
               <DialogTitle className="text-2xl font-bold">{property.title}</DialogTitle>
-              <div className="flex items-center gap-2 text-muted-foreground">
+              <DialogDescription className="flex items-center gap-2">
                 <MapPin className="h-4 w-4" />
                 <span>{property.location}, {property.city}, {property.state}</span>
-              </div>
+              </DialogDescription>
             </div>
             <div className="flex items-center gap-2">
               <Badge className={getStatusColor(property.status)}>
