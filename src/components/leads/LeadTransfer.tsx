@@ -58,14 +58,22 @@ export const LeadTransfer: React.FC<LeadTransferProps> = ({
         .from('profiles')
         .select('id, full_name, role, email, department')
         .eq('is_active', true)
-        .neq('id', profile?.id); // Exclude current user
+        .order('role', { ascending: false }); // Show admins first
 
       if (error) {
         console.error('Error fetching team members:', error);
         return;
       }
 
-      setTeamMembers(data || []);
+      // Sort to prioritize admins and filter out current assignment if needed
+      const sortedMembers = (data || []).sort((a, b) => {
+        // Admins first
+        if (a.role === 'admin' && b.role !== 'admin') return -1;
+        if (a.role !== 'admin' && b.role === 'admin') return 1;
+        return 0;
+      });
+
+      setTeamMembers(sortedMembers);
     } catch (error) {
       console.error('Error fetching team members:', error);
     }
