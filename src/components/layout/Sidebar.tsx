@@ -46,6 +46,11 @@ const navigation: NavItem[] = [
     icon: Store,
   },
   {
+    title: '99acres',
+    href: '/99acres',
+    icon: Store,
+  },
+  {
     title: 'Activities',
     href: '/activities',
     icon: Activity,
@@ -68,6 +73,12 @@ const navigation: NavItem[] = [
   {
     title: 'HR Management',
     href: '/hr',
+    icon: Users,
+    roles: ['admin'],
+  },
+  {
+    title: 'Salaries',
+    href: '/salaries',
     icon: Users,
     roles: ['admin'],
   },

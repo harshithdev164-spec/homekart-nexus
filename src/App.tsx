@@ -14,6 +14,7 @@ import Leads from "./pages/Leads";
 import Properties from "./pages/Properties";
 import EnhancedProperties from "./pages/EnhancedProperties";
 import Magicbricks from "./pages/Magicbricks";
+import NinetyNineAcres from "./pages/NinetyNineAcres";
 import Activities from "./pages/Activities";
 import Team from "./pages/Team";
 import Messages from "./pages/Messages";
@@ -22,6 +23,7 @@ import Communications from "./pages/Communications";
 import Reports from "./pages/Reports";
 import SOPReports from "./pages/SOPReports";
 import HR from "./pages/HR";
+import Salaries from "./pages/Salaries";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient({
@@ -89,6 +91,7 @@ const App: React.FC = () => {
                 <Route path="/properties" element={<DashboardLayout><Properties /></DashboardLayout>} />
                 <Route path="/enhanced-properties" element={<DashboardLayout><EnhancedProperties /></DashboardLayout>} />
                 <Route path="/magicbricks" element={<DashboardLayout><Magicbricks /></DashboardLayout>} />
+                <Route path="/99acres" element={<DashboardLayout><NinetyNineAcres /></DashboardLayout>} />
                 <Route path="/activities" element={<DashboardLayout><Activities /></DashboardLayout>} />
                 <Route path="/team" element={<DashboardLayout><Team /></DashboardLayout>} />
                 <Route path="/reports" element={<DashboardLayout><Reports /></DashboardLayout>} />
@@ -97,6 +100,7 @@ const App: React.FC = () => {
                 <Route path="/communications" element={<DashboardLayout><Communications /></DashboardLayout>} />
                 <Route path="/sop-reports" element={<DashboardLayout><SOPReports /></DashboardLayout>} />
                 <Route path="/hr" element={<DashboardLayout><HR /></DashboardLayout>} />
+                <Route path="/salaries" element={<DashboardLayout><Salaries /></DashboardLayout>} />
                 <Route path="/documents" element={<DashboardLayout><div>Documents page coming soon...</div></DashboardLayout>} />
                 <Route path="/settings" element={<DashboardLayout><div>Settings page coming sure...</div></DashboardLayout>} />
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
