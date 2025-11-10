@@ -123,7 +123,7 @@ const NinetyNineAcres: React.FC = () => {
           *,
           profiles!properties_created_by_fkey(full_name, phone)
         `)
-        .eq('is_magicbricks_listing', false)
+        .eq('source', '99acres')
         .order('updated_at', { ascending: false });
 
       if (error) {
@@ -194,7 +194,7 @@ const NinetyNineAcres: React.FC = () => {
         wings: formData.wings ? parseInt(formData.wings) : null,
         towers: formData.towers ? parseInt(formData.towers) : null,
         floor: formData.floor || null,
-        is_magicbricks_listing: false,
+        source: '99acres',
         created_by: profile.id,
       };
 

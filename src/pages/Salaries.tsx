@@ -52,9 +52,40 @@ const EMPLOYEE_SALARIES: { [key: string]: number } = {
   'shalini': 30000,
   'sonali': 22000,
   'santhosh': 20000,
+  'santosh': 20000,
   'sn menon': 30000,
+  's n menon': 30000,
+  'menon': 30000,
   'jagdeesha': 10000,
+  'jagadeesh': 10000,
   'harshith': 20000,
+  'harshit': 20000,
+};
+
+// Helper function to match employee names flexibly
+const getEmployeeSalary = (fullName: string): number => {
+  const nameLower = fullName.toLowerCase().trim();
+  
+  // Direct match
+  if (EMPLOYEE_SALARIES[nameLower]) {
+    return EMPLOYEE_SALARIES[nameLower];
+  }
+  
+  // Try partial matches (first name, last name)
+  const nameParts = nameLower.split(' ');
+  for (const part of nameParts) {
+    if (EMPLOYEE_SALARIES[part]) {
+      return EMPLOYEE_SALARIES[part];
+    }
+  }
+  
+  // Try without spaces
+  const noSpaces = nameLower.replace(/\s+/g, '');
+  if (EMPLOYEE_SALARIES[noSpaces]) {
+    return EMPLOYEE_SALARIES[noSpaces];
+  }
+  
+  return 0;
 };
 
 const Salaries: React.FC = () => {
@@ -116,8 +147,7 @@ const Salaries: React.FC = () => {
   };
 
   const calculateSalary = (employee: Profile) => {
-    const nameLower = employee.full_name.toLowerCase();
-    const baseSalary = EMPLOYEE_SALARIES[nameLower] || 0;
+    const baseSalary = getEmployeeSalary(employee.full_name);
     
     if (baseSalary === 0) {
       return { baseSalary: 0, deduction: 0, finalSalary: 0, missingDays: 0, totalDays: 0, submittedDays: 0 };
@@ -192,7 +222,7 @@ const Salaries: React.FC = () => {
   const exportToExcel = () => {
     try {
       const exportData = employees
-        .filter(emp => EMPLOYEE_SALARIES[emp.full_name.toLowerCase()])
+        .filter(emp => getEmployeeSalary(emp.full_name) > 0)
         .map(employee => {
           const calculation = calculateSalary(employee);
           return {
@@ -256,7 +286,7 @@ const Salaries: React.FC = () => {
   }
 
   const workingDays = getWorkingDays();
-  const totalEmployees = employees.filter(emp => EMPLOYEE_SALARIES[emp.full_name.toLowerCase()]).length;
+  const totalEmployees = employees.filter(emp => getEmployeeSalary(emp.full_name) > 0).length;
   const totalSalaries = employees.reduce((sum, emp) => sum + calculateSalary(emp).finalSalary, 0);
   const totalDeductions = employees.reduce((sum, emp) => sum + calculateSalary(emp).deduction, 0);
 
@@ -365,7 +395,7 @@ const Salaries: React.FC = () => {
             </TableHeader>
             <TableBody>
               {employees
-                .filter(emp => EMPLOYEE_SALARIES[emp.full_name.toLowerCase()])
+                .filter(emp => getEmployeeSalary(emp.full_name) > 0)
                 .map((employee) => {
                   const calculation = calculateSalary(employee);
                   const isEditing = editingEmployee === employee.id;
