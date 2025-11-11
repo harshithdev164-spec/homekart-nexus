@@ -1,50 +1,80 @@
 import React, { useState, useEffect } from 'react';
-import { ReportGenerator } from '@/components/reports/ReportGenerator';
 import { IntegratedDailyReport } from '@/components/reports/IntegratedDailyReport';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { FileText, BarChart3, Users, Calendar, Download } from 'lucide-react';
+import { FileText, Download, TrendingUp, Users, Calendar as CalendarIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { useToast } from '@/hooks/use-toast';
-import { format } from 'date-fns';
+import { format, startOfMonth } from 'date-fns';
 import * as XLSX from 'xlsx';
+import { 
+  BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
+  RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
+  XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer 
+} from 'recharts';
+
+type TimeRange = 'week' | 'month' | 'custom';
 
 const Reports: React.FC = () => {
   const { profile } = useAuth();
   const { toast } = useToast();
   const [teamReports, setTeamReports] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
-  const [startDate, setStartDate] = useState<Date>(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
+  const [startDate, setStartDate] = useState<Date>(startOfMonth(new Date()));
   const [endDate, setEndDate] = useState<Date>(new Date());
+  const [timeRange, setTimeRange] = useState<TimeRange>('month');
+  const [selectedEmployee, setSelectedEmployee] = useState<string>('all');
+  const [employees, setEmployees] = useState<any[]>([]);
+  const [performanceMetrics, setPerformanceMetrics] = useState<any[]>([]);
+  const [departmentData, setDepartmentData] = useState<any[]>([]);
+  const [trendData, setTrendData] = useState<any[]>([]);
 
-  // Check if user is admin or HR (manager)
   const canViewTeamReports = profile?.role === 'admin' || profile?.role === 'manager';
+  const COLORS = ['hsl(var(--chart-1))', 'hsl(var(--chart-2))', 'hsl(var(--chart-3))', 'hsl(var(--chart-4))', 'hsl(var(--chart-5))'];
 
   useEffect(() => {
     if (canViewTeamReports) {
+      fetchEmployees();
       fetchTeamReports();
     }
-  }, [canViewTeamReports, startDate, endDate]);
+  }, [canViewTeamReports, startDate, endDate, selectedEmployee]);
+
+  const fetchEmployees = async () => {
+    const { data } = await supabase
+      .from('profiles')
+      .select('id, full_name, role')
+      .eq('is_active', true)
+      .order('full_name');
+    
+    if (data) setEmployees(data);
+  };
 
   const fetchTeamReports = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('reports')
         .select(`
           *,
-          profiles!reports_generated_by_fkey(full_name, role)
+          profiles!reports_generated_by_fkey(full_name, role, department)
         `)
         .eq('report_type', 'team_performance')
         .gte('generated_at', format(startDate, 'yyyy-MM-dd'))
         .lte('generated_at', format(endDate, 'yyyy-MM-dd') + 'T23:59:59')
         .order('generated_at', { ascending: false });
+
+      if (selectedEmployee !== 'all') {
+        query = query.eq('generated_by', selectedEmployee);
+      }
+
+      const { data, error } = await query;
 
       if (error) {
         console.error('Error fetching team reports:', error);
@@ -55,12 +85,60 @@ const Reports: React.FC = () => {
         });
       } else {
         setTeamReports(data || []);
+        processAnalytics(data || []);
       }
     } catch (error) {
       console.error('Error:', error);
     } finally {
       setLoading(false);
     }
+  };
+
+  const processAnalytics = (reports: any[]) => {
+    // Performance metrics by employee
+    const employeeMetrics = new Map();
+    reports.forEach(report => {
+      const data = report.data as any;
+      const name = report.profiles?.full_name || 'Unknown';
+      const existing = employeeMetrics.get(name) || { 
+        name, 
+        leads: 0, 
+        calls: 0, 
+        visits: 0, 
+        followUps: 0,
+        inventories: 0 
+      };
+      existing.leads += data?.leads_registered || 0;
+      existing.calls += data?.calls_to_agents || 0;
+      existing.visits += (data?.primary_sites_visited || 0) + (data?.client_visit || 0);
+      existing.followUps += data?.follow_ups || 0;
+      existing.inventories += data?.inventories_found || 0;
+      employeeMetrics.set(name, existing);
+    });
+    setPerformanceMetrics(Array.from(employeeMetrics.values()));
+
+    // Department breakdown
+    const deptMetrics = new Map();
+    reports.forEach(report => {
+      const dept = report.profiles?.department || 'Unassigned';
+      const data = report.data as any;
+      const existing = deptMetrics.get(dept) || { name: dept, value: 0 };
+      existing.value += (data?.leads_registered || 0) + (data?.calls_to_agents || 0);
+      deptMetrics.set(dept, existing);
+    });
+    setDepartmentData(Array.from(deptMetrics.values()));
+
+    // Trend over time (last 7 reports)
+    const trends = reports.slice(0, 7).reverse().map(report => {
+      const data = report.data as any;
+      return {
+        date: format(new Date(report.generated_at), 'MMM dd'),
+        leads: data?.leads_registered || 0,
+        calls: data?.calls_to_agents || 0,
+        visits: (data?.primary_sites_visited || 0) + (data?.client_visit || 0),
+      };
+    });
+    setTrendData(trends);
   };
 
   const exportTeamReports = () => {
@@ -73,309 +151,325 @@ const Reports: React.FC = () => {
       return;
     }
 
-    // Prepare data for Excel
     const excelData = teamReports.map(report => {
-      const data = report.data || {};
+      const data = report.data as any;
       const reportDate = new Date(report.generated_at);
       
       return {
         'Date': format(reportDate, 'dd-MMM-yyyy'),
         'Employee Name': report.profiles?.full_name || 'Unknown',
         'Role': report.profiles?.role || 'Unknown',
-        
-        // Lead Management
-        'Leads Registered': data.leads_registered || 0,
-        'Leads Called': data.leads_called || 0,
-        'Follow Ups': data.follow_ups || 0,
-        'Follow Up Description': data.follow_ups_description || '',
-        
-        // Inventory & Visits
-        'Inventories Found': data.inventories_found || 0,
-        'Primary Sites Visited': data.primary_sites_visited || 0,
-        'Client Visits': data.client_visit || 0,
-        'Total Site Visits': (data.primary_sites_visited || 0) + (data.client_visit || 0),
-        
-        // Communications
-        'Calls to Agents': data.calls_to_agents || 0,
-        'Agent Names': data.agent_names || '',
-        'Calls to Developers': data.calls_to_developers || 0,
-        'Developer Call Details': data.calls_to_developers_description || '',
-        
-        // Digital Marketing
-        'WhatsApp Postings': data.whatsapp_postings || 0,
-        'Agents Added': data.agents_added || 0,
-        'Agents Contacted': data.agents_contacted || 0,
-        'Facebook Postings': data.facebook_postings || 0,
-        'Instagram Postings': data.instagram_posting || 0,
-        '99Acres Postings': data.acres_99_postings || 0,
-        'Google Reviews': data.google_reviews || 0,
-        'Surrendered Leads': data.surrendered_leads || 0,
-        'MagicBricks Postings': data.mb_postings || 0,
-        'Website Postings': data.website_postings || 0,
-        'Total Digital Marketing': (data.whatsapp_postings || 0) + (data.facebook_postings || 0) + (data.instagram_posting || 0) + (data.acres_99_postings || 0),
-        
-        // Email Communications
-        'Mails Sent': data.mails_sent || 0,
-        'Cross Pitching Mails': data.cross_pitching_mails || 0,
-        
-        // Notes
-        'Challenges Faced': data.challenges_faced || '',
-        'Achievements': data.achievements || '',
-        'Next Day Plan': data.next_day_plan || '',
+        'Leads Registered': data?.leads_registered || 0,
+        'Leads Called': data?.leads_called || 0,
+        'Follow Ups': data?.follow_ups || 0,
+        'Inventories Found': data?.inventories_found || 0,
+        'Primary Sites Visited': data?.primary_sites_visited || 0,
+        'Client Visits': data?.client_visit || 0,
+        'Total Site Visits': (data?.primary_sites_visited || 0) + (data?.client_visit || 0),
+        'Calls to Agents': data?.calls_to_agents || 0,
+        'Calls to Developers': data?.calls_to_developers || 0,
+        'Emails to Developers': data?.emails_to_developers || 0,
+        'Digital Marketing Calls': data?.digital_marketing_calls || 0,
+        'Notes': data?.notes || '',
       };
     });
 
-    // Create worksheet
     const ws = XLSX.utils.json_to_sheet(excelData);
-    
-    // Set column widths
-    const colWidths = [
-      { wch: 12 }, // Date
-      { wch: 20 }, // Employee Name
-      { wch: 12 }, // Role
-      { wch: 15 }, // Leads Registered
-      { wch: 15 }, // Leads Called
-      { wch: 12 }, // Follow Ups
-      { wch: 30 }, // Follow Up Description
-      { wch: 15 }, // Inventories Found
-      { wch: 18 }, // Primary Sites Visited
-      { wch: 15 }, // Client Visits
-      { wch: 15 }, // Total Site Visits
-      { wch: 15 }, // Calls to Agents
-      { wch: 30 }, // Agent Names
-      { wch: 18 }, // Calls to Developers
-      { wch: 30 }, // Developer Call Details
-      { wch: 18 }, // WhatsApp Postings
-      { wch: 15 }, // Agents Added
-      { wch: 18 }, // Agents Contacted
-      { wch: 18 }, // Facebook Postings
-      { wch: 18 }, // Instagram Postings
-      { wch: 15 }, // 99Acres Postings
-      { wch: 15 }, // Google Reviews
-      { wch: 18 }, // Surrendered Leads
-      { wch: 20 }, // MagicBricks Postings
-      { wch: 18 }, // Website Postings
-      { wch: 20 }, // Total Digital Marketing
-      { wch: 12 }, // Mails Sent
-      { wch: 20 }, // Cross Pitching Mails
-      { wch: 40 }, // Challenges Faced
-      { wch: 40 }, // Achievements
-      { wch: 40 }, // Next Day Plan
+    const columnWidths = [
+      { wch: 12 }, { wch: 20 }, { wch: 12 }, { wch: 15 }, 
+      { wch: 15 }, { wch: 12 }, { wch: 15 }, { wch: 20 }, 
+      { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 20 }, 
+      { wch: 20 }, { wch: 20 }, { wch: 50 }
     ];
-    ws['!cols'] = colWidths;
+    ws['!cols'] = columnWidths;
 
-    // Create workbook
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Team Daily Reports');
-
-    // Generate filename
-    const filename = `Team_Reports_${format(startDate, 'dd-MMM-yyyy')}_to_${format(endDate, 'dd-MMM-yyyy')}.xlsx`;
-
-    // Save file
-    XLSX.writeFile(wb, filename);
+    XLSX.utils.book_append_sheet(wb, ws, 'Team Reports');
+    XLSX.writeFile(wb, `team_reports_${format(startDate, 'yyyy_MM_dd')}_to_${format(endDate, 'yyyy_MM_dd')}.xlsx`);
 
     toast({
       title: 'Success',
-      description: 'Team reports exported successfully'
+      description: 'Reports exported successfully',
     });
   };
 
   return (
-    <div className="p-6">
-      <Tabs defaultValue="daily" className="space-y-6">
-        <TabsList className={`grid w-full ${canViewTeamReports ? 'grid-cols-3' : 'grid-cols-2'}`}>
-          <TabsTrigger value="daily" className="flex items-center gap-2">
-            <FileText className="h-4 w-4" />
-            Daily Reports
-          </TabsTrigger>
-          <TabsTrigger value="analytics" className="flex items-center gap-2">
-            <BarChart3 className="h-4 w-4" />
-            Analytics & Reports
-          </TabsTrigger>
-          {canViewTeamReports && (
-            <TabsTrigger value="team" className="flex items-center gap-2">
-              <Users className="h-4 w-4" />
-              Team Reports
-            </TabsTrigger>
-          )}
-        </TabsList>
-        
-        <TabsContent value="daily" className="space-y-0">
-          <IntegratedDailyReport />
-        </TabsContent>
-        
-        <TabsContent value="analytics" className="space-y-0">
-          <ReportGenerator />
-        </TabsContent>
+    <div className="w-full space-y-6">
+      <div>
+        <h1 className="text-3xl font-bold bg-gradient-to-r from-primary via-secondary to-accent bg-clip-text text-transparent">
+          Reports & Analytics
+        </h1>
+        <p className="text-muted-foreground mt-1">Comprehensive performance reports and insights</p>
+      </div>
 
-        {canViewTeamReports && (
-          <TabsContent value="team" className="space-y-6">
-            <div className="flex flex-col gap-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-2xl font-bold">Team Daily Reports</h2>
-                  <p className="text-muted-foreground">View and manage daily reports from all team members</p>
-                </div>
+      <Tabs defaultValue="analytics" className="w-full">
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="analytics">Analytics</TabsTrigger>
+          <TabsTrigger value="submit">Submit Report</TabsTrigger>
+          <TabsTrigger value="data">Data Table</TabsTrigger>
+        </TabsList>
+
+        {/* Analytics Tab */}
+        <TabsContent value="analytics" className="space-y-6">
+          {/* Filters */}
+          <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
+            <CardContent className="p-4">
+              <div className="flex flex-wrap gap-3">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className="justify-start text-left font-normal">
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      From: {format(startDate, 'PP')}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0">
+                    <CalendarComponent
+                      mode="single"
+                      selected={startDate}
+                      onSelect={(date) => date && setStartDate(date)}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className="justify-start text-left font-normal">
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      To: {format(endDate, 'PP')}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0">
+                    <CalendarComponent
+                      mode="single"
+                      selected={endDate}
+                      onSelect={(date) => date && setEndDate(date)}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+
+                {canViewTeamReports && (
+                  <Select value={selectedEmployee} onValueChange={setSelectedEmployee}>
+                    <SelectTrigger className="w-40">
+                      <SelectValue placeholder="All Employees" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Employees</SelectItem>
+                      {employees.map(emp => (
+                        <SelectItem key={emp.id} value={emp.id}>{emp.full_name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+
+                <Button onClick={exportTeamReports} variant="default" className="ml-auto">
+                  <Download className="mr-2 h-4 w-4" />
+                  Export to Excel
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {loading ? (
+            <div className="flex items-center justify-center h-64">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+            </div>
+          ) : (
+            <>
+              {/* Charts Row 1 */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Employee Performance */}
+                <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Users className="h-5 w-5 text-primary" />
+                      Employee Performance
+                    </CardTitle>
+                    <CardDescription>Comprehensive metrics by employee</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <ResponsiveContainer width="100%" height={300}>
+                      <BarChart data={performanceMetrics.slice(0, 5)}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                        <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" />
+                        <YAxis stroke="hsl(var(--muted-foreground))" />
+                        <Tooltip 
+                          contentStyle={{ 
+                            backgroundColor: 'hsl(var(--card))', 
+                            border: '1px solid hsl(var(--border))',
+                            borderRadius: '8px'
+                          }} 
+                        />
+                        <Legend />
+                        <Bar dataKey="leads" fill="hsl(var(--chart-1))" name="Leads" />
+                        <Bar dataKey="calls" fill="hsl(var(--chart-2))" name="Calls" />
+                        <Bar dataKey="visits" fill="hsl(var(--chart-3))" name="Visits" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </CardContent>
+                </Card>
+
+                {/* Trend Analysis */}
+                <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <TrendingUp className="h-5 w-5 text-secondary" />
+                      Performance Trend
+                    </CardTitle>
+                    <CardDescription>Activity over selected period</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <ResponsiveContainer width="100%" height={300}>
+                      <LineChart data={trendData}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                        <XAxis dataKey="date" stroke="hsl(var(--muted-foreground))" />
+                        <YAxis stroke="hsl(var(--muted-foreground))" />
+                        <Tooltip 
+                          contentStyle={{ 
+                            backgroundColor: 'hsl(var(--card))', 
+                            border: '1px solid hsl(var(--border))',
+                            borderRadius: '8px'
+                          }} 
+                        />
+                        <Legend />
+                        <Line type="monotone" dataKey="leads" stroke="hsl(var(--chart-1))" strokeWidth={2} name="Leads" />
+                        <Line type="monotone" dataKey="calls" stroke="hsl(var(--chart-2))" strokeWidth={2} name="Calls" />
+                        <Line type="monotone" dataKey="visits" stroke="hsl(var(--chart-3))" strokeWidth={2} name="Visits" />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </CardContent>
+                </Card>
               </div>
 
-              <Card>
-                <CardContent className="pt-6">
-                  <div className="flex items-center gap-4 flex-wrap">
-                    <div className="flex items-center gap-2">
-                      <label className="text-sm font-medium">From Date:</label>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button variant="outline" className="w-[200px] justify-start text-left">
-                            <Calendar className="mr-2 h-4 w-4" />
-                            {format(startDate, 'dd MMM yyyy')}
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
-                          <CalendarComponent
-                            mode="single"
-                            selected={startDate}
-                            onSelect={(date) => date && setStartDate(date)}
-                            initialFocus
-                          />
-                        </PopoverContent>
-                      </Popover>
-                    </div>
+              {/* Charts Row 2 */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Department Distribution */}
+                <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <FileText className="h-5 w-5 text-accent" />
+                      Department Activity
+                    </CardTitle>
+                    <CardDescription>Activity distribution by department</CardDescription>
+                  </CardHeader>
+                  <CardContent className="flex items-center justify-center">
+                    <ResponsiveContainer width="100%" height={300}>
+                      <PieChart>
+                        <Pie
+                          data={departmentData}
+                          cx="50%"
+                          cy="50%"
+                          labelLine={false}
+                          label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                          outerRadius={100}
+                          fill="#8884d8"
+                          dataKey="value"
+                        >
+                          {departmentData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                          ))}
+                        </Pie>
+                        <Tooltip 
+                          contentStyle={{ 
+                            backgroundColor: 'hsl(var(--card))', 
+                            border: '1px solid hsl(var(--border))',
+                            borderRadius: '8px'
+                          }} 
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </CardContent>
+                </Card>
 
-                    <div className="flex items-center gap-2">
-                      <label className="text-sm font-medium">To Date:</label>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button variant="outline" className="w-[200px] justify-start text-left">
-                            <Calendar className="mr-2 h-4 w-4" />
-                            {format(endDate, 'dd MMM yyyy')}
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
-                          <CalendarComponent
-                            mode="single"
-                            selected={endDate}
-                            onSelect={(date) => date && setEndDate(date)}
-                            initialFocus
-                          />
-                        </PopoverContent>
-                      </Popover>
-                    </div>
+                {/* Performance Radar */}
+                <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
+                  <CardHeader>
+                    <CardTitle>Performance Radar</CardTitle>
+                    <CardDescription>Multi-dimensional analysis</CardDescription>
+                  </CardHeader>
+                  <CardContent className="flex items-center justify-center">
+                    <ResponsiveContainer width="100%" height={300}>
+                      <RadarChart data={performanceMetrics.slice(0, 1).map(emp => [
+                        { subject: 'Leads', value: emp.leads, fullMark: Math.max(...performanceMetrics.map(e => e.leads)) },
+                        { subject: 'Calls', value: emp.calls, fullMark: Math.max(...performanceMetrics.map(e => e.calls)) },
+                        { subject: 'Visits', value: emp.visits, fullMark: Math.max(...performanceMetrics.map(e => e.visits)) },
+                        { subject: 'Follow-ups', value: emp.followUps, fullMark: Math.max(...performanceMetrics.map(e => e.followUps)) },
+                        { subject: 'Inventory', value: emp.inventories, fullMark: Math.max(...performanceMetrics.map(e => e.inventories)) },
+                      ])[0] || []}>
+                        <PolarGrid stroke="hsl(var(--border))" />
+                        <PolarAngleAxis dataKey="subject" stroke="hsl(var(--muted-foreground))" />
+                        <PolarRadiusAxis stroke="hsl(var(--muted-foreground))" />
+                        <Radar name="Performance" dataKey="value" stroke="hsl(var(--primary))" fill="hsl(var(--primary))" fillOpacity={0.6} />
+                      </RadarChart>
+                    </ResponsiveContainer>
+                  </CardContent>
+                </Card>
+              </div>
+            </>
+          )}
+        </TabsContent>
 
-                    <Button onClick={exportTeamReports} variant="default" className="ml-auto">
-                      <Download className="mr-2 h-4 w-4" />
-                      Export to Excel
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
+        {/* Submit Report Tab */}
+        <TabsContent value="submit" className="space-y-0">
+          <IntegratedDailyReport />
+        </TabsContent>
 
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Users className="h-5 w-5" />
-                  Team Daily Reports Overview
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {loading ? (
-                  <div className="flex items-center justify-center h-32">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                  </div>
-                ) : teamReports.length > 0 ? (
-                  <div className="overflow-x-auto">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Date</TableHead>
-                          <TableHead>Employee</TableHead>
-                          <TableHead>Role</TableHead>
-                          <TableHead>Leads Registered</TableHead>
-                          <TableHead>Leads Called</TableHead>
-                          <TableHead>Follow Ups</TableHead>
-                          <TableHead>Inventories</TableHead>
-                          <TableHead>Site Visits</TableHead>
-                          <TableHead>Agent Calls</TableHead>
-                          <TableHead>Developer Calls</TableHead>
-                          <TableHead>Digital Marketing</TableHead>
-                          <TableHead>Status</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {teamReports.map((report) => {
-                          const data = report.data || {};
-                          const reportDate = new Date(report.generated_at);
-                          const isToday = new Date().toDateString() === reportDate.toDateString();
-                          
-                          return (
-                            <TableRow key={report.id}>
-                              <TableCell>
-                                <div className="flex items-center gap-2">
-                                  <Calendar className="h-4 w-4 text-muted-foreground" />
-                                  {reportDate.toLocaleDateString()}
-                                </div>
-                              </TableCell>
-                              <TableCell className="font-medium">
-                                {report.profiles?.full_name || 'Unknown'}
-                              </TableCell>
-                              <TableCell>
-                                <Badge variant="outline">{report.profiles?.role || 'Unknown'}</Badge>
-                              </TableCell>
-                              <TableCell>{data.leads_registered || 0}</TableCell>
-                              <TableCell>
-                                <div className="flex items-center gap-2">
-                                  {data.leads_called || 0}
-                                  {data.leads_called_status && <Badge className="bg-green-100 text-green-800 text-xs">✓</Badge>}
-                                </div>
-                              </TableCell>
-                              <TableCell>
-                                <div className="flex items-center gap-2">
-                                  {data.follow_ups || 0}
-                                  {data.follow_ups_status && <Badge className="bg-green-100 text-green-800 text-xs">✓</Badge>}
-                                </div>
-                              </TableCell>
-                              <TableCell>
-                                <div className="flex items-center gap-2">
-                                  {data.inventories_found || 0}
-                                  {data.inventories_found_status && <Badge className="bg-green-100 text-green-800 text-xs">✓</Badge>}
-                                </div>
-                              </TableCell>
-                              <TableCell>{(data.primary_sites_visited || 0) + (data.client_visit || 0)}</TableCell>
-                              <TableCell>
-                                <div className="flex items-center gap-2">
-                                  {data.calls_to_agents || 0}
-                                  {data.calls_to_agents_status && <Badge className="bg-green-100 text-green-800 text-xs">✓</Badge>}
-                                </div>
-                              </TableCell>
-                              <TableCell>
-                                <div className="flex items-center gap-2">
-                                  {data.calls_to_developers || 0}
-                                  {data.calls_to_developers_status && <Badge className="bg-green-100 text-green-800 text-xs">✓</Badge>}
-                                </div>
-                              </TableCell>
-                              <TableCell>
-                                {(data.whatsapp_postings || 0) + (data.facebook_postings || 0) + (data.instagram_posting || 0)}
-                              </TableCell>
-                              <TableCell>
-                                <Badge variant={isToday ? 'default' : 'secondary'}>
-                                  {isToday ? 'Today' : 'Submitted'}
-                                </Badge>
-                              </TableCell>
-                            </TableRow>
-                          );
-                        })}
-                      </TableBody>
-                    </Table>
-                  </div>
-                ) : (
-                  <div className="text-center py-8 text-muted-foreground">
-                    No team reports found. Team members need to submit their daily reports first.
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-        )}
+        {/* Data Table Tab */}
+        <TabsContent value="data" className="space-y-6">
+          <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
+            <CardHeader>
+              <CardTitle>Team Reports Data</CardTitle>
+              <CardDescription>Detailed view of all reports</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {loading ? (
+                <div className="flex items-center justify-center h-32">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                </div>
+              ) : teamReports.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Employee</TableHead>
+                        <TableHead>Role</TableHead>
+                        <TableHead>Leads</TableHead>
+                        <TableHead>Calls</TableHead>
+                        <TableHead>Visits</TableHead>
+                        <TableHead>Score</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {teamReports.map((report) => {
+                        const data = report.data as any;
+                        const score = ((data?.leads_registered || 0) * 10 + 
+                                     (data?.calls_to_agents || 0) * 5 + 
+                                     (data?.follow_ups || 0));
+                        return (
+                          <TableRow key={report.id}>
+                            <TableCell>{format(new Date(report.generated_at), 'MMM dd, yyyy')}</TableCell>
+                            <TableCell className="font-medium">{report.profiles?.full_name || 'Unknown'}</TableCell>
+                            <TableCell><Badge variant="outline">{report.profiles?.role || 'Unknown'}</Badge></TableCell>
+                            <TableCell>{data?.leads_registered || 0}</TableCell>
+                            <TableCell>{data?.calls_to_agents || 0}</TableCell>
+                            <TableCell>{(data?.primary_sites_visited || 0) + (data?.client_visit || 0)}</TableCell>
+                            <TableCell><Badge>{Math.min(100, score)}</Badge></TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  No reports found for the selected period.
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
       </Tabs>
     </div>
   );

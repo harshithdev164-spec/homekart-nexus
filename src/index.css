@@ -6,68 +6,75 @@
 
 @layer base {
   :root {
-    /* Background System */
-    --background: 220 14% 96%;
-    --foreground: 215 28% 17%;
+    /* Background System - Modern Dark */
+    --background: 220 20% 12%;
+    --foreground: 210 20% 98%;
 
-    /* Card System */
-    --card: 0 0% 100%;
-    --card-foreground: 215 28% 17%;
+    /* Card System - Elevated Dark Cards */
+    --card: 220 18% 16%;
+    --card-foreground: 210 20% 98%;
 
     /* Popover System */
-    --popover: 0 0% 100%;
-    --popover-foreground: 215 28% 17%;
+    --popover: 220 18% 18%;
+    --popover-foreground: 210 20% 98%;
 
-    /* Primary - Professional Real Estate Blue */
-    --primary: 214 84% 56%;
-    --primary-foreground: 0 0% 100%;
-    --primary-hover: 214 84% 50%;
-    --primary-light: 214 84% 90%;
+    /* Primary - Vibrant Cyan/Teal */
+    --primary: 173 80% 65%;
+    --primary-foreground: 220 20% 12%;
+    --primary-hover: 173 80% 55%;
+    --primary-light: 173 80% 85%;
 
-    /* Secondary - Elegant Gray */
-    --secondary: 215 16% 47%;
-    --secondary-foreground: 0 0% 100%;
-    --secondary-light: 215 16% 95%;
+    /* Secondary - Purple Accent */
+    --secondary: 267 60% 65%;
+    --secondary-foreground: 210 20% 98%;
+    --secondary-light: 267 60% 85%;
 
-    /* Success - Property Status Green */
-    --success: 142 76% 36%;
-    --success-foreground: 0 0% 100%;
-    --success-light: 142 76% 95%;
+    /* Success - Vibrant Green */
+    --success: 142 76% 55%;
+    --success-foreground: 220 20% 12%;
+    --success-light: 142 76% 85%;
 
-    /* Warning - Attention Orange */
-    --warning: 38 92% 50%;
-    --warning-foreground: 0 0% 100%;
-    --warning-light: 38 92% 95%;
+    /* Warning - Orange */
+    --warning: 28 92% 60%;
+    --warning-foreground: 220 20% 12%;
+    --warning-light: 28 92% 85%;
 
     /* Muted System */
-    --muted: 215 16% 97%;
-    --muted-foreground: 215 13% 65%;
+    --muted: 220 15% 22%;
+    --muted-foreground: 215 15% 70%;
 
-    /* Accent - Premium Gold */
-    --accent: 43 74% 66%;
-    --accent-foreground: 215 28% 17%;
-    --accent-light: 43 74% 95%;
+    /* Accent - Pink/Magenta */
+    --accent: 320 70% 65%;
+    --accent-foreground: 210 20% 98%;
+    --accent-light: 320 70% 85%;
+
+    /* Chart Colors */
+    --chart-1: 173 80% 65%;
+    --chart-2: 267 60% 65%;
+    --chart-3: 320 70% 65%;
+    --chart-4: 28 92% 60%;
+    --chart-5: 142 76% 55%;
 
     /* Destructive */
     --destructive: 0 84% 60%;
-    --destructive-foreground: 0 0% 100%;
+    --destructive-foreground: 210 20% 98%;
 
     /* UI Elements */
-    --border: 215 16% 92%;
-    --input: 215 16% 97%;
-    --ring: 214 84% 56%;
+    --border: 220 15% 25%;
+    --input: 220 15% 20%;
+    --ring: 173 80% 65%;
 
     /* Gradients */
-    --gradient-primary: linear-gradient(135deg, hsl(214 84% 56%) 0%, hsl(214 84% 66%) 100%);
-    --gradient-secondary: linear-gradient(135deg, hsl(215 16% 47%) 0%, hsl(215 16% 57%) 100%);
-    --gradient-accent: linear-gradient(135deg, hsl(43 74% 66%) 0%, hsl(43 74% 76%) 100%);
-    --gradient-hero: linear-gradient(135deg, hsl(214 84% 56%) 0%, hsl(43 74% 66%) 100%);
+    --gradient-primary: linear-gradient(135deg, hsl(173 80% 45%) 0%, hsl(173 80% 65%) 100%);
+    --gradient-secondary: linear-gradient(135deg, hsl(267 60% 55%) 0%, hsl(320 70% 65%) 100%);
+    --gradient-accent: linear-gradient(135deg, hsl(320 70% 55%) 0%, hsl(28 92% 60%) 100%);
+    --gradient-hero: linear-gradient(135deg, hsl(173 80% 45%) 0%, hsl(267 60% 55%) 50%, hsl(320 70% 65%) 100%);
     
     /* Shadows */
-    --shadow-soft: 0 2px 8px -1px hsl(215 28% 17% / 0.1);
-    --shadow-medium: 0 4px 12px -2px hsl(215 28% 17% / 0.15);
-    --shadow-large: 0 8px 24px -4px hsl(215 28% 17% / 0.2);
-    --shadow-primary: 0 4px 12px -2px hsl(214 84% 56% / 0.3);
+    --shadow-soft: 0 2px 8px -1px hsl(220 20% 8% / 0.4);
+    --shadow-medium: 0 4px 12px -2px hsl(220 20% 8% / 0.5);
+    --shadow-large: 0 8px 24px -4px hsl(220 20% 8% / 0.6);
+    --shadow-primary: 0 4px 20px -2px hsl(173 80% 65% / 0.4);
     
     /* Animations */
     --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -75,82 +82,83 @@
 
     --radius: 0.75rem;
 
-    --sidebar-background: 0 0% 98%;
-
-    --sidebar-foreground: 240 5.3% 26.1%;
-
-    --sidebar-primary: 240 5.9% 10%;
-
-    --sidebar-primary-foreground: 0 0% 98%;
-
-    --sidebar-accent: 240 4.8% 95.9%;
-
-    --sidebar-accent-foreground: 240 5.9% 10%;
-
-    --sidebar-border: 220 13% 91%;
-
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --sidebar-background: 220 20% 14%;
+    --sidebar-foreground: 210 20% 98%;
+    --sidebar-primary: 173 80% 65%;
+    --sidebar-primary-foreground: 220 20% 12%;
+    --sidebar-accent: 220 15% 22%;
+    --sidebar-accent-foreground: 210 20% 98%;
+    --sidebar-border: 220 15% 25%;
+    --sidebar-ring: 173 80% 65%;
   }
 
   .dark {
-    /* Background System */
-    --background: 215 28% 17%;
-    --foreground: 0 0% 98%;
+    /* Background System - Light Mode */
+    --background: 210 20% 98%;
+    --foreground: 220 20% 12%;
 
     /* Card System */
-    --card: 215 28% 17%;
-    --card-foreground: 0 0% 98%;
+    --card: 0 0% 100%;
+    --card-foreground: 220 20% 12%;
 
     /* Popover System */
-    --popover: 215 28% 17%;
-    --popover-foreground: 0 0% 98%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 20% 12%;
 
-    /* Primary - Professional Real Estate Blue */
-    --primary: 214 84% 66%;
-    --primary-foreground: 215 28% 17%;
-    --primary-hover: 214 84% 60%;
-    --primary-light: 214 84% 25%;
+    /* Primary - Vibrant Cyan/Teal */
+    --primary: 173 80% 45%;
+    --primary-foreground: 210 20% 98%;
+    --primary-hover: 173 80% 40%;
+    --primary-light: 173 80% 95%;
 
-    /* Secondary - Elegant Gray */
-    --secondary: 215 16% 30%;
-    --secondary-foreground: 0 0% 98%;
-    --secondary-light: 215 16% 20%;
+    /* Secondary - Purple Accent */
+    --secondary: 267 60% 55%;
+    --secondary-foreground: 210 20% 98%;
+    --secondary-light: 267 60% 95%;
 
-    /* Success - Property Status Green */
-    --success: 142 76% 46%;
-    --success-foreground: 0 0% 98%;
-    --success-light: 142 76% 15%;
+    /* Success - Vibrant Green */
+    --success: 142 76% 45%;
+    --success-foreground: 210 20% 98%;
+    --success-light: 142 76% 95%;
 
-    /* Warning - Attention Orange */
-    --warning: 38 92% 60%;
-    --warning-foreground: 215 28% 17%;
-    --warning-light: 38 92% 15%;
+    /* Warning - Orange */
+    --warning: 28 92% 50%;
+    --warning-foreground: 210 20% 98%;
+    --warning-light: 28 92% 95%;
 
     /* Muted System */
-    --muted: 215 16% 25%;
-    --muted-foreground: 215 13% 65%;
+    --muted: 210 15% 94%;
+    --muted-foreground: 220 15% 40%;
 
-    /* Accent - Premium Gold */
-    --accent: 43 74% 76%;
-    --accent-foreground: 215 28% 17%;
-    --accent-light: 43 74% 20%;
+    /* Accent - Pink/Magenta */
+    --accent: 320 70% 55%;
+    --accent-foreground: 210 20% 98%;
+    --accent-light: 320 70% 95%;
+
+    /* Chart Colors */
+    --chart-1: 173 80% 45%;
+    --chart-2: 267 60% 55%;
+    --chart-3: 320 70% 55%;
+    --chart-4: 28 92% 50%;
+    --chart-5: 142 76% 45%;
 
     /* Destructive */
-    --destructive: 0 84% 70%;
-    --destructive-foreground: 0 0% 98%;
+    --destructive: 0 84% 50%;
+    --destructive-foreground: 210 20% 98%;
 
     /* UI Elements */
-    --border: 215 16% 25%;
-    --input: 215 16% 25%;
-    --ring: 214 84% 66%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --border: 220 15% 88%;
+    --input: 220 15% 94%;
+    --ring: 173 80% 45%;
+    
+    --sidebar-background: 210 20% 96%;
+    --sidebar-foreground: 220 20% 12%;
+    --sidebar-primary: 173 80% 45%;
+    --sidebar-primary-foreground: 210 20% 98%;
+    --sidebar-accent: 210 15% 94%;
+    --sidebar-accent-foreground: 220 20% 12%;
+    --sidebar-border: 220 15% 88%;
+    --sidebar-ring: 173 80% 45%;
   }
 }
 
