@@ -820,7 +820,9 @@ const Leads: React.FC = () => {
         {filteredLeads.map((lead) => (
           <Card 
             key={lead.id} 
-            className="hover:shadow-lg transition-all duration-300"
+            className={`hover:shadow-lg transition-all duration-300 ${
+              lead.status === 'new' ? 'border-2 border-success' : ''
+            }`}
           >
             <CardHeader 
               className="cursor-pointer"
