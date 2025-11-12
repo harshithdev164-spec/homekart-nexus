@@ -35,6 +35,13 @@ import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { format, isToday, isPast, parseISO, isWithinInterval, startOfDay, endOfDay } from 'date-fns';
 
+// Import portal logos
+import metaLogo from '@/assets/meta-logo.png';
+import googleLogo from '@/assets/google-logo.png';
+import magicbricksLogo from '@/assets/magicbricks-logo.png';
+import acresLogo from '@/assets/99acres-logo.png';
+import housingLogo from '@/assets/housing-logo.png';
+
 interface Lead {
   id: string;
   name: string;
@@ -378,6 +385,12 @@ const Leads: React.FC = () => {
       lead.next_followup && isPast(parseISO(lead.next_followup)) && !isToday(parseISO(lead.next_followup))
     );
     
+    // Count leads by source (case-insensitive matching)
+    const getSourceCount = (sourceName: string) => 
+      leads.filter(lead => 
+        lead.source?.toLowerCase().includes(sourceName.toLowerCase())
+      ).length;
+    
     return {
       total: leads.length,
       new: leads.filter(lead => lead.status === 'new').length,
@@ -385,6 +398,12 @@ const Leads: React.FC = () => {
       closed_won: leads.filter(lead => lead.status === 'closed_won').length,
       todayFollowUps: todayFollowUps.length,
       overdueFollowUps: overdueFollowUps.length,
+      // Lead sources
+      magicbricks: getSourceCount('magicbricks'),
+      housing: getSourceCount('housing'),
+      acres99: getSourceCount('99acres'),
+      meta: getSourceCount('meta') + getSourceCount('facebook'),
+      google: getSourceCount('google'),
     };
   }, [leads]);
 
@@ -726,6 +745,75 @@ const Leads: React.FC = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Lead Source Portal Stats */}
+      <Card className="bg-gradient-to-br from-primary/5 via-accent/5 to-secondary/5 border-primary/20">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Database className="h-5 w-5 text-primary" />
+            Lead Sources by Portal
+          </CardTitle>
+          <CardDescription>Total leads received from each platform</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
+            {/* Magicbricks */}
+            <Card className="bg-card/50 backdrop-blur border-2 hover:border-primary/50 transition-all hover:shadow-lg hover:scale-105">
+              <CardContent className="p-4 flex flex-col items-center gap-3">
+                <img src={magicbricksLogo} alt="Magicbricks" className="h-12 w-auto object-contain" />
+                <div className="text-center">
+                  <div className="text-3xl font-bold text-primary">{stats.magicbricks}</div>
+                  <div className="text-xs text-muted-foreground mt-1">Magicbricks</div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Housing.com */}
+            <Card className="bg-card/50 backdrop-blur border-2 hover:border-orange-500/50 transition-all hover:shadow-lg hover:scale-105">
+              <CardContent className="p-4 flex flex-col items-center gap-3">
+                <img src={housingLogo} alt="Housing.com" className="h-12 w-auto object-contain" />
+                <div className="text-center">
+                  <div className="text-3xl font-bold text-orange-500">{stats.housing}</div>
+                  <div className="text-xs text-muted-foreground mt-1">Housing.com</div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* 99acres */}
+            <Card className="bg-card/50 backdrop-blur border-2 hover:border-blue-500/50 transition-all hover:shadow-lg hover:scale-105">
+              <CardContent className="p-4 flex flex-col items-center gap-3">
+                <img src={acresLogo} alt="99acres" className="h-12 w-auto object-contain" />
+                <div className="text-center">
+                  <div className="text-3xl font-bold text-blue-500">{stats.acres99}</div>
+                  <div className="text-xs text-muted-foreground mt-1">99acres</div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Meta / Facebook */}
+            <Card className="bg-card/50 backdrop-blur border-2 hover:border-blue-600/50 transition-all hover:shadow-lg hover:scale-105">
+              <CardContent className="p-4 flex flex-col items-center gap-3">
+                <img src={metaLogo} alt="Meta" className="h-12 w-auto object-contain" />
+                <div className="text-center">
+                  <div className="text-3xl font-bold text-blue-600">{stats.meta}</div>
+                  <div className="text-xs text-muted-foreground mt-1">Meta / Facebook</div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Google */}
+            <Card className="bg-card/50 backdrop-blur border-2 hover:border-green-600/50 transition-all hover:shadow-lg hover:scale-105">
+              <CardContent className="p-4 flex flex-col items-center gap-3">
+                <img src={googleLogo} alt="Google" className="h-10 w-auto object-contain" />
+                <div className="text-center">
+                  <div className="text-3xl font-bold text-green-600">{stats.google}</div>
+                  <div className="text-xs text-muted-foreground mt-1">Google Ads</div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Leads Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
