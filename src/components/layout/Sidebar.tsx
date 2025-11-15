@@ -34,6 +34,7 @@ const navigation: NavItem[] = [
   { title: 'Properties', href: '/properties', icon: Building2 },
   { title: 'Add Listing', href: '/add-listing', icon: Plus },
   { title: 'Magicbricks', href: '/magicbricks', icon: Store },
+  { title: '99acres', href: '/99acres', icon: Building2 },
   { title: 'Reports', href: '/reports', icon: BarChart3 },
   { title: 'Leaderboard', href: '/leaderboard', icon: Trophy },
   { title: 'Activity Feed', href: '/activity-feed', icon: Activity },
