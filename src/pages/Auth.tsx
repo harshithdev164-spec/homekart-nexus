@@ -24,14 +24,31 @@ const Auth: React.FC = () => {
   useEffect(() => {
     if (user && !orgLoading) {
       // Small delay to ensure organization data is loaded
-      const timer = setTimeout(() => {
+      const timer = setTimeout(async () => {
         // Check if user has an organization
         if (!currentOrganization) {
+          // Try to automatically assign user to Axiss Realty Corp
+          try {
+            const { ensureUserHasOrganization } = await import('@/utils/organizationHelper');
+            const hasOrg = await ensureUserHasOrganization();
+            
+            if (hasOrg) {
+              // Wait a bit for organization to be set, then check again
+              setTimeout(() => {
+                window.location.reload(); // Reload to refresh organization context
+              }, 500);
+              return;
+            }
+          } catch (error) {
+            console.error('Error ensuring user has organization:', error);
+          }
+          
+          // If still no organization, redirect to setup
           navigate('/organization-setup');
         } else {
           navigate('/dashboard');
         }
-      }, 100);
+      }, 500); // Increased delay to allow for organization assignment
       
       return () => clearTimeout(timer);
     }

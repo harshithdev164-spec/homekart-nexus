@@ -50,7 +50,20 @@ export const OrganizationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     }
 
     try {
-      const org = await getCurrentOrganization();
+      let org = await getCurrentOrganization();
+      
+      // If user doesn't have organization, try to assign to Axiss Realty Corp
+      if (!org) {
+        console.log('User does not have organization, attempting to assign to Axiss Realty Corp...');
+        const { ensureUserHasOrganization } = await import('@/utils/organizationHelper');
+        const hasOrg = await ensureUserHasOrganization();
+        
+        if (hasOrg) {
+          // Try again after assignment
+          org = await getCurrentOrganization();
+        }
+      }
+
       setCurrentOrganization(org || null);
 
       if (org) {

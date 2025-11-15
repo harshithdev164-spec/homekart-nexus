@@ -37,6 +37,7 @@ const SmartAlerts = lazy(() => import("./pages/SmartAlerts"));
 const AITestPage = lazy(() => import("./pages/AITestPage"));
 const Settings = lazy(() => import("./pages/Settings"));
 const Analytics = lazy(() => import("./pages/Analytics"));
+const AdminTools = lazy(() => import("./pages/AdminTools"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 // Loading fallback component
