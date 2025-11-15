@@ -1,198 +1,289 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAuth } from '@/components/auth/AuthProvider';
+import { useOrganization } from '@/components/organization/OrganizationProvider';
 import { useNavigate } from 'react-router-dom';
-import { Building2, Users, BarChart3 } from 'lucide-react';
-import heroImage from '@/assets/hero-image.jpg';
+import { Building2, Mail, Lock, ArrowRight, Sparkles, Loader2, Eye, EyeOff } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
 const Auth: React.FC = () => {
-  const [loginEmail, setLoginEmail] = useState('');
-  const [loginPassword, setLoginPassword] = useState('');
-  const [signupEmail, setSignupEmail] = useState('');
-  const [signupPassword, setSignupPassword] = useState('');
-  const [signupFullName, setSignupFullName] = useState('');
-  const [signupRole, setSignupRole] = useState<'admin' | 'employee'>('employee');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  const { signIn, signUp, user } = useAuth();
+  const { signIn, user } = useAuth();
+  const { currentOrganization, loading: orgLoading } = useOrganization();
   const navigate = useNavigate();
+  const { toast } = useToast();
 
   useEffect(() => {
-    if (user) {
-      navigate('/dashboard');
+    if (user && !orgLoading) {
+      // Small delay to ensure organization data is loaded
+      const timer = setTimeout(() => {
+        // Check if user has an organization
+        if (!currentOrganization) {
+          navigate('/organization-setup');
+        } else {
+          navigate('/dashboard');
+        }
+      }, 100);
+      
+      return () => clearTimeout(timer);
     }
-  }, [user, navigate]);
+  }, [user, currentOrganization, orgLoading, navigate]);
+
+  useEffect(() => {
+    // Animated particles background
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    const particles: Array<{ x: number; y: number; vx: number; vy: number; size: number; opacity: number }> = [];
+    const particleCount = 80;
+
+    for (let i = 0; i < particleCount; i++) {
+      particles.push({
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height,
+        vx: (Math.random() - 0.5) * 0.8,
+        vy: (Math.random() - 0.5) * 0.8,
+        size: Math.random() * 3 + 1,
+        opacity: Math.random() * 0.5 + 0.2,
+      });
+    }
+
+    const animate = () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      
+      particles.forEach((particle) => {
+        particle.x += particle.vx;
+        particle.y += particle.vy;
+
+        if (particle.x < 0 || particle.x > canvas.width) particle.vx *= -1;
+        if (particle.y < 0 || particle.y > canvas.height) particle.vy *= -1;
+
+        // Draw connecting lines
+        particles.forEach((other) => {
+          const dx = particle.x - other.x;
+          const dy = particle.y - other.y;
+          const distance = Math.sqrt(dx * dx + dy * dy);
+
+          if (distance < 150) {
+            ctx.beginPath();
+            ctx.moveTo(particle.x, particle.y);
+            ctx.lineTo(other.x, other.y);
+            ctx.strokeStyle = `rgba(16, 185, 129, ${0.1 * (1 - distance / 150)})`;
+            ctx.lineWidth = 0.5;
+            ctx.stroke();
+          }
+        });
+
+        ctx.beginPath();
+        ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(16, 185, 129, ${particle.opacity})`;
+        ctx.fill();
+      });
+
+      requestAnimationFrame(animate);
+    };
+
+    animate();
+
+    const handleResize = () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    await signIn(loginEmail, loginPassword);
-    setLoading(false);
-  };
-
-  const handleSignUp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    await signUp(signupEmail, signupPassword, signupFullName, signupRole);
-    setLoading(false);
+    
+    try {
+      const { error } = await signIn(email, password);
+      if (error) {
+        toast({
+          title: 'Login Failed',
+          description: error.message || 'Invalid email or password',
+          variant: 'destructive',
+        });
+      }
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error.message || 'An unexpected error occurred',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <div className="min-h-screen flex">
-      {/* Left side - Hero */}
-      <div className="hidden lg:flex lg:flex-1 relative">
-        <div className="absolute inset-0 bg-gradient-hero opacity-90" />
-        <img
-          src={heroImage}
-          alt="Real Estate CRM"
-          className="absolute inset-0 h-full w-full object-cover"
-        />
-        <div className="relative z-10 flex flex-col justify-center px-12 text-white">
-          <h1 className="text-4xl font-bold mb-6">Welcome to HomeKart CRM</h1>
-          <p className="text-xl mb-8 opacity-90">
-            The most powerful real estate CRM platform for modern teams
+    <div className="min-h-screen flex items-center justify-center relative overflow-hidden bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+      {/* Animated Background */}
+      <canvas
+        ref={canvasRef}
+        className="absolute inset-0 opacity-40"
+        style={{ zIndex: 0 }}
+      />
+      
+      {/* Gradient Orbs */}
+      <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/30 rounded-full blur-3xl animate-pulse" />
+      <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-500/30 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
+
+      <div className="relative z-10 w-full max-w-md px-6">
+        {/* Logo and Header */}
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center justify-center mb-4">
+            <div className="relative">
+              <Building2 className="h-12 w-12 text-primary animate-pulse" />
+              <div className="absolute inset-0 bg-primary/50 blur-xl" />
+            </div>
+          </div>
+          <h1 className="text-4xl font-bold mb-2">
+            <span className="bg-gradient-to-r from-primary via-purple-400 to-pink-400 bg-clip-text text-transparent">
+              Welcome Back
+            </span>
+          </h1>
+          <p className="text-white/60 text-lg">
+            Login to your HomeKart CRM account
           </p>
-          <div className="space-y-4">
-            <div className="flex items-center space-x-3">
-              <Building2 className="h-6 w-6" />
-              <span>Complete property management</span>
-            </div>
-            <div className="flex items-center space-x-3">
-              <Users className="h-6 w-6" />
-              <span>Advanced lead tracking</span>
-            </div>
-            <div className="flex items-center space-x-3">
-              <BarChart3 className="h-6 w-6" />
-              <span>Detailed analytics & reports</span>
-            </div>
-          </div>
         </div>
-      </div>
 
-      {/* Right side - Auth forms */}
-      <div className="flex-1 flex items-center justify-center px-4 sm:px-6 lg:px-20 xl:px-24">
-        <div className="mx-auto w-full max-w-sm lg:w-96">
-          <div className="text-center mb-8">
-            <h2 className="text-3xl font-bold text-foreground">HomeKart CRM</h2>
-            <p className="mt-2 text-sm text-muted-foreground">
-              Sign in to your account or create a new one
-            </p>
+        {/* Login Card */}
+        <Card className="backdrop-blur-xl bg-white/5 border-white/20 shadow-2xl">
+          <CardHeader className="space-y-1 pb-4">
+            <CardTitle className="text-2xl text-white flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-primary" />
+              Sign In
+            </CardTitle>
+            <CardDescription className="text-white/60">
+              Enter your credentials to access your dashboard
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSignIn} className="space-y-5">
+              <div className="space-y-2">
+                <Label htmlFor="email" className="text-white/80">
+                  Email Address
+                </Label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-white/40" />
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="you@example.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                    className="pl-10 bg-white/5 border-white/20 text-white placeholder:text-white/40 focus:border-primary focus:ring-primary h-12"
+                  />
+                </div>
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="password" className="text-white/80">
+                  Password
+                </Label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-white/40" />
+                  <Input
+                    id="password"
+                    type={showPassword ? 'text' : 'password'}
+                    placeholder="Enter your password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    className="pl-10 pr-10 bg-white/5 border-white/20 text-white placeholder:text-white/40 focus:border-primary focus:ring-primary h-12"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-white/40 hover:text-white/60 transition-colors"
+                  >
+                    {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between text-sm">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    className="rounded border-white/20 bg-white/5 text-primary focus:ring-primary"
+                  />
+                  <span className="text-white/60">Remember me</span>
+                </label>
+                <button
+                  type="button"
+                  className="text-primary hover:text-primary/80 transition-colors"
+                >
+                  Forgot password?
+                </button>
+              </div>
+
+              <Button
+                type="submit"
+                className="w-full h-12 bg-gradient-to-r from-primary to-purple-500 hover:from-primary/90 hover:to-purple-500/90 text-white border-0 shadow-lg shadow-primary/50 hover:scale-105 transition-transform"
+                disabled={loading}
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                    Signing in...
+                  </>
+                ) : (
+                  <>
+                    Sign In
+                    <ArrowRight className="ml-2 h-5 w-5" />
+                  </>
+                )}
+              </Button>
+            </form>
+
+            <div className="mt-6 pt-6 border-t border-white/10">
+              <p className="text-center text-sm text-white/60">
+                Don't have an account?{' '}
+                <button
+                  type="button"
+                  onClick={() => navigate('/')}
+                  className="text-primary hover:text-primary/80 font-semibold transition-colors"
+                >
+                  Contact us for access
+                </button>
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Trust Indicators */}
+        <div className="mt-8 flex items-center justify-center gap-6 text-sm text-white/40">
+          <div className="flex items-center gap-2">
+            <Sparkles className="h-4 w-4" />
+            <span>Secure</span>
           </div>
-
-          <Tabs defaultValue="signin" className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="signin">Sign In</TabsTrigger>
-              <TabsTrigger value="signup">Sign Up</TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="signin">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Sign In</CardTitle>
-                  <CardDescription>
-                    Enter your credentials to access your account
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <form onSubmit={handleSignIn} className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="email">Email</Label>
-                      <Input
-                        id="email"
-                        type="email"
-                        placeholder="Enter your email"
-                        value={loginEmail}
-                        onChange={(e) => setLoginEmail(e.target.value)}
-                        required
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="password">Password</Label>
-                      <Input
-                        id="password"
-                        type="password"
-                        placeholder="Enter your password"
-                        value={loginPassword}
-                        onChange={(e) => setLoginPassword(e.target.value)}
-                        required
-                      />
-                    </div>
-                    <Button type="submit" className="w-full" disabled={loading}>
-                      {loading ? 'Signing in...' : 'Sign In'}
-                    </Button>
-                  </form>
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="signup">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Create Account</CardTitle>
-                  <CardDescription>
-                    Join HomeKart CRM to manage your real estate business
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <form onSubmit={handleSignUp} className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="fullName">Full Name</Label>
-                      <Input
-                        id="fullName"
-                        type="text"
-                        placeholder="Enter your full name"
-                        value={signupFullName}
-                        onChange={(e) => setSignupFullName(e.target.value)}
-                        required
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="signupEmail">Email</Label>
-                      <Input
-                        id="signupEmail"
-                        type="email"
-                        placeholder="Enter your email"
-                        value={signupEmail}
-                        onChange={(e) => setSignupEmail(e.target.value)}
-                        required
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="signupPassword">Password</Label>
-                      <Input
-                        id="signupPassword"
-                        type="password"
-                        placeholder="Create a password"
-                        value={signupPassword}
-                        onChange={(e) => setSignupPassword(e.target.value)}
-                        required
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="role">Role</Label>
-                      <Select value={signupRole} onValueChange={(value: 'admin' | 'employee') => setSignupRole(value)}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select your role" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="employee">Employee</SelectItem>
-                          <SelectItem value="admin">Admin</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <Button type="submit" className="w-full" disabled={loading}>
-                      {loading ? 'Creating account...' : 'Create Account'}
-                    </Button>
-                  </form>
-                </CardContent>
-              </Card>
-            </TabsContent>
-          </Tabs>
+          <div className="flex items-center gap-2">
+            <Building2 className="h-4 w-4" />
+            <span>Reliable</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Lock className="h-4 w-4" />
+            <span>Encrypted</span>
+          </div>
         </div>
       </div>
     </div>
