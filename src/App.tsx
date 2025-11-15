@@ -142,6 +142,7 @@ const App: React.FC = () => {
                   <Route path="/documents" element={<DashboardLayout><div>Documents page coming soon...</div></DashboardLayout>} />
                   <Route path="/settings" element={<DashboardLayout><Settings /></DashboardLayout>} />
                   <Route path="/analytics" element={<DashboardLayout><Analytics /></DashboardLayout>} />
+                  <Route path="/admin-tools" element={<DashboardLayout><AdminTools /></DashboardLayout>} />
                   {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                   <Route path="*" element={<NotFound />} />
                 </Routes>
