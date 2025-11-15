@@ -58,6 +58,13 @@ export const Sidebar: React.FC = () => {
     !item.roles || item.roles.includes(profile?.role as any)
   );
 
+  // Debug: Log navigation items to verify 99acres is included
+  React.useEffect(() => {
+    console.log('Sidebar navigation items:', navigation.map(item => item.title));
+    console.log('Filtered navigation items:', filteredNavigation.map(item => item.title));
+    console.log('99acres tab present:', navigation.some(item => item.title === '99acres'));
+  }, [filteredNavigation]);
+
   return (
     <div className="flex h-full w-64 flex-shrink-0 flex-col bg-card border-r border-border">
       <div className="flex-1 flex flex-col pt-5 pb-4 overflow-y-auto">
