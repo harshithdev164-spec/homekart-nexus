@@ -1,4 +1,4 @@
-import React from "react";
+import React, { Suspense, lazy } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -6,25 +6,41 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/components/auth/AuthProvider";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
-import LandingPage from "./pages/LandingPage";
-import Auth from "./pages/Auth";
-import AdminSetup from "./pages/AdminSetup";
-import Dashboard from "./pages/Dashboard";
-import Leads from "./pages/Leads";
-import Properties from "./pages/Properties";
-import EnhancedProperties from "./pages/EnhancedProperties";
-import Magicbricks from "./pages/Magicbricks";
-import NinetyNineAcres from "./pages/NinetyNineAcres";
-import Activities from "./pages/Activities";
-import Team from "./pages/Team";
-import Messages from "./pages/Messages";
-import Calendar from "./pages/Calendar";
-import Communications from "./pages/Communications";
-import Reports from "./pages/Reports";
-import SOPReports from "./pages/SOPReports";
-import HR from "./pages/HR";
-import Salaries from "./pages/Salaries";
-import NotFound from "./pages/NotFound";
+
+// Lazy load pages for better performance
+const LandingPage = lazy(() => import("./pages/LandingPage"));
+const Auth = lazy(() => import("./pages/Auth"));
+const AdminSetup = lazy(() => import("./pages/AdminSetup"));
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const Leads = lazy(() => import("./pages/Leads"));
+const Properties = lazy(() => import("./pages/Properties"));
+const EnhancedProperties = lazy(() => import("./pages/EnhancedProperties"));
+const Magicbricks = lazy(() => import("./pages/Magicbricks"));
+const NinetyNineAcres = lazy(() => import("./pages/NinetyNineAcres"));
+const Activities = lazy(() => import("./pages/Activities"));
+const Team = lazy(() => import("./pages/Team"));
+const Messages = lazy(() => import("./pages/Messages"));
+const Calendar = lazy(() => import("./pages/Calendar"));
+const Communications = lazy(() => import("./pages/Communications"));
+const Reports = lazy(() => import("./pages/Reports"));
+const AddListing = lazy(() => import("./pages/AddListing"));
+const Marketing = lazy(() => import("./pages/Marketing"));
+const HR = lazy(() => import("./pages/HR"));
+const Salaries = lazy(() => import("./pages/Salaries"));
+const Leaderboard = lazy(() => import("./pages/Leaderboard"));
+const ActivityFeed = lazy(() => import("./pages/ActivityFeed"));
+const SmartAlerts = lazy(() => import("./pages/SmartAlerts"));
+const NotFound = lazy(() => import("./pages/NotFound"));
+
+// Loading fallback component
+const PageLoader = () => (
+  <div className="min-h-screen flex items-center justify-center bg-background">
+    <div className="text-center">
+      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+      <p className="mt-4 text-muted-foreground">Loading...</p>
+    </div>
+  </div>
+);
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -32,6 +48,11 @@ const queryClient = new QueryClient({
       retry: 1,
       refetchOnWindowFocus: false,
       staleTime: 5 * 60 * 1000, // 5 minutes
+      gcTime: 10 * 60 * 1000, // 10 minutes (formerly cacheTime)
+      refetchOnMount: false,
+    },
+    mutations: {
+      retry: 1,
     },
   },
 });
@@ -82,30 +103,35 @@ const App: React.FC = () => {
         <TooltipProvider>
           <BrowserRouter>
             <AuthProvider>
-              <Routes>
-                <Route path="/" element={<LandingPage />} />
-                <Route path="/auth" element={<Auth />} />
-                <Route path="/admin-setup" element={<AdminSetup />} />
-                <Route path="/dashboard" element={<DashboardLayout><Dashboard /></DashboardLayout>} />
-                <Route path="/leads" element={<DashboardLayout><Leads /></DashboardLayout>} />
-                <Route path="/properties" element={<DashboardLayout><Properties /></DashboardLayout>} />
-                <Route path="/enhanced-properties" element={<DashboardLayout><EnhancedProperties /></DashboardLayout>} />
-                <Route path="/magicbricks" element={<DashboardLayout><Magicbricks /></DashboardLayout>} />
-                <Route path="/99acres" element={<DashboardLayout><NinetyNineAcres /></DashboardLayout>} />
-                <Route path="/activities" element={<DashboardLayout><Activities /></DashboardLayout>} />
-                <Route path="/team" element={<DashboardLayout><Team /></DashboardLayout>} />
-                <Route path="/reports" element={<DashboardLayout><Reports /></DashboardLayout>} />
-                <Route path="/calendar" element={<DashboardLayout><Calendar /></DashboardLayout>} />
-                <Route path="/messages" element={<DashboardLayout><Messages /></DashboardLayout>} />
-                <Route path="/communications" element={<DashboardLayout><Communications /></DashboardLayout>} />
-                <Route path="/sop-reports" element={<DashboardLayout><SOPReports /></DashboardLayout>} />
-                <Route path="/hr" element={<DashboardLayout><HR /></DashboardLayout>} />
-                <Route path="/salaries" element={<DashboardLayout><Salaries /></DashboardLayout>} />
-                <Route path="/documents" element={<DashboardLayout><div>Documents page coming soon...</div></DashboardLayout>} />
-                <Route path="/settings" element={<DashboardLayout><div>Settings page coming sure...</div></DashboardLayout>} />
-                {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-                <Route path="*" element={<NotFound />} />
-              </Routes>
+              <Suspense fallback={<PageLoader />}>
+                <Routes>
+                  <Route path="/" element={<LandingPage />} />
+                  <Route path="/auth" element={<Auth />} />
+                  <Route path="/admin-setup" element={<AdminSetup />} />
+                  <Route path="/dashboard" element={<DashboardLayout><Dashboard /></DashboardLayout>} />
+                  <Route path="/leads" element={<DashboardLayout><Leads /></DashboardLayout>} />
+                  <Route path="/properties" element={<DashboardLayout><Properties /></DashboardLayout>} />
+                  <Route path="/enhanced-properties" element={<DashboardLayout><EnhancedProperties /></DashboardLayout>} />
+                  <Route path="/add-listing" element={<DashboardLayout><AddListing /></DashboardLayout>} />
+                  <Route path="/magicbricks" element={<DashboardLayout><Magicbricks /></DashboardLayout>} />
+                  <Route path="/99acres" element={<DashboardLayout><NinetyNineAcres /></DashboardLayout>} />
+                  <Route path="/activities" element={<DashboardLayout><Activities /></DashboardLayout>} />
+                  <Route path="/team" element={<DashboardLayout><Team /></DashboardLayout>} />
+                  <Route path="/reports" element={<DashboardLayout><Reports /></DashboardLayout>} />
+                  <Route path="/calendar" element={<DashboardLayout><Calendar /></DashboardLayout>} />
+                  <Route path="/messages" element={<DashboardLayout><Messages /></DashboardLayout>} />
+                  <Route path="/marketing" element={<DashboardLayout><Marketing /></DashboardLayout>} />
+                  <Route path="/hr" element={<DashboardLayout><HR /></DashboardLayout>} />
+                  <Route path="/salaries" element={<DashboardLayout><Salaries /></DashboardLayout>} />
+                    <Route path="/leaderboard" element={<DashboardLayout><Leaderboard /></DashboardLayout>} />
+                    <Route path="/activity-feed" element={<DashboardLayout><ActivityFeed /></DashboardLayout>} />
+                    <Route path="/alerts" element={<DashboardLayout><SmartAlerts /></DashboardLayout>} />
+                  <Route path="/documents" element={<DashboardLayout><div>Documents page coming soon...</div></DashboardLayout>} />
+                  <Route path="/settings" element={<DashboardLayout><div>Settings page coming sure...</div></DashboardLayout>} />
+                  {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </Suspense>
             </AuthProvider>
           </BrowserRouter>
           <Toaster />

@@ -43,6 +43,17 @@ const Reports: React.FC = () => {
     if (canViewTeamReports) {
       fetchEmployees();
       fetchTeamReports();
+
+      const channel = supabase
+        .channel('reports_realtime')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'reports', filter: `report_type=eq.team_performance` }, () => {
+          fetchTeamReports();
+        })
+        .subscribe();
+
+      return () => {
+        try { channel.unsubscribe(); } catch (e) { /* ignore */ }
+      };
     }
   }, [canViewTeamReports, startDate, endDate, selectedEmployee]);
 
@@ -59,6 +70,11 @@ const Reports: React.FC = () => {
   const fetchTeamReports = async () => {
     setLoading(true);
     try {
+      const startISO = new Date(startDate);
+      startISO.setHours(0, 0, 0, 0);
+      const endISO = new Date(endDate);
+      endISO.setHours(23, 59, 59, 999);
+
       let query = supabase
         .from('reports')
         .select(`
@@ -66,8 +82,8 @@ const Reports: React.FC = () => {
           profiles!reports_generated_by_fkey(full_name, role, department)
         `)
         .eq('report_type', 'team_performance')
-        .gte('generated_at', format(startDate, 'yyyy-MM-dd'))
-        .lte('generated_at', format(endDate, 'yyyy-MM-dd') + 'T23:59:59')
+        .gte('generated_at', startISO.toISOString())
+        .lte('generated_at', endISO.toISOString())
         .order('generated_at', { ascending: false });
 
       if (selectedEmployee !== 'all') {
@@ -94,6 +110,12 @@ const Reports: React.FC = () => {
     }
   };
 
+  // Helper: safely coerce unknown values to numbers
+  const toNumber = (v: any) => {
+    const n = Number(v);
+    return Number.isFinite(n) ? n : 0;
+  };
+
   const processAnalytics = (reports: any[]) => {
     // Performance metrics by employee
     const employeeMetrics = new Map();
@@ -102,17 +124,17 @@ const Reports: React.FC = () => {
       const name = report.profiles?.full_name || 'Unknown';
       const existing = employeeMetrics.get(name) || { 
         name, 
-        leads: 0, 
-        calls: 0, 
-        visits: 0, 
+        leads: 0,
+        calls: 0,
+        visits: 0,
         followUps: 0,
-        inventories: 0 
+        inventories: 0,
       };
-      existing.leads += data?.leads_registered || 0;
-      existing.calls += data?.calls_to_agents || 0;
-      existing.visits += (data?.primary_sites_visited || 0) + (data?.client_visit || 0);
-      existing.followUps += data?.follow_ups || 0;
-      existing.inventories += data?.inventories_found || 0;
+      existing.leads += toNumber(data?.leads_registered);
+      existing.calls += toNumber(data?.calls_to_agents);
+      existing.visits += toNumber(data?.primary_sites_visited) + toNumber(data?.client_visit);
+      existing.followUps += toNumber(data?.follow_ups);
+      existing.inventories += toNumber(data?.inventories_found);
       employeeMetrics.set(name, existing);
     });
     setPerformanceMetrics(Array.from(employeeMetrics.values()));
@@ -123,19 +145,21 @@ const Reports: React.FC = () => {
       const dept = report.profiles?.department || 'Unassigned';
       const data = report.data as any;
       const existing = deptMetrics.get(dept) || { name: dept, value: 0 };
-      existing.value += (data?.leads_registered || 0) + (data?.calls_to_agents || 0);
+      existing.value += toNumber(data?.leads_registered) + toNumber(data?.calls_to_agents);
       deptMetrics.set(dept, existing);
     });
     setDepartmentData(Array.from(deptMetrics.values()));
 
-    // Trend over time (last 7 reports)
-    const trends = reports.slice(0, 7).reverse().map(report => {
+    // Trend over time (last 7 reports) — sort ascending and take last 7
+    const sorted = [...reports].sort((a, b) => new Date(a.generated_at).getTime() - new Date(b.generated_at).getTime());
+    const lastSeven = sorted.slice(-7);
+    const trends = lastSeven.map(report => {
       const data = report.data as any;
       return {
         date: format(new Date(report.generated_at), 'MMM dd'),
-        leads: data?.leads_registered || 0,
-        calls: data?.calls_to_agents || 0,
-        visits: (data?.primary_sites_visited || 0) + (data?.client_visit || 0),
+        leads: toNumber(data?.leads_registered),
+        calls: toNumber(data?.calls_to_agents),
+        visits: toNumber(data?.primary_sites_visited) + toNumber(data?.client_visit),
       };
     });
     setTrendData(trends);
@@ -154,22 +178,35 @@ const Reports: React.FC = () => {
     const excelData = teamReports.map(report => {
       const data = report.data as any;
       const reportDate = new Date(report.generated_at);
-      
+      // Lead info fields (if present in report)
+      const leadName = data?.lead_name || '';
+      const leadProject = data?.project_name || '';
+      const leadBudgetMin = data?.budget_min ? `₹${data.budget_min.toLocaleString()}` : '';
+      const leadBudgetMax = data?.budget_max ? `₹${data.budget_max.toLocaleString()}` : '';
+      const leadBudget = leadBudgetMin || leadBudgetMax ? `${leadBudgetMin}${leadBudgetMax ? ' - ' + leadBudgetMax : ''}` : '';
+      const leadStatus = data?.lead_status || '';
+      const leadAssignedDate = data?.lead_assigned_at ? format(new Date(data.lead_assigned_at), 'dd-MMM-yyyy') : '';
+
       return {
         'Date': format(reportDate, 'dd-MMM-yyyy'),
         'Employee Name': report.profiles?.full_name || 'Unknown',
         'Role': report.profiles?.role || 'Unknown',
-        'Leads Registered': data?.leads_registered || 0,
-        'Leads Called': data?.leads_called || 0,
-        'Follow Ups': data?.follow_ups || 0,
-        'Inventories Found': data?.inventories_found || 0,
-        'Primary Sites Visited': data?.primary_sites_visited || 0,
-        'Client Visits': data?.client_visit || 0,
-        'Total Site Visits': (data?.primary_sites_visited || 0) + (data?.client_visit || 0),
-        'Calls to Agents': data?.calls_to_agents || 0,
-        'Calls to Developers': data?.calls_to_developers || 0,
-        'Emails to Developers': data?.emails_to_developers || 0,
-        'Digital Marketing Calls': data?.digital_marketing_calls || 0,
+        'Leads Registered': toNumber(data?.leads_registered),
+        'Leads Called': toNumber(data?.leads_called),
+        'Follow Ups': toNumber(data?.follow_ups),
+        'Inventories Found': toNumber(data?.inventories_found),
+        'Primary Sites Visited': toNumber(data?.primary_sites_visited),
+        'Client Visits': toNumber(data?.client_visit),
+        'Total Site Visits': toNumber(data?.primary_sites_visited) + toNumber(data?.client_visit),
+        'Calls to Agents': toNumber(data?.calls_to_agents),
+        'Calls to Developers': toNumber(data?.calls_to_developers),
+        'Emails to Developers': toNumber(data?.emails_to_developers),
+        'Digital Marketing Calls': toNumber(data?.digital_marketing_calls),
+        'Lead Name': leadName,
+        'Project': leadProject,
+        'Budget': leadBudget,
+        'Lead Status': leadStatus,
+        'Assigned Date': leadAssignedDate,
         'Notes': data?.notes || '',
       };
     });
@@ -179,7 +216,7 @@ const Reports: React.FC = () => {
       { wch: 12 }, { wch: 20 }, { wch: 12 }, { wch: 15 }, 
       { wch: 15 }, { wch: 12 }, { wch: 15 }, { wch: 20 }, 
       { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 20 }, 
-      { wch: 20 }, { wch: 20 }, { wch: 50 }
+      { wch: 20 }, { wch: 20 }, { wch: 20 }, { wch: 20 }, { wch: 20 }, { wch: 20 }, { wch: 50 }
     ];
     ws['!cols'] = columnWidths;
 
@@ -390,12 +427,12 @@ const Reports: React.FC = () => {
                   </CardHeader>
                   <CardContent className="flex items-center justify-center">
                     <ResponsiveContainer width="100%" height={300}>
-                      <RadarChart data={performanceMetrics.slice(0, 1).map(emp => [
-                        { subject: 'Leads', value: emp.leads, fullMark: Math.max(...performanceMetrics.map(e => e.leads)) },
-                        { subject: 'Calls', value: emp.calls, fullMark: Math.max(...performanceMetrics.map(e => e.calls)) },
-                        { subject: 'Visits', value: emp.visits, fullMark: Math.max(...performanceMetrics.map(e => e.visits)) },
-                        { subject: 'Follow-ups', value: emp.followUps, fullMark: Math.max(...performanceMetrics.map(e => e.followUps)) },
-                        { subject: 'Inventory', value: emp.inventories, fullMark: Math.max(...performanceMetrics.map(e => e.inventories)) },
+                        <RadarChart data={performanceMetrics.slice(0, 1).map(emp => [
+                        { subject: 'Leads', value: emp.leads, fullMark: Math.max(0, ...performanceMetrics.map(e => e.leads)) },
+                        { subject: 'Calls', value: emp.calls, fullMark: Math.max(0, ...performanceMetrics.map(e => e.calls)) },
+                        { subject: 'Visits', value: emp.visits, fullMark: Math.max(0, ...performanceMetrics.map(e => e.visits)) },
+                        { subject: 'Follow-ups', value: emp.followUps, fullMark: Math.max(0, ...performanceMetrics.map(e => e.followUps)) },
+                        { subject: 'Inventory', value: emp.inventories, fullMark: Math.max(0, ...performanceMetrics.map(e => e.inventories)) },
                       ])[0] || []}>
                         <PolarGrid stroke="hsl(var(--border))" />
                         <PolarAngleAxis dataKey="subject" stroke="hsl(var(--muted-foreground))" />
@@ -441,20 +478,20 @@ const Reports: React.FC = () => {
                         <TableHead>Score</TableHead>
                       </TableRow>
                     </TableHeader>
-                    <TableBody>
+                        <TableBody>
                       {teamReports.map((report) => {
                         const data = report.data as any;
-                        const score = ((data?.leads_registered || 0) * 10 + 
-                                     (data?.calls_to_agents || 0) * 5 + 
-                                     (data?.follow_ups || 0));
+                        const score = ((toNumber(data?.leads_registered) * 10) + 
+                                     (toNumber(data?.calls_to_agents) * 5) + 
+                                     (toNumber(data?.follow_ups)));
                         return (
                           <TableRow key={report.id}>
                             <TableCell>{format(new Date(report.generated_at), 'MMM dd, yyyy')}</TableCell>
                             <TableCell className="font-medium">{report.profiles?.full_name || 'Unknown'}</TableCell>
                             <TableCell><Badge variant="outline">{report.profiles?.role || 'Unknown'}</Badge></TableCell>
-                            <TableCell>{data?.leads_registered || 0}</TableCell>
-                            <TableCell>{data?.calls_to_agents || 0}</TableCell>
-                            <TableCell>{(data?.primary_sites_visited || 0) + (data?.client_visit || 0)}</TableCell>
+                            <TableCell>{toNumber(data?.leads_registered)}</TableCell>
+                            <TableCell>{toNumber(data?.calls_to_agents)}</TableCell>
+                            <TableCell>{toNumber(data?.primary_sites_visited) + toNumber(data?.client_visit)}</TableCell>
                             <TableCell><Badge>{Math.min(100, score)}</Badge></TableCell>
                           </TableRow>
                         );

@@ -14,95 +14,37 @@ import {
   FileText,
   Calendar,
   Store,
+  Trophy,
+  AlertCircle,
+  Plus,
+  Megaphone,
 } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
 interface NavItem {
   title: string;
   href: string;
-  icon: React.ComponentType<{ className?: string }>;
-  roles?: ('admin' | 'employee' | 'manager')[];
+  icon: React.ComponentType<any>;
+  roles?: string[];
 }
 
 const navigation: NavItem[] = [
-  {
-    title: 'Dashboard',
-    href: '/dashboard',
-    icon: Home,
-  },
-  {
-    title: 'Leads',
-    href: '/leads',
-    icon: UserCheck,
-  },
-  {
-    title: 'Properties',
-    href: '/properties',
-    icon: Building2,
-  },
-  {
-    title: 'Magicbricks',
-    href: '/magicbricks',
-    icon: Store,
-  },
-  {
-    title: '99acres',
-    href: '/99acres',
-    icon: Store,
-  },
-  {
-    title: 'Activities',
-    href: '/activities',
-    icon: Activity,
-  },
-  {
-    title: 'Team',
-    href: '/team',
-    icon: Users,
-  },
-  {
-    title: 'Reports',
-    href: '/reports',
-    icon: BarChart3,
-  },
-  {
-    title: 'SOP Reports',
-    href: '/sop-reports',
-    icon: FileText,
-  },
-  {
-    title: 'HR Management',
-    href: '/hr',
-    icon: Users,
-    roles: ['admin'],
-  },
-  {
-    title: 'Salaries',
-    href: '/salaries',
-    icon: Users,
-    roles: ['admin'],
-  },
-  {
-    title: 'Calendar',
-    href: '/calendar',
-    icon: Calendar,
-  },
-  {
-    title: 'Messages',
-    href: '/messages',
-    icon: MessageSquare,
-  },
-  {
-    title: 'Documents',
-    href: '/documents',
-    icon: FileText,
-  },
-  {
-    title: 'Settings',
-    href: '/settings',
-    icon: Settings,
-    roles: ['admin'],
-  },
+  { title: 'Dashboard', href: '/dashboard', icon: Home },
+  { title: 'Leads', href: '/leads', icon: UserCheck },
+  { title: 'Properties', href: '/properties', icon: Building2 },
+  { title: 'Add Listing', href: '/add-listing', icon: Plus },
+  { title: 'Magicbricks', href: '/magicbricks', icon: Store },
+  { title: 'Reports', href: '/reports', icon: BarChart3 },
+  { title: 'Leaderboard', href: '/leaderboard', icon: Trophy },
+  { title: 'Activity Feed', href: '/activity-feed', icon: Activity },
+  { title: 'Smart Alerts', href: '/alerts', icon: AlertCircle },
+  { title: 'Team', href: '/team', icon: Users },
+  { title: 'HR Management', href: '/hr', icon: Users, roles: ['admin'] },
+  { title: 'Salaries', href: '/salaries', icon: Users, roles: ['admin'] },
+  { title: 'Calendar', href: '/calendar', icon: Calendar },
+  { title: 'Messages', href: '/messages', icon: MessageSquare },
+  { title: 'Marketing', href: '/marketing', icon: Megaphone },
+  { title: 'Settings', href: '/settings', icon: Settings, roles: ['admin'] },
 ];
 
 export const Sidebar: React.FC = () => {
