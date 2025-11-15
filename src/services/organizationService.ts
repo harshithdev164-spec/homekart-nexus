@@ -49,6 +49,41 @@ export interface Subscription {
 }
 
 /**
+ * Get organization by subdomain
+ */
+export const getOrganizationBySubdomain = async (subdomain: string): Promise<Organization | null> => {
+  try {
+    const { data, error } = await supabase
+      .rpc('get_organization_by_subdomain', { subdomain_text: subdomain.toLowerCase() })
+      .single();
+
+    if (error) {
+      // If function doesn't exist, fall back to direct query
+      if (error.code === '42883' || error.message?.includes('does not exist')) {
+        const { data: orgData, error: orgError } = await supabase
+          .from('organizations')
+          .select('*')
+          .eq('subdomain', subdomain.toLowerCase())
+          .maybeSingle();
+        
+        if (orgError) {
+          console.error('Error getting organization by subdomain:', orgError);
+          return null;
+        }
+        return orgData;
+      }
+      console.error('Error getting organization by subdomain:', error);
+      return null;
+    }
+
+    return data;
+  } catch (error) {
+    console.error('Error getting organization by subdomain:', error);
+    return null;
+  }
+};
+
+/**
  * Get current user's organization
  */
 export const getCurrentOrganization = async (): Promise<Organization | null> => {
@@ -64,6 +99,11 @@ export const getCurrentOrganization = async (): Promise<Organization | null> => 
       .maybeSingle();
 
     if (profileError) {
+      // Check if it's a table not found error
+      if (profileError.code === 'PGRST116' || profileError.message?.includes('does not exist') || profileError.message?.includes('relation') && profileError.message?.includes('does not exist')) {
+        console.log('Profiles table or organizations column does not exist yet. Run migrations.');
+        return null;
+      }
       console.error('Error fetching profile:', profileError);
       return null;
     }
@@ -79,7 +119,7 @@ export const getCurrentOrganization = async (): Promise<Organization | null> => 
 
     if (orgError) {
       // Table might not exist yet - this is okay for now
-      if (orgError.code === 'PGRST116' || orgError.message?.includes('does not exist')) {
+      if (orgError.code === 'PGRST116' || orgError.message?.includes('does not exist') || (orgError.message?.includes('relation') && orgError.message?.includes('does not exist'))) {
         console.log('Organizations table does not exist yet. Run migrations to enable multi-tenancy.');
         return null;
       }
@@ -88,7 +128,12 @@ export const getCurrentOrganization = async (): Promise<Organization | null> => 
     }
 
     return organization;
-  } catch (error) {
+  } catch (error: any) {
+    // Handle case where table doesn't exist
+    if (error?.code === 'PGRST116' || error?.message?.includes('does not exist') || (error?.message?.includes('relation') && error?.message?.includes('does not exist'))) {
+      console.log('Database tables do not exist yet. Run migrations.');
+      return null;
+    }
     console.error('Error getting current organization:', error);
     return null;
   }
