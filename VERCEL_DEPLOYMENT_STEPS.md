@@ -6,29 +6,15 @@
 
 ## 🔐 Step 2: Login to Vercel
 
-### Option A: Manual Browser Login (If browser doesn't open automatically)
+Run this command in your terminal:
+```bash
+vercel login
+```
 
-1. Run this command in your terminal:
-   ```bash
-   npx vercel login
-   ```
-
-2. You'll see a URL like: `https://vercel.com/oauth/device?user_code=XXXX-XXXX`
-   - **Copy this URL** from the terminal output
-   - **Manually open it** in your browser
-   - Or visit: https://vercel.com/login and use the device code shown in terminal
-
-3. Sign in with GitHub (or email) and authorize Vercel
-
-4. Return to the terminal - it should detect the authentication automatically
-
-### Option B: Use Vercel Dashboard (Easier Alternative)
-
-Instead of CLI, you can deploy directly from the web:
-1. Go to: https://vercel.com/new
-2. Sign in with GitHub
-3. Import your repository: `harshithdev164-spec/homekart-nexus`
-4. Follow the dashboard setup (see Step 3 below)
+This will:
+1. Open your browser
+2. Ask you to sign in with GitHub (or email)
+3. Authorize Vercel to access your account
 
 ## 🚀 Step 3: Deploy to Vercel
 
