@@ -11,6 +11,22 @@ import { supabase } from '@/integrations/supabase/client';
  */
 export const setupAxissRealtyOrganization = async (): Promise<{ success: boolean; message: string; organizationId?: string }> => {
   try {
+    // Step 0: Check if organizations table exists
+    const { error: tableCheckError } = await supabase
+      .from('organizations')
+      .select('id')
+      .limit(1);
+
+    if (tableCheckError) {
+      if (tableCheckError.code === 'PGRST116' || tableCheckError.message?.includes('does not exist') || tableCheckError.message?.includes('schema cache')) {
+        return {
+          success: false,
+          message: 'Organizations table does not exist. Please run the database migration first. See SETUP_ORGANIZATIONS_TABLE.sql file for instructions.',
+        };
+      }
+      // Other errors, continue anyway
+    }
+
     // Step 1: Check if organization exists
     let { data: existingOrg, error: orgCheckError } = await supabase
       .from('organizations')
@@ -18,7 +34,7 @@ export const setupAxissRealtyOrganization = async (): Promise<{ success: boolean
       .or('name.ilike.%axiss realty corp%,name.ilike.%axiss realty%')
       .maybeSingle();
 
-    if (orgCheckError && orgCheckError.code !== 'PGRST116') {
+    if (orgCheckError && orgCheckError.code !== 'PGRST116' && !orgCheckError.message?.includes('does not exist')) {
       console.error('Error checking for organization:', orgCheckError);
     }
 

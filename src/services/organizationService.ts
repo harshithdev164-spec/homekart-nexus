@@ -200,6 +200,18 @@ export const createOrganization = async (
   plan: 'free' | 'starter' | 'professional' | 'enterprise' = 'free'
 ): Promise<Organization> => {
   try {
+    // First check if organizations table exists
+    const { error: tableCheckError } = await supabase
+      .from('organizations')
+      .select('id')
+      .limit(1);
+
+    if (tableCheckError) {
+      if (tableCheckError.code === 'PGRST116' || tableCheckError.message?.includes('does not exist') || tableCheckError.message?.includes('schema cache')) {
+        throw new Error('Organizations table does not exist. Please run the database migration first. See SETUP_ORGANIZATIONS_TABLE.sql file in the project root for instructions.');
+      }
+    }
+
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
 
@@ -224,7 +236,12 @@ export const createOrganization = async (
       .select()
       .single();
 
-    if (orgError) throw orgError;
+    if (orgError) {
+      if (orgError.code === 'PGRST116' || orgError.message?.includes('does not exist') || orgError.message?.includes('schema cache')) {
+        throw new Error('Organizations table does not exist. Please run the database migration first. See SETUP_ORGANIZATIONS_TABLE.sql file in the project root for instructions.');
+      }
+      throw orgError;
+    }
 
     // Add owner as admin member
     await supabase
