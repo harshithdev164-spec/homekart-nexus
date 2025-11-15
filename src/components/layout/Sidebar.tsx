@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { useAuth } from '@/components/auth/AuthProvider';
 import {
   Home,
@@ -19,6 +20,10 @@ import {
   AlertCircle,
   Plus,
   Megaphone,
+  ChevronLeft,
+  ChevronRight,
+  Search,
+  X,
 } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
@@ -47,47 +52,157 @@ const navigation: NavItem[] = [
   { title: 'Messages', href: '/messages', icon: MessageSquare },
   { title: 'Marketing', href: '/marketing', icon: Megaphone },
   { title: 'Settings', href: '/settings', icon: Settings, roles: ['admin'] },
+  { title: 'Analytics', href: '/analytics', icon: BarChart3, roles: ['admin'] },
 ];
 
 export const Sidebar: React.FC = () => {
   const { profile } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
+  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showSearch, setShowSearch] = useState(false);
 
   const filteredNavigation = navigation.filter(item => 
-    !item.roles || item.roles.includes(profile?.role as any)
+    (!item.roles || item.roles.includes(profile?.role as any)) &&
+    (!searchQuery || item.title.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
-  // Debug: Log navigation items to verify 99acres is included
-  React.useEffect(() => {
-    console.log('Sidebar navigation items:', navigation.map(item => item.title));
-    console.log('Filtered navigation items:', filteredNavigation.map(item => item.title));
-    console.log('99acres tab present:', navigation.some(item => item.title === '99acres'));
-  }, [filteredNavigation]);
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyPress = (e: KeyboardEvent) => {
+      // Ctrl/Cmd + K for search
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        e.preventDefault();
+        setShowSearch(true);
+      }
+      // Escape to close search
+      if (e.key === 'Escape' && showSearch) {
+        setShowSearch(false);
+        setSearchQuery('');
+      }
+      // B to toggle sidebar
+      if ((e.ctrlKey || e.metaKey) && e.key === 'b') {
+        e.preventDefault();
+        setIsCollapsed(!isCollapsed);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
+  }, [showSearch, isCollapsed]);
 
   return (
-    <div className="flex h-full w-64 flex-shrink-0 flex-col bg-card border-r border-border">
-      <div className="flex-1 flex flex-col pt-5 pb-4 overflow-y-auto">
-        <nav className="mt-5 flex-1 px-2 space-y-1">
-          {filteredNavigation.map((item) => {
-            const isActive = location.pathname === item.href;
-            return (
+    <div className={cn(
+      "flex h-full flex-col bg-card border-r border-border transition-all duration-300",
+      isCollapsed ? "w-16" : "w-64"
+    )}>
+      {/* Header */}
+      <div className="flex items-center justify-between p-4 border-b border-border">
+        {!isCollapsed && (
+          <div className="flex items-center gap-2">
+            <Building2 className="h-6 w-6 text-primary" />
+            <span className="font-bold text-lg">HomeKart</span>
+          </div>
+        )}
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => setIsCollapsed(!isCollapsed)}
+          className="ml-auto"
+        >
+          {isCollapsed ? (
+            <ChevronRight className="h-4 w-4" />
+          ) : (
+            <ChevronLeft className="h-4 w-4" />
+          )}
+        </Button>
+      </div>
+
+      {/* Search */}
+      {!isCollapsed && (
+        <div className="p-2 border-b border-border">
+          {showSearch ? (
+            <div className="relative">
+              <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search navigation..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-8 pr-8"
+                autoFocus
+              />
               <Button
-                key={item.href}
-                variant={isActive ? "default" : "ghost"}
-                className={cn(
-                  "w-full justify-start",
-                  isActive && "bg-primary text-primary-foreground shadow-primary"
-                )}
-                onClick={() => navigate(item.href)}
+                variant="ghost"
+                size="icon"
+                className="absolute right-0 top-0 h-full"
+                onClick={() => {
+                  setShowSearch(false);
+                  setSearchQuery('');
+                }}
               >
-                <item.icon className="mr-3 h-5 w-5 flex-shrink-0" />
-                {item.title}
+                <X className="h-4 w-4" />
               </Button>
-            );
-          })}
+            </div>
+          ) : (
+            <Button
+              variant="ghost"
+              className="w-full justify-start text-muted-foreground"
+              onClick={() => setShowSearch(true)}
+            >
+              <Search className="mr-2 h-4 w-4" />
+              Search... <kbd className="ml-auto hidden lg:inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100">
+                <span className="text-xs">⌘</span>K
+              </kbd>
+            </Button>
+          )}
+        </div>
+      )}
+
+      {/* Navigation */}
+      <div className="flex-1 flex flex-col pt-2 pb-4 overflow-y-auto">
+        <nav className="flex-1 px-2 space-y-1">
+          {filteredNavigation.length > 0 ? (
+            filteredNavigation.map((item) => {
+              const isActive = location.pathname === item.href;
+              return (
+                <Button
+                  key={item.href}
+                  variant={isActive ? "default" : "ghost"}
+                  className={cn(
+                    "w-full justify-start transition-all",
+                    isActive && "bg-primary text-primary-foreground shadow-primary",
+                    isCollapsed && "justify-center px-0"
+                  )}
+                  onClick={() => {
+                    navigate(item.href);
+                    setShowSearch(false);
+                    setSearchQuery('');
+                  }}
+                  title={isCollapsed ? item.title : undefined}
+                >
+                  <item.icon className={cn("flex-shrink-0", isCollapsed ? "h-5 w-5" : "mr-3 h-5 w-5")} />
+                  {!isCollapsed && item.title}
+                </Button>
+              );
+            })
+          ) : (
+            <div className="px-2 py-4 text-center text-sm text-muted-foreground">
+              No results found
+            </div>
+          )}
         </nav>
       </div>
+
+      {/* Footer */}
+      {!isCollapsed && (
+        <div className="p-4 border-t border-border">
+          <div className="text-xs text-muted-foreground space-y-1">
+            <p>Press <kbd className="px-1 py-0.5 rounded bg-muted">⌘K</kbd> to search</p>
+            <p>Press <kbd className="px-1 py-0.5 rounded bg-muted">⌘B</kbd> to toggle</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -34,8 +34,10 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
       <CookieConsent />
       <div className="flex h-[calc(100vh-73px)] overflow-hidden">
         <Sidebar />
-        <main className="flex-1 overflow-y-auto overflow-x-hidden p-6">
-          {children}
+        <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-6 transition-all duration-300">
+          <div className="max-w-7xl mx-auto">
+            {children}
+          </div>
         </main>
       </div>
     </div>

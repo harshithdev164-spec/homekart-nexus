@@ -61,3 +61,6 @@ verify_jwt = false
 
 [functions.update-user-password]
 verify_jwt = false
+
+[functions.perplexity-property-matcher]
+verify_jwt = false

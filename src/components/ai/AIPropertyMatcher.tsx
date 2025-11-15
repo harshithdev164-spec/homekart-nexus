@@ -52,9 +52,24 @@ export const AIPropertyMatcher: React.FC<AIPropertyMatcherProps> = ({
   const findMatches = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke('ai-property-matcher', {
-        body: { leadId }
-      });
+      // Try Perplexity first, fallback to OpenAI if not configured
+      let data;
+      let error;
+      
+      try {
+        const response = await supabase.functions.invoke('perplexity-property-matcher', {
+          body: { leadId }
+        });
+        data = response.data;
+        error = response.error;
+      } catch (e) {
+        // Fallback to OpenAI if Perplexity not configured
+        const response = await supabase.functions.invoke('ai-property-matcher', {
+          body: { leadId }
+        });
+        data = response.data;
+        error = response.error;
+      }
 
       if (error) throw error;
 
@@ -63,11 +78,11 @@ export const AIPropertyMatcher: React.FC<AIPropertyMatcherProps> = ({
         title: "AI Property Matching Complete",
         description: `Found ${data.matches?.length || 0} matching properties`,
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error finding property matches:', error);
       toast({
         title: "Error",
-        description: "Failed to find property matches",
+        description: error.message || "Failed to find property matches. Please configure Perplexity API key.",
         variant: "destructive",
       });
     } finally {

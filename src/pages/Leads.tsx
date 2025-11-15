@@ -12,11 +12,12 @@ import { RealtimeIndicator } from '@/components/collaboration/RealtimeIndicator'
 import { LeadTransfer } from '@/components/leads/LeadTransfer';
 import { MessageTemplates } from '@/components/templates/MessageTemplates';
 import { LeadMessaging } from '@/components/communications/LeadMessaging';
-import { LeadAssignmentIndicator } from '@/components/leads/LeadAssignmentIndicator';
 import { LeadIntegrations } from '@/components/leads/LeadIntegrations';
 import { LeadImport } from '@/components/leads/LeadImport';
 import { DynamicTableImport } from '@/components/leads/DynamicTableImport';
 import { LeadDetailModal } from '@/components/leads/LeadDetailModal';
+import { LeadsListModal } from '@/components/leads/LeadsListModal';
+import { LeadCard } from '@/components/leads/LeadCard';
 import { useToast } from '@/hooks/use-toast';
 import { ListSkeleton } from '@/components/ui/loading-skeleton';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -92,13 +93,16 @@ const Leads: React.FC = () => {
   const [isIntegrationsOpen, setIsIntegrationsOpen] = useState(false);
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [isDynamicImportDialogOpen, setIsDynamicImportDialogOpen] = useState(false);
-  const [showTemplates, setShowTemplates] = useState(false);
-  const [showImport, setShowImport] = useState(false);
-  const [showDynamicImport, setShowDynamicImport] = useState(false);
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [showLeadDetail, setShowLeadDetail] = useState(false);
   const [showCallLogs, setShowCallLogs] = useState(false);
   const [callLogsLeadId, setCallLogsLeadId] = useState<string | null>(null);
+  const [showLeadsListModal, setShowLeadsListModal] = useState(false);
+  const [newLeadId, setNewLeadId] = useState<string | null>(null);
+  const [attendedLeads, setAttendedLeads] = useState<Set<string>>(new Set());
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const pageSize = 50;
   
   // Form state
   const [formData, setFormData] = useState({
@@ -115,11 +119,14 @@ const Leads: React.FC = () => {
     next_followup: '',
   });
 
-  // Optimized fetch function with minimal data load
-  const fetchLeads = useCallback(async () => {
+  // Optimized fetch function with pagination
+  const fetchLeads = useCallback(async (pageNum: number = 1, append: boolean = false) => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
+      const from = (pageNum - 1) * pageSize;
+      const to = from + pageSize - 1;
+      
+      const { data, error, count } = await supabase
         .from('leads')
         .select(`
           id,
@@ -141,9 +148,9 @@ const Leads: React.FC = () => {
           created_by,
           project_name,
           profiles!leads_assigned_to_fkey(full_name)
-        `)
+        `, { count: 'exact' })
         .order('created_at', { ascending: false })
-        .limit(500); // Limit to 500 leads for better performance
+        .range(from, to);
 
       if (error) {
         console.error('Error fetching leads:', error);
@@ -155,75 +162,139 @@ const Leads: React.FC = () => {
         return;
       }
 
-      setLeads(data || []);
+      if (append) {
+        setLeads(prev => [...prev, ...(data || [])]);
+      } else {
+        setLeads(data || []);
+      }
+      
+      setHasMore((count || 0) > to + 1);
     } catch (error) {
       console.error('Error fetching leads:', error);
     } finally {
       setLoading(false);
     }
-  }, [toast]);
+  }, [toast, pageSize]);
 
   useEffect(() => {
-    fetchLeads();
+    fetchLeads(1, false);
+    setPage(1);
   }, [fetchLeads]);
 
-  // Optimized real-time subscription with selective updates
+  const loadMoreLeads = useCallback(() => {
+    if (!hasMore || loading) return;
+    const nextPage = page + 1;
+    setPage(nextPage);
+    fetchLeads(nextPage, true);
+  }, [page, hasMore, loading, fetchLeads]);
+
+  // Mark lead as attended when LeadDetailModal opens
+  useEffect(() => {
+    if (showLeadDetail && selectedLead && selectedLead.id === newLeadId && !attendedLeads.has(selectedLead.id)) {
+      setAttendedLeads(prev => new Set([...prev, selectedLead.id]));
+      setNewLeadId(null);
+    }
+  }, [showLeadDetail, selectedLead, newLeadId, attendedLeads]);
+
+  // Load attended leads from localStorage on mount
+  useEffect(() => {
+    const stored = localStorage.getItem('attendedLeads');
+    if (stored) {
+      try {
+        setAttendedLeads(new Set(JSON.parse(stored)));
+      } catch (e) {
+        console.error('Error loading attended leads:', e);
+      }
+    }
+  }, []);
+
+  // Save attended leads to localStorage whenever it changes
+  useEffect(() => {
+    if (attendedLeads.size > 0) {
+      localStorage.setItem('attendedLeads', JSON.stringify(Array.from(attendedLeads)));
+    }
+  }, [attendedLeads]);
+
+  // Optimized real-time subscription with selective updates and debouncing
   useEffect(() => {
     let debounceTimer: NodeJS.Timeout;
     let updateCount = 0;
     const MAX_UPDATES_BEFORE_FULL_FETCH = 10;
+    let pendingUpdates: any[] = [];
     
     const channel = supabase
       .channel(`leads_changes_${Date.now()}`)
       .on('postgres_changes', 
         { event: 'INSERT', schema: 'public', table: 'leads' },
         async (payload) => {
-          // For new leads, fetch and prepend to avoid full refresh
-          const { data } = await supabase
-            .from('leads')
-            .select(`
-              id,
-              name,
-              email,
-              phone,
-              source,
-              status,
-              budget_min,
-              budget_max,
-              preferred_location,
-              property_type,
-              notes,
-              created_at,
-              updated_at,
-              next_followup,
-              last_contacted,
-              assigned_to,
-              created_by,
-              project_name,
-              profiles!leads_assigned_to_fkey(full_name)
-            `)
-            .eq('id', payload.new.id)
-            .single();
+          // Debounce INSERT events to batch multiple rapid inserts
+          pendingUpdates.push(payload);
           
-          if (data) {
-            setLeads(prev => [data, ...prev]);
-          }
+          clearTimeout(debounceTimer);
+          debounceTimer = setTimeout(async () => {
+            // Process all pending inserts
+            const updatesToProcess = [...pendingUpdates];
+            pendingUpdates = [];
+            
+            // Fetch only essential fields for new leads
+            const ids = updatesToProcess.map(p => p.new.id);
+            const { data } = await supabase
+              .from('leads')
+              .select(`
+                id,
+                name,
+                email,
+                phone,
+                source,
+                status,
+                budget_min,
+                budget_max,
+                preferred_location,
+                property_type,
+                notes,
+                created_at,
+                updated_at,
+                next_followup,
+                last_contacted,
+                assigned_to,
+                created_by,
+                project_name,
+                profiles!leads_assigned_to_fkey(full_name)
+              `)
+              .in('id', ids);
+            
+            if (data && data.length > 0) {
+              setLeads(prev => {
+                // Merge new leads, avoiding duplicates
+                const existingIds = new Set(prev.map(l => l.id));
+                const newLeads = data.filter(l => !existingIds.has(l.id));
+                return [...newLeads, ...prev];
+              });
+            }
+          }, 500); // 500ms debounce for INSERT events
         }
       )
       .on('postgres_changes', 
         { event: 'UPDATE', schema: 'public', table: 'leads' },
         (payload) => {
-          // Update only the specific lead
+          // Debounce UPDATE events
+          clearTimeout(debounceTimer);
+          
+          // Update only the specific lead immediately for responsiveness
           setLeads(prev => prev.map(lead => 
             lead.id === payload.new.id 
               ? { ...lead, ...payload.new }
               : lead
           ));
           
+          // If status changed from 'new' to something else, mark as attended
+          if (payload.old.status === 'new' && payload.new.status !== 'new') {
+            setAttendedLeads(prev => new Set([...prev, payload.new.id]));
+          }
+          
           updateCount++;
           // After multiple updates, do a full refresh to ensure consistency
           if (updateCount >= MAX_UPDATES_BEFORE_FULL_FETCH) {
-            clearTimeout(debounceTimer);
             debounceTimer = setTimeout(() => {
               fetchLeads();
               updateCount = 0;
@@ -244,7 +315,7 @@ const Leads: React.FC = () => {
       clearTimeout(debounceTimer);
       supabase.removeChannel(channel);
     };
-  }, [fetchLeads]);
+  }, [fetchLeads, profile?.id]);
 
   // Remove duplicate fetchLeads function
 
@@ -271,7 +342,7 @@ const Leads: React.FC = () => {
         created_by: profile.id,
       };
 
-      const { error } = await supabase
+      const { data: newLead, error } = await supabase
         .from('leads')
         .insert([leadData])
         .select()
@@ -306,7 +377,13 @@ const Leads: React.FC = () => {
         notes: '',
         next_followup: '',
       });
-      fetchLeads();
+
+      // Set new lead ID and open leads list modal
+      if (newLead) {
+        setNewLeadId(newLead.id);
+        setShowLeadsListModal(true);
+      }
+      // Don't call fetchLeads() - realtime subscription will handle it
     } catch (error) {
       console.error('Error creating lead:', error);
       toast({
@@ -699,17 +776,6 @@ const Leads: React.FC = () => {
         </Select>
       </div>
 
-      {/* Lead Assignment Indicator */}
-      <LeadAssignmentIndicator 
-        leads={filteredLeads} 
-        onLeadUpdate={(updatedLead) => {
-          setLeads(prevLeads => 
-            prevLeads.map(lead => 
-              lead.id === updatedLead.id ? { ...lead, ...updatedLead } : lead
-            )
-          );
-        }}
-      />
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-6">
@@ -828,152 +894,39 @@ const Leads: React.FC = () => {
 
       {/* Leads Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-        {filteredLeads.map((lead) => (
-          <Card 
-            key={lead.id} 
-            className={`hover:shadow-lg transition-all duration-300 ${
-              lead.status === 'new' ? 'border-2 border-success' : ''
-            }`}
-          >
-            <CardHeader 
-              className="cursor-pointer"
-              onClick={() => {
+        {filteredLeads.map((lead) => {
+          const isNewUnattended = lead.status === 'new' && lead.id === newLeadId && !attendedLeads.has(lead.id);
+          return (
+            <LeadCard
+              key={lead.id}
+              lead={lead}
+              onLeadClick={(lead) => {
                 setSelectedLead(lead);
                 setShowLeadDetail(true);
+                // Mark as attended when clicked
+                if (isNewUnattended) {
+                  setAttendedLeads(prev => new Set([...prev, lead.id]));
+                  if (lead.id === newLeadId) {
+                    setNewLeadId(null);
+                  }
+                }
               }}
-            >
-              <div className="flex items-center justify-between gap-2">
-                <CardTitle className="text-base sm:text-lg">
-                  <span className="font-bold">{lead.name}</span>
-                  {(lead as any).project_name && (
-                    <span className="font-normal text-muted-foreground text-sm ml-2">
-                      - {(lead as any).project_name}
-                    </span>
-                  )}
-                </CardTitle>
-                <Badge className={getStatusColor(lead.status)}>
-                  {lead.status.replace('_', ' ')}
-                </Badge>
-              </div>
-            </CardHeader>
-            <CardContent 
-              className="cursor-pointer"
-              onClick={() => {
+              onMessageClick={(lead) => {
                 setSelectedLead(lead);
-                setShowLeadDetail(true);
+                setIsMessagingDialogOpen(true);
               }}
-            >
-              <div className="space-y-2.5">
-                {lead.profiles && (
-                  <div className="flex items-center gap-2 text-xs text-primary">
-                    <Users className="h-3 w-3" />
-                    Assigned to: {lead.profiles.full_name}
-                  </div>
-                )}
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Phone className="h-4 w-4" />
-                  {lead.phone}
-                </div>
-                {lead.email && (
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Mail className="h-4 w-4" />
-                    {lead.email}
-                  </div>
-                )}
-                {lead.preferred_location && (
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <MapPin className="h-4 w-4" />
-                    {lead.preferred_location}
-                  </div>
-                )}
-                {(lead.budget_min || lead.budget_max) && (
-                  <div className="text-sm font-medium">
-                    Budget: ₹{lead.budget_min?.toLocaleString('en-IN')} - ₹{lead.budget_max?.toLocaleString('en-IN')}
-                  </div>
-                )}
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <Calendar className="h-3 w-3" />
-                  Created: {new Date(lead.created_at).toLocaleDateString()}
-                </div>
-                {lead.next_followup && (
-                  <div className={`flex items-center gap-2 text-xs ${
-                    isToday(parseISO(lead.next_followup)) 
-                      ? 'text-warning font-medium' 
-                      : isPast(parseISO(lead.next_followup)) && !isToday(parseISO(lead.next_followup))
-                      ? 'text-destructive font-medium'
-                      : 'text-muted-foreground'
-                  }`}>
-                    <Clock className="h-3 w-3" />
-                    Follow-up: {new Date(lead.next_followup).toLocaleDateString()}
-                    {isToday(parseISO(lead.next_followup)) && <span className="text-warning">(Today)</span>}
-                    {isPast(parseISO(lead.next_followup)) && !isToday(parseISO(lead.next_followup)) && <span className="text-destructive">(Overdue)</span>}
-                  </div>
-                )}
-                {lead.notes && (
-                  <p className="text-sm text-muted-foreground line-clamp-2">
-                    {lead.notes}
-                  </p>
-                )}
-              </div>
-
-              {/* Action Buttons - Two rows for better spacing */}
-              <div className="space-y-2 mt-4 pt-4 border-t" onClick={(e) => e.stopPropagation()}>
-                {/* Primary Actions Row */}
-                <div className="grid grid-cols-2 gap-2">
-                  <CallButton
-                    phoneNumber={lead.phone}
-                    leadId={lead.id}
-                    name={lead.name}
-                    variant="default"
-                    size="sm"
-                    className="w-full"
-                  />
-                  <Button 
-                    size="sm" 
-                    variant="outline" 
-                    className="w-full"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setSelectedLead(lead);
-                      setIsMessagingDialogOpen(true);
-                    }}
-                  >
-                    <Mail className="h-4 w-4 mr-1" />
-                    Message
-                  </Button>
-                </div>
-                
-                {/* Secondary Actions Row */}
-                <div className="grid grid-cols-2 gap-2">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setCallLogsLeadId(lead.id);
-                      setShowCallLogs(true);
-                    }}
-                    className="w-full"
-                  >
-                    <PhoneCall className="h-4 w-4 mr-1" />
-                    Logs
-                  </Button>
-                  <div onClick={(e) => e.stopPropagation()}>
-                    <LeadTransfer 
-                      leadId={lead.id}
-                      leadName={lead.name}
-                      currentOwner={lead.profiles?.full_name}
-                      onTransferSuccess={fetchLeads}
-                    />
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+              onCallLogsClick={(leadId) => {
+                setCallLogsLeadId(leadId);
+                setShowCallLogs(true);
+              }}
+              onTransferSuccess={() => fetchLeads(1, false)}
+              isNewUnattended={isNewUnattended}
+            />
+          );
+        })}
       </div>
 
-      {filteredLeads.length === 0 && (
+      {filteredLeads.length === 0 && !loading && (
         <Card>
           <CardContent className="text-center py-12">
             <p className="text-muted-foreground">
@@ -987,6 +940,19 @@ const Leads: React.FC = () => {
             )}
           </CardContent>
         </Card>
+      )}
+
+      {/* Load More Button */}
+      {hasMore && !searchTerm && filteredLeads.length > 0 && (
+        <div className="flex justify-center mt-6">
+          <Button 
+            variant="outline" 
+            onClick={loadMoreLeads}
+            disabled={loading}
+          >
+            {loading ? 'Loading...' : 'Load More Leads'}
+          </Button>
+        </div>
       )}
 
       {/* Message Templates Dialog */}
@@ -1065,8 +1031,29 @@ const Leads: React.FC = () => {
         lead={selectedLead}
         isOpen={showLeadDetail}
         onClose={() => {
+          // Mark lead as attended when modal is opened (not just when closed)
+          if (selectedLead && selectedLead.id === newLeadId && !attendedLeads.has(selectedLead.id)) {
+            setAttendedLeads(prev => new Set([...prev, selectedLead.id]));
+            setNewLeadId(null);
+          }
           setShowLeadDetail(false);
           setSelectedLead(null);
+        }}
+      />
+
+      <LeadsListModal
+        isOpen={showLeadsListModal}
+        onClose={() => {
+          setShowLeadsListModal(false);
+          setNewLeadId(null);
+        }}
+        leads={leads}
+        newLeadId={newLeadId}
+        onLeadAttended={(leadId) => {
+          setAttendedLeads(prev => new Set([...prev, leadId]));
+          if (leadId === newLeadId) {
+            setNewLeadId(null);
+          }
         }}
       />
 

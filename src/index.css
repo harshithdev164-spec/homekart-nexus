@@ -92,6 +92,23 @@
     --sidebar-ring: 173 80% 65%;
   }
 
+  /* Green blinking animation for new leads */
+  @keyframes blink-green {
+    0%, 100% { 
+      border-color: hsl(var(--success));
+      box-shadow: 0 0 0 0 hsl(var(--success) / 0.4);
+    }
+    50% { 
+      border-color: hsl(var(--success) / 0.3);
+      box-shadow: 0 0 0 4px hsl(var(--success) / 0);
+    }
+  }
+
+  .new-lead-blink {
+    animation: blink-green 1.5s ease-in-out infinite;
+    border: 2px solid hsl(var(--success));
+  }
+
   .dark {
     /* Background System - Light Mode */
     --background: 210 20% 98%;

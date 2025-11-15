@@ -1,8 +1,9 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { useNavigate } from 'react-router-dom';
-import { Building2, Users, BarChart3, MessageSquare, Mail, Calendar, Star, CheckCircle } from 'lucide-react';
+import { Building2, Users, BarChart3, MessageSquare, Mail, Calendar, Star, CheckCircle, Sparkles } from 'lucide-react';
 import heroImage from '@/assets/hero-image.jpg';
 
 const LandingPage: React.FC = () => {
@@ -38,6 +39,42 @@ const LandingPage: React.FC = () => {
       icon: Calendar,
       title: 'Team Collaboration',
       description: 'Advanced team management with role-based access and collaborative workspaces.',
+    },
+    {
+      icon: Sparkles,
+      title: 'AI-Powered Insights',
+      description: 'Perplexity AI integration for intelligent property matching and market insights.',
+    },
+  ];
+
+  const pricingPlans = [
+    {
+      name: 'Free',
+      price: '₹0',
+      period: 'forever',
+      features: ['Up to 5 users', '100 leads', '50 properties', 'Basic features', 'Email support'],
+      popular: false,
+    },
+    {
+      name: 'Starter',
+      price: '₹2,999',
+      period: 'month',
+      features: ['Up to 10 users', '500 leads', '200 properties', 'Advanced features', 'Email support', 'API access'],
+      popular: true,
+    },
+    {
+      name: 'Professional',
+      price: '₹7,999',
+      period: 'month',
+      features: ['Up to 25 users', 'Unlimited leads', 'Unlimited properties', 'All features', 'Priority support', 'API access', 'Custom integrations'],
+      popular: false,
+    },
+    {
+      name: 'Enterprise',
+      price: 'Custom',
+      period: '',
+      features: ['Unlimited users', 'Unlimited everything', 'Custom features', 'Dedicated support', 'SLA guarantee', 'White-labeling'],
+      popular: false,
     },
   ];
 
@@ -133,6 +170,61 @@ const LandingPage: React.FC = () => {
                   <CardDescription className="text-base">
                     {feature.description}
                   </CardDescription>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Pricing Section */}
+      <section className="py-24 bg-muted/30">
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="text-center mb-16">
+            <h3 className="text-4xl font-bold mb-4">Simple, Transparent Pricing</h3>
+            <p className="text-xl text-muted-foreground">
+              Choose the plan that's right for your business. All plans include a 14-day free trial.
+            </p>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {pricingPlans.map((plan, index) => (
+              <Card
+                key={index}
+                className={`relative shadow-medium hover:shadow-large transition-all duration-300 ${
+                  plan.popular ? 'ring-2 ring-primary border-primary' : ''
+                }`}
+              >
+                {plan.popular && (
+                  <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
+                    <Badge className="bg-primary text-primary-foreground">Most Popular</Badge>
+                  </div>
+                )}
+                <CardHeader>
+                  <CardTitle className="text-2xl">{plan.name}</CardTitle>
+                  <div className="mt-4">
+                    <span className="text-4xl font-bold">{plan.price}</span>
+                    {plan.period && (
+                      <span className="text-muted-foreground">/{plan.period}</span>
+                    )}
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <ul className="space-y-3 mb-6">
+                    {plan.features.map((feature, featureIndex) => (
+                      <li key={featureIndex} className="flex items-center gap-2">
+                        <CheckCircle className="h-5 w-5 text-green-600 flex-shrink-0" />
+                        <span className="text-sm">{feature}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  <Button
+                    className="w-full"
+                    variant={plan.popular ? 'default' : 'outline'}
+                    onClick={() => navigate('/auth')}
+                  >
+                    {plan.name === 'Free' ? 'Get Started' : 'Start Free Trial'}
+                  </Button>
                 </CardContent>
               </Card>
             ))}

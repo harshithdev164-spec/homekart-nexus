@@ -5,12 +5,16 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/components/auth/AuthProvider";
+import { OrganizationProvider } from "@/components/organization/OrganizationProvider";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 
 // Lazy load pages for better performance
 const LandingPage = lazy(() => import("./pages/LandingPage"));
 const Auth = lazy(() => import("./pages/Auth"));
 const AdminSetup = lazy(() => import("./pages/AdminSetup"));
+const OrganizationSetup = lazy(() => import("./pages/OrganizationSetup"));
+const Onboarding = lazy(() => import("./pages/Onboarding"));
+const Billing = lazy(() => import("./pages/Billing"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const Leads = lazy(() => import("./pages/Leads"));
 const Properties = lazy(() => import("./pages/Properties"));
@@ -30,6 +34,9 @@ const Salaries = lazy(() => import("./pages/Salaries"));
 const Leaderboard = lazy(() => import("./pages/Leaderboard"));
 const ActivityFeed = lazy(() => import("./pages/ActivityFeed"));
 const SmartAlerts = lazy(() => import("./pages/SmartAlerts"));
+const AITestPage = lazy(() => import("./pages/AITestPage"));
+const Settings = lazy(() => import("./pages/Settings"));
+const Analytics = lazy(() => import("./pages/Analytics"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 // Loading fallback component
@@ -103,11 +110,15 @@ const App: React.FC = () => {
         <TooltipProvider>
           <BrowserRouter>
             <AuthProvider>
-              <Suspense fallback={<PageLoader />}>
+              <OrganizationProvider>
+                <Suspense fallback={<PageLoader />}>
                 <Routes>
                   <Route path="/" element={<LandingPage />} />
                   <Route path="/auth" element={<Auth />} />
                   <Route path="/admin-setup" element={<AdminSetup />} />
+                  <Route path="/organization-setup" element={<OrganizationSetup />} />
+                  <Route path="/onboarding" element={<DashboardLayout><Onboarding /></DashboardLayout>} />
+                  <Route path="/billing" element={<DashboardLayout><Billing /></DashboardLayout>} />
                   <Route path="/dashboard" element={<DashboardLayout><Dashboard /></DashboardLayout>} />
                   <Route path="/leads" element={<DashboardLayout><Leads /></DashboardLayout>} />
                   <Route path="/properties" element={<DashboardLayout><Properties /></DashboardLayout>} />
@@ -126,12 +137,15 @@ const App: React.FC = () => {
                     <Route path="/leaderboard" element={<DashboardLayout><Leaderboard /></DashboardLayout>} />
                     <Route path="/activity-feed" element={<DashboardLayout><ActivityFeed /></DashboardLayout>} />
                     <Route path="/alerts" element={<DashboardLayout><SmartAlerts /></DashboardLayout>} />
+                    <Route path="/ai-test" element={<DashboardLayout><AITestPage /></DashboardLayout>} />
                   <Route path="/documents" element={<DashboardLayout><div>Documents page coming soon...</div></DashboardLayout>} />
-                  <Route path="/settings" element={<DashboardLayout><div>Settings page coming sure...</div></DashboardLayout>} />
+                  <Route path="/settings" element={<DashboardLayout><Settings /></DashboardLayout>} />
+                  <Route path="/analytics" element={<DashboardLayout><Analytics /></DashboardLayout>} />
                   {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </Suspense>
+              </OrganizationProvider>
             </AuthProvider>
           </BrowserRouter>
           <Toaster />
