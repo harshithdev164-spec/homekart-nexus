@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -8,6 +8,8 @@ import { Users, Search, Mail, Phone, UserCheck, Building2, Calendar, PhoneCall }
 import { CallButton } from '@/components/calls/CallButton';
 import { CallLogs } from '@/components/calls/CallLogs';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { ListSkeleton } from '@/components/ui/loading-skeleton';
+import { Skeleton } from '@/components/ui/skeleton';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { useToast } from '@/hooks/use-toast';
@@ -51,49 +53,10 @@ const Team: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [showCallLogs, setShowCallLogs] = useState(false);
   const [callLogsAgentId, setCallLogsAgentId] = useState<string | null>(null);
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const channelsRef = useRef<any[]>([]);
 
-  useEffect(() => {
-    fetchTeamMembers();
-    
-    // Set up real-time subscriptions
-    const profilesChannel = supabase
-      .channel('profiles_changes')
-      .on('postgres_changes', 
-        { event: '*', schema: 'public', table: 'profiles' },
-        () => {
-          fetchTeamMembers();
-        }
-      )
-      .subscribe();
-
-    const leadsChannel = supabase
-      .channel('team_leads_changes')
-      .on('postgres_changes', 
-        { event: '*', schema: 'public', table: 'leads' },
-        () => {
-          fetchTeamMembers();
-        }
-      )
-      .subscribe();
-
-    const propertiesChannel = supabase
-      .channel('team_properties_changes')
-      .on('postgres_changes', 
-        { event: '*', schema: 'public', table: 'properties' },
-        () => {
-          fetchTeamMembers();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(profilesChannel);
-      supabase.removeChannel(leadsChannel);
-      supabase.removeChannel(propertiesChannel);
-    };
-  }, []);
-
-  const fetchTeamMembers = async () => {
+  const fetchTeamMembers = useCallback(async () => {
     try {
       const { data, error } = await supabase
         .from('profiles')
@@ -161,7 +124,61 @@ const Team: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [toast]);
+
+  // Debounced version of fetchTeamMembers for realtime updates
+  const debouncedFetchTeamMembers = useCallback(() => {
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+    debounceTimerRef.current = setTimeout(() => {
+      fetchTeamMembers();
+    }, 300);
+  }, [fetchTeamMembers]);
+
+  useEffect(() => {
+    fetchTeamMembers();
+    
+    // Consolidate real-time subscriptions into a single channel with debouncing
+    channelsRef.current.forEach(ch => {
+      if (ch) supabase.removeChannel(ch);
+    });
+    channelsRef.current = [];
+
+    const channel = supabase
+      .channel(`team_changes_${Date.now()}`)
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'profiles' },
+        () => {
+          debouncedFetchTeamMembers();
+        }
+      )
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'leads' },
+        () => {
+          debouncedFetchTeamMembers();
+        }
+      )
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'properties' },
+        () => {
+          debouncedFetchTeamMembers();
+        }
+      )
+      .subscribe();
+
+    channelsRef.current.push(channel);
+
+    return () => {
+      channelsRef.current.forEach(ch => {
+        if (ch) supabase.removeChannel(ch);
+      });
+      channelsRef.current = [];
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+    };
+  }, [fetchTeamMembers, debouncedFetchTeamMembers]);
 
   const getRoleBadgeVariant = (role: string) => {
     switch (role) {
@@ -191,10 +208,15 @@ const Team: React.FC = () => {
     member.department?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  if (loading) {
+  if (loading && teamMembers.length === 0) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
+      <div className="space-y-4 sm:space-y-6 p-2 sm:p-0">
+        <div className="flex flex-col gap-2">
+          <Skeleton className="h-10 w-64" />
+          <Skeleton className="h-4 w-48" />
+        </div>
+        <Skeleton className="h-12 w-full" />
+        <ListSkeleton count={8} />
       </div>
     );
   }

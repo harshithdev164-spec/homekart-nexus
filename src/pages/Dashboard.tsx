@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
 import { LeadDetailModal } from '@/components/leads/LeadDetailModal';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/components/auth/AuthProvider';
@@ -15,6 +16,23 @@ import {
 } from 'recharts';
 import { Phone, MessageSquare, Home, TrendingUp, Users, Calendar, Target, Award, Clock, Activity } from 'lucide-react';
 import { format, startOfDay, startOfWeek, startOfMonth, endOfDay, subDays } from 'date-fns';
+import { QuickActionsPanel } from '@/components/dashboard/QuickActionsPanel';
+import { RevenueSnapshotWidget } from '@/components/dashboard/widgets/RevenueSnapshotWidget';
+import { PipelineHealthWidget } from '@/components/dashboard/widgets/PipelineHealthWidget';
+import { QuickStatsWidget } from '@/components/dashboard/widgets/QuickStatsWidget';
+import { GoalProgressWidget } from '@/components/dashboard/widgets/GoalProgressWidget';
+import { HotLeadsWidget } from '@/components/dashboard/widgets/HotLeadsWidget';
+import { ActivityFeedWidget } from '@/components/dashboard/widgets/ActivityFeedWidget';
+import { TasksWidget } from '@/components/dashboard/widgets/TasksWidget';
+import { MeetingsWidget } from '@/components/dashboard/widgets/MeetingsWidget';
+import { FollowUpRemindersWidget } from '@/components/dashboard/widgets/FollowUpRemindersWidget';
+import { OverdueItemsWidget } from '@/components/dashboard/widgets/OverdueItemsWidget';
+import { LeadPipelineKanban } from '@/components/dashboard/widgets/LeadPipelineKanban';
+import { PipelineFunnelWidget } from '@/components/dashboard/widgets/PipelineFunnelWidget';
+import { LeadSourceWidget } from '@/components/dashboard/widgets/LeadSourceWidget';
+import { CommissionTrackerWidget } from '@/components/dashboard/widgets/CommissionTrackerWidget';
+import { PeriodComparisonWidget } from '@/components/dashboard/widgets/PeriodComparisonWidget';
+import { WidgetConfig } from '@/types/dashboard';
 
 type TimeRange = 'today' | 'week' | 'month';
 
@@ -53,6 +71,9 @@ const Dashboard: React.FC = () => {
   const [leads, setLeads] = useState<any[]>([]);
   const [showLeadModal, setShowLeadModal] = useState(false);
   const [selectedLead, setSelectedLead] = useState<any>(null);
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const channelRef = useRef<any>(null);
+  const employeesCacheRef = useRef<any[]>([]);
 
   const isAdmin = profile?.role === 'admin' || profile?.role === 'manager';
 
@@ -68,26 +89,21 @@ const Dashboard: React.FC = () => {
     danger: 'hsl(0, 84%, 60%)',
   };
 
-  useEffect(() => {
-    if (isAdmin) {
-      fetchEmployees();
+  // Memoize date range calculation
+  const dateRange = useMemo(() => {
+    const now = new Date();
+    switch (timeRange) {
+      case 'today':
+        return { start: startOfDay(now), end: endOfDay(now) };
+      case 'week':
+        return { start: startOfWeek(now), end: now };
+      case 'month':
+        return { start: startOfMonth(now), end: now };
     }
-    fetchDashboardData();
-    fetchLeads();
-
-    // Realtime subscription: refresh dashboard on changes to reports table
-    const channel = supabase
-      .channel('dashboard_realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'reports', filter: `report_type=eq.team_performance` }, () => fetchDashboardData())
-      .subscribe();
-
-    return () => {
-      try { channel.unsubscribe(); } catch (e) { /* ignore */ }
-    };
-  }, [timeRange, selectedEmployee, profile]);
+  }, [timeRange]);
 
   // Fetch leads for the selected employee/admin
-  const fetchLeads = async () => {
+  const fetchLeads = useCallback(async () => {
     let query = supabase
       .from('leads')
       .select(`id, name, project_name, budget_min, budget_max, status, assigned_to, created_at, profiles!leads_assigned_to_fkey(full_name)`)
@@ -99,39 +115,36 @@ const Dashboard: React.FC = () => {
     }
     const { data, error } = await query;
     if (!error) setLeads(data || []);
-  };
+  }, [selectedEmployee, isAdmin, profile?.id]);
 
   // Helper to coerce values to numbers safely
-  const toNumber = (v: any) => {
+  const toNumber = useCallback((v: any) => {
     const n = Number(v);
     return Number.isFinite(n) ? n : 0;
-  };
+  }, []);
 
-  const fetchEmployees = async () => {
+  const fetchEmployees = useCallback(async () => {
+    // Use cache if available
+    if (employeesCacheRef.current.length > 0) {
+      setEmployees(employeesCacheRef.current);
+      return;
+    }
+
     const { data } = await supabase
       .from('profiles')
       .select('id, full_name')
       .eq('is_active', true)
       .order('full_name');
     
-    if (data) setEmployees(data);
-  };
-
-  const getDateRange = () => {
-    const now = new Date();
-    switch (timeRange) {
-      case 'today':
-        return { start: startOfDay(now), end: endOfDay(now) };
-      case 'week':
-        return { start: startOfWeek(now), end: now };
-      case 'month':
-        return { start: startOfMonth(now), end: now };
+    if (data) {
+      setEmployees(data);
+      employeesCacheRef.current = data;
     }
-  };
+  }, []);
 
-  const fetchDashboardData = async () => {
+  const fetchDashboardData = useCallback(async () => {
     setLoading(true);
-    const { start, end } = getDateRange();
+    const { start, end } = dateRange;
     const profileFilter = selectedEmployee === 'all' ? (isAdmin ? null : profile?.id) : selectedEmployee;
 
     try {
@@ -314,15 +327,83 @@ const Dashboard: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [dateRange, selectedEmployee, isAdmin, profile?.id, toNumber, toast]);
+
+  // Debounced version for filter changes
+  const debouncedFetchDashboardData = useCallback(() => {
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+    debounceTimerRef.current = setTimeout(() => {
+      fetchDashboardData();
+    }, 300);
+  }, [fetchDashboardData]);
+
+  // Memoize chart data calculations
+  const memoizedMetrics = useMemo(() => metrics, [metrics]);
+  const memoizedPerformanceData = useMemo(() => performanceData, [performanceData]);
+  const memoizedActivityData = useMemo(() => activityData, [activityData]);
+  const memoizedStatusData = useMemo(() => statusData, [statusData]);
+  const memoizedConversionData = useMemo(() => conversionData, [conversionData]);
+  const memoizedHourlyActivityData = useMemo(() => hourlyActivityData, [hourlyActivityData]);
+
+  useEffect(() => {
+    if (isAdmin) {
+      fetchEmployees();
+    }
+    fetchDashboardData();
+    fetchLeads();
+
+    // Realtime subscription: refresh dashboard on changes to reports table with debouncing
+    if (channelRef.current) {
+      supabase.removeChannel(channelRef.current);
+    }
+
+    channelRef.current = supabase
+      .channel(`dashboard_realtime_${Date.now()}`)
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'reports', filter: `report_type=eq.team_performance` }, 
+        () => {
+          debouncedFetchDashboardData();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
+        channelRef.current = null;
+      }
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+    };
+  }, [timeRange, selectedEmployee, isAdmin, fetchEmployees, fetchDashboardData, fetchLeads, debouncedFetchDashboardData]);
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-4 border-primary"></div>
-          <p className="text-muted-foreground">Loading analytics...</p>
+      <div className="w-full space-y-6">
+        <div className="flex items-center justify-between">
+          <div className="space-y-2">
+            <div className="h-10 w-64 bg-muted rounded animate-pulse" />
+            <div className="h-4 w-48 bg-muted rounded animate-pulse" />
+          </div>
+          <div className="flex gap-3">
+            <div className="h-10 w-32 bg-muted rounded animate-pulse" />
+            <div className="h-10 w-40 bg-muted rounded animate-pulse" />
+          </div>
         </div>
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <Card key={i}>
+              <CardContent className="pt-6">
+                <div className="h-8 w-16 bg-muted rounded mb-2 animate-pulse" />
+                <div className="h-4 w-24 bg-muted rounded animate-pulse" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+        <div className="h-96 bg-muted rounded animate-pulse" />
       </div>
     );
   }
@@ -338,7 +419,10 @@ const Dashboard: React.FC = () => {
           <p className="text-muted-foreground mt-1">Real-time analytics and insights</p>
         </div>
         <div className="flex gap-3">
-          <Select value={timeRange} onValueChange={(v) => setTimeRange(v as TimeRange)}>
+          <Select value={timeRange} onValueChange={(v) => {
+            setTimeRange(v as TimeRange);
+            debouncedFetchDashboardData();
+          }}>
             <SelectTrigger className="w-32">
               <SelectValue />
             </SelectTrigger>
@@ -349,7 +433,10 @@ const Dashboard: React.FC = () => {
             </SelectContent>
           </Select>
           {isAdmin && (
-            <Select value={selectedEmployee} onValueChange={setSelectedEmployee}>
+            <Select value={selectedEmployee} onValueChange={(v) => {
+              setSelectedEmployee(v);
+              debouncedFetchDashboardData();
+            }}>
               <SelectTrigger className="w-40">
                 <SelectValue placeholder="All Employees" />
               </SelectTrigger>
@@ -364,13 +451,218 @@ const Dashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* Tabs for Analytics and Leads */}
-      <Tabs defaultValue="analytics" className="w-full">
+      {/* Quick Actions Panel */}
+      <QuickActionsPanel />
+
+      {/* Tabs for Analytics, Widgets, and Leads */}
+      <Tabs defaultValue="widgets" className="w-full">
         <TabsList className="mb-4">
+          <TabsTrigger value="widgets">Dashboard</TabsTrigger>
           <TabsTrigger value="analytics">Analytics</TabsTrigger>
           <TabsTrigger value="leads">Leads</TabsTrigger>
         </TabsList>
-        <TabsContent value="analytics">
+        
+        {/* New Widgets Dashboard Tab */}
+        <TabsContent value="widgets" className="transition-opacity duration-200 space-y-6">
+          {/* Executive Summary Row */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <RevenueSnapshotWidget
+              config={{
+                id: 'revenue-snapshot',
+                type: 'revenue_snapshot',
+                title: 'Revenue Snapshot',
+                size: 'small',
+                visible: true,
+              }}
+              timeRange={timeRange}
+              employeeId={selectedEmployee !== 'all' ? selectedEmployee : undefined}
+            />
+            <PipelineHealthWidget
+              config={{
+                id: 'pipeline-health',
+                type: 'pipeline_health',
+                title: 'Pipeline Health',
+                size: 'small',
+                visible: true,
+              }}
+              employeeId={selectedEmployee !== 'all' ? selectedEmployee : undefined}
+            />
+            <QuickStatsWidget
+              config={{
+                id: 'quick-stats',
+                type: 'quick_stats',
+                title: 'Quick Stats',
+                size: 'small',
+                visible: true,
+              }}
+              employeeId={selectedEmployee !== 'all' ? selectedEmployee : undefined}
+            />
+            <GoalProgressWidget
+              config={{
+                id: 'goal-progress',
+                type: 'goal_progress',
+                title: 'Goal Progress',
+                size: 'small',
+                visible: true,
+              }}
+              employeeId={selectedEmployee !== 'all' ? selectedEmployee : undefined}
+            />
+          </div>
+
+          {/* Lead Management Row */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <HotLeadsWidget
+              config={{
+                id: 'hot-leads',
+                type: 'hot_leads',
+                title: 'Hot Leads',
+                size: 'medium',
+                visible: true,
+              }}
+              employeeId={selectedEmployee !== 'all' ? selectedEmployee : undefined}
+              onLeadClick={(leadId) => {
+                const lead = leads.find((l) => l.id === leadId);
+                if (lead) {
+                  setSelectedLead(lead);
+                  setShowLeadModal(true);
+                }
+              }}
+            />
+            <ActivityFeedWidget
+              config={{
+                id: 'activity-feed',
+                type: 'activity_feed',
+                title: 'Activity Feed',
+                size: 'medium',
+                visible: true,
+              }}
+              employeeId={selectedEmployee !== 'all' ? selectedEmployee : undefined}
+            />
+          </div>
+
+          {/* Pipeline Visualization */}
+          <LeadPipelineKanban
+            config={{
+              id: 'lead-pipeline-kanban',
+              type: 'lead_pipeline_kanban',
+              title: 'Lead Pipeline',
+              size: 'large',
+              visible: true,
+            }}
+            employeeId={selectedEmployee !== 'all' ? selectedEmployee : undefined}
+            onLeadClick={(leadId) => {
+              const lead = leads.find((l) => l.id === leadId);
+              if (lead) {
+                setSelectedLead(lead);
+                setShowLeadModal(true);
+              }
+            }}
+          />
+
+          {/* Tasks and Meetings Row */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <TasksWidget
+              config={{
+                id: 'tasks',
+                type: 'tasks',
+                title: "Today's Tasks",
+                size: 'small',
+                visible: true,
+              }}
+              employeeId={selectedEmployee !== 'all' ? selectedEmployee : undefined}
+            />
+            <MeetingsWidget
+              config={{
+                id: 'meetings',
+                type: 'meetings',
+                title: 'Upcoming Meetings',
+                size: 'small',
+                visible: true,
+              }}
+              employeeId={selectedEmployee !== 'all' ? selectedEmployee : undefined}
+            />
+            <FollowUpRemindersWidget
+              config={{
+                id: 'followup-reminders',
+                type: 'followup_reminders',
+                title: 'Follow-up Reminders',
+                size: 'small',
+                visible: true,
+              }}
+              employeeId={selectedEmployee !== 'all' ? selectedEmployee : undefined}
+              onLeadClick={(leadId) => {
+                const lead = leads.find((l) => l.id === leadId);
+                if (lead) {
+                  setSelectedLead(lead);
+                  setShowLeadModal(true);
+                }
+              }}
+            />
+          </div>
+
+          {/* Overdue Items and Charts Row */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <OverdueItemsWidget
+              config={{
+                id: 'overdue-items',
+                type: 'overdue_items',
+                title: 'Overdue Items',
+                size: 'small',
+                visible: true,
+              }}
+              employeeId={selectedEmployee !== 'all' ? selectedEmployee : undefined}
+            />
+            <PipelineFunnelWidget
+              config={{
+                id: 'pipeline-funnel',
+                type: 'pipeline_funnel',
+                title: 'Pipeline Funnel',
+                size: 'small',
+                visible: true,
+              }}
+              employeeId={selectedEmployee !== 'all' ? selectedEmployee : undefined}
+            />
+            <LeadSourceWidget
+              config={{
+                id: 'lead-source',
+                type: 'lead_source',
+                title: 'Lead Source Performance',
+                size: 'small',
+                visible: true,
+              }}
+              employeeId={selectedEmployee !== 'all' ? selectedEmployee : undefined}
+            />
+          </div>
+
+          {/* Commission Tracker and Additional Widgets */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {isAdmin && (
+              <CommissionTrackerWidget
+                config={{
+                  id: 'commission-tracker',
+                  type: 'commission_tracker',
+                  title: 'Commission Tracker',
+                  size: 'medium',
+                  visible: true,
+                }}
+                timeRange={timeRange}
+                employeeId={selectedEmployee !== 'all' ? selectedEmployee : undefined}
+              />
+            )}
+            <PeriodComparisonWidget
+              config={{
+                id: 'period-comparison',
+                type: 'period_comparison',
+                title: 'Period Comparison',
+                size: 'medium',
+                visible: true,
+              }}
+              timeRange={timeRange}
+              employeeId={selectedEmployee !== 'all' ? selectedEmployee : undefined}
+            />
+          </div>
+        </TabsContent>
+        <TabsContent value="analytics" className="transition-opacity duration-200">
           {/* ...existing code for analytics dashboard... */}
           {/* Metric Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
@@ -407,10 +699,171 @@ const Dashboard: React.FC = () => {
               );
             })}
           </div>
-          {/* ...existing code for analytics charts, summary, etc... */}
-          {/* ...existing code... */}
+
+          {/* Charts Section */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+            {/* Activity Over Time - Area Chart */}
+            {activityData.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Activity Over Time</CardTitle>
+                  <CardDescription>Daily calls and visits for the selected period</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <AreaChart data={activityData}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="date" />
+                      <YAxis />
+                      <Tooltip />
+                      <Legend />
+                      <Area type="monotone" dataKey="calls" stackId="1" stroke={COLORS.chart1} fill={COLORS.chart1} fillOpacity={0.6} />
+                      <Area type="monotone" dataKey="visits" stackId="1" stroke={COLORS.chart3} fill={COLORS.chart3} fillOpacity={0.6} />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Activity Status - Pie Chart */}
+            {statusData.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Activity Status Distribution</CardTitle>
+                  <CardDescription>Distribution of activity levels</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <PieChart>
+                      <Pie
+                        data={statusData}
+                        cx="50%"
+                        cy="50%"
+                        labelLine={false}
+                        label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                        outerRadius={100}
+                        fill="#8884d8"
+                        dataKey="value"
+                      >
+                        {statusData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Conversion Funnel - Bar Chart */}
+            {conversionData.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Conversion Funnel</CardTitle>
+                  <CardDescription>Pipeline from reports to inventories</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <BarChart data={conversionData}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="stage" />
+                      <YAxis />
+                      <Tooltip />
+                      <Bar dataKey="count" fill={COLORS.primary} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Employee Performance - Radar Chart */}
+            {performanceData.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Top Performers</CardTitle>
+                  <CardDescription>Employee performance metrics</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <RadarChart data={performanceData.slice(0, 5)}>
+                      <PolarGrid />
+                      <PolarAngleAxis dataKey="name" />
+                      <PolarRadiusAxis />
+                      <Radar name="Calls" dataKey="calls" stroke={COLORS.chart1} fill={COLORS.chart1} fillOpacity={0.6} />
+                      <Radar name="Visits" dataKey="visits" stroke={COLORS.chart3} fill={COLORS.chart3} fillOpacity={0.6} />
+                      <Radar name="Leads" dataKey="leads" stroke={COLORS.chart4} fill={COLORS.chart4} fillOpacity={0.6} />
+                      <Legend />
+                      <Tooltip />
+                    </RadarChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Hourly Activity - Line Chart (only for today) */}
+            {timeRange === 'today' && hourlyActivityData.length > 0 && (
+              <Card className="lg:col-span-2">
+                <CardHeader>
+                  <CardTitle>Hourly Activity Breakdown</CardTitle>
+                  <CardDescription>Activity distribution throughout the day</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <LineChart data={hourlyActivityData}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="hour" />
+                      <YAxis />
+                      <Tooltip />
+                      <Legend />
+                      <Line type="monotone" dataKey="calls" stroke={COLORS.chart1} strokeWidth={2} />
+                      <Line type="monotone" dataKey="visits" stroke={COLORS.chart3} strokeWidth={2} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Employee Performance Table */}
+            {performanceData.length > 0 && (
+              <Card className="lg:col-span-2">
+                <CardHeader>
+                  <CardTitle>Employee Performance</CardTitle>
+                  <CardDescription>Detailed performance metrics by employee</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Employee</TableHead>
+                          <TableHead>Calls</TableHead>
+                          <TableHead>Visits</TableHead>
+                          <TableHead>Leads</TableHead>
+                          <TableHead>Conversion Rate</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {performanceData.map((emp, idx) => (
+                          <TableRow key={idx}>
+                            <TableCell className="font-medium">{emp.name}</TableCell>
+                            <TableCell>{emp.calls}</TableCell>
+                            <TableCell>{emp.visits}</TableCell>
+                            <TableCell>{emp.leads}</TableCell>
+                            <TableCell>
+                              {emp.leads > 0 ? `${((emp.leads / (emp.calls || 1)) * 100).toFixed(1)}%` : '0%'}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </div>
         </TabsContent>
-        <TabsContent value="leads">
+        <TabsContent value="leads" className="transition-opacity duration-200">
           <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
             <CardHeader>
               <CardTitle>Assigned Leads</CardTitle>

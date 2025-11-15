@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -6,10 +6,10 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { useToast } from '@/hooks/use-toast';
 import { 
-  AlertCircle, Bell, CheckCircle2, Clock, Trash2, Settings,
-  TrendingDown, Calendar, Zap, Users
+  AlertCircle, Bell, CheckCircle2, Clock, Trash2,
+  TrendingDown, Zap
 } from 'lucide-react';
-import { format, differenceInDays } from 'date-fns';
+import { format, differenceInDays, subDays } from 'date-fns';
 
 interface Alert {
   id: string;
@@ -28,35 +28,29 @@ const SmartAlerts: React.FC = () => {
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeFilter, setActiveFilter] = useState<string>('all');
+  const [allAlerts, setAllAlerts] = useState<Alert[]>([]);
+  const alertsCacheRef = useRef<{ dataHash: string; alerts: Alert[] } | null>(null);
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const channelRef = useRef<any>(null);
 
-  useEffect(() => {
-    generateAlerts();
-    setupRealtimeAlerts();
-  }, [profile?.id]);
+  // Limit displayed alerts to top 50
+  const MAX_DISPLAYED_ALERTS = 50;
 
-  const setupRealtimeAlerts = () => {
-    const channel = supabase
-      .channel('alerts_realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'reports' }, () => {
-        generateAlerts();
-      })
-      .subscribe();
-
-    return () => channel.unsubscribe();
-  };
-
-  const generateAlerts = async () => {
+  const generateAlerts = useCallback(async () => {
     setLoading(true);
     const newAlerts: Alert[] = [];
 
     try {
+      // Limit query to last 30 days instead of fetching 100 reports
+      const thirtyDaysAgo = subDays(new Date(), 30).toISOString();
+      
       // 1. Overdue follow-ups check
       const { data: reports } = await supabase
         .from('reports')
         .select('*, profiles!reports_generated_by_fkey(full_name)')
         .eq('report_type', 'team_performance')
-        .order('generated_at', { ascending: false })
-        .limit(100);
+        .gte('generated_at', thirtyDaysAgo)
+        .order('generated_at', { ascending: false });
 
       const today = new Date();
       const reportsByUser = new Map<string, any[]>();
@@ -136,25 +130,86 @@ const SmartAlerts: React.FC = () => {
 
       // Remove duplicate milestone alerts
       const uniqueAlerts = Array.from(new Map(newAlerts.map((a) => [a.id, a])).values());
-      setAlerts(uniqueAlerts.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()));
+      const sortedAlerts = uniqueAlerts.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+      
+      // Create a hash of the data to check if alerts actually changed
+      const dataHash = JSON.stringify(reports?.map(r => ({ id: r.id, generated_at: r.generated_at })) || []);
+      
+      // Only update if data actually changed
+      if (alertsCacheRef.current?.dataHash !== dataHash) {
+        setAllAlerts(sortedAlerts);
+        setAlerts(sortedAlerts.slice(0, MAX_DISPLAYED_ALERTS));
+        alertsCacheRef.current = { dataHash, alerts: sortedAlerts };
+      }
     } catch (error) {
       console.error('Error generating alerts:', error);
       toast({ title: 'Error', description: 'Failed to generate alerts', variant: 'destructive' });
     } finally {
       setLoading(false);
     }
-  };
+  }, [toast]);
 
-  const handleDismiss = (id: string) => {
-    setAlerts(alerts.filter((a) => a.id !== id));
+  // Debounced version of generateAlerts
+  const debouncedGenerateAlerts = useCallback(() => {
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+    debounceTimerRef.current = setTimeout(() => {
+      generateAlerts();
+    }, 500);
+  }, [generateAlerts]);
+
+  useEffect(() => {
+    if (profile?.id) {
+      generateAlerts();
+    }
+  }, [profile?.id, generateAlerts]);
+
+  const setupRealtimeAlerts = useCallback(() => {
+    if (channelRef.current) {
+      supabase.removeChannel(channelRef.current);
+    }
+
+    channelRef.current = supabase
+      .channel('alerts_realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'reports' }, () => {
+        debouncedGenerateAlerts();
+      })
+      .subscribe();
+
+    return () => {
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
+        channelRef.current = null;
+      }
+    };
+  }, [debouncedGenerateAlerts]);
+
+  useEffect(() => {
+    const cleanup = setupRealtimeAlerts();
+    return cleanup;
+  }, [setupRealtimeAlerts]);
+
+  useEffect(() => {
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+    };
+  }, []);
+
+  const handleDismiss = useCallback((id: string) => {
+    setAlerts(prev => prev.filter((a) => a.id !== id));
+    setAllAlerts(prev => prev.filter((a) => a.id !== id));
     toast({ title: 'Alert dismissed' });
-  };
+  }, [toast]);
 
-  const handleMarkRead = (id: string) => {
-    setAlerts(alerts.map((a) => (a.id === id ? { ...a, read: !a.read } : a)));
-  };
+  const handleMarkRead = useCallback((id: string) => {
+    setAlerts(prev => prev.map((a) => (a.id === id ? { ...a, read: !a.read } : a)));
+    setAllAlerts(prev => prev.map((a) => (a.id === id ? { ...a, read: !a.read } : a)));
+  }, []);
 
-  const getSeverityColor = (severity: string) => {
+  const getSeverityColor = useCallback((severity: string) => {
     switch (severity) {
       case 'critical':
         return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200';
@@ -163,9 +218,9 @@ const SmartAlerts: React.FC = () => {
       default:
         return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
     }
-  };
+  }, []);
 
-  const getSeverityIcon = (severity: string) => {
+  const getSeverityIcon = useCallback((severity: string) => {
     switch (severity) {
       case 'critical':
         return <AlertCircle className="h-5 w-5 text-red-600" />;
@@ -174,9 +229,9 @@ const SmartAlerts: React.FC = () => {
       default:
         return <Bell className="h-5 w-5 text-blue-600" />;
     }
-  };
+  }, []);
 
-  const getTypeIcon = (type: string) => {
+  const getTypeIcon = useCallback((type: string) => {
     switch (type) {
       case 'overdue_followup':
         return <AlertCircle className="h-4 w-4" />;
@@ -187,17 +242,18 @@ const SmartAlerts: React.FC = () => {
       default:
         return <Bell className="h-4 w-4" />;
     }
-  };
+  }, []);
 
-  const unreadCount = alerts.filter((a) => !a.read).length;
-  const severities = ['critical', 'warning', 'info'];
+  const unreadCount = useMemo(() => allAlerts.filter((a) => !a.read).length, [allAlerts]);
 
-  const filtered =
-    activeFilter === 'all'
-      ? alerts
-      : activeFilter === 'unread'
-      ? alerts.filter((a) => !a.read)
-      : alerts.filter((a) => a.severity === activeFilter);
+  const filtered = useMemo(() => {
+    const source = activeFilter === 'all' ? allAlerts : activeFilter === 'unread'
+      ? allAlerts.filter((a) => !a.read)
+      : allAlerts.filter((a) => a.severity === activeFilter);
+    
+    // Limit to top 50 for display
+    return source.slice(0, MAX_DISPLAYED_ALERTS);
+  }, [allAlerts, activeFilter]);
 
   return (
     <div className="w-full space-y-6">
@@ -224,19 +280,33 @@ const SmartAlerts: React.FC = () => {
             className="cursor-pointer"
             onClick={() => setActiveFilter(f)}
           >
-            {f === 'all' ? 'All' : f === 'unread' ? `Unread (${unreadCount})` : f.charAt(0).toUpperCase() + f.slice(1)}
+            {f === 'all' ? `All (${allAlerts.length})` : f === 'unread' ? `Unread (${unreadCount})` : f.charAt(0).toUpperCase() + f.slice(1)}
           </Badge>
         ))}
       </div>
 
       {loading ? (
-        <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        <div className="space-y-3">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <Card key={i} className="border-l-4 border-l-blue-500">
+              <CardContent className="p-4">
+                <div className="flex gap-4 items-start">
+                  <div className="h-5 w-5 rounded-full bg-muted animate-pulse" />
+                  <div className="flex-1 space-y-2">
+                    <div className="h-5 w-3/4 bg-muted rounded animate-pulse" />
+                    <div className="h-4 w-full bg-muted rounded animate-pulse" />
+                    <div className="h-3 w-1/4 bg-muted rounded animate-pulse" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
         </div>
       ) : (
         <div className="space-y-3">
           {filtered.length > 0 ? (
-            filtered.map((alert) => (
+            <>
+              {filtered.map((alert) => (
               <Card
                 key={alert.id}
                 className={`border-l-4 ${
@@ -278,7 +348,17 @@ const SmartAlerts: React.FC = () => {
                   </div>
                 </CardContent>
               </Card>
-            ))
+              ))}
+              {allAlerts.length > MAX_DISPLAYED_ALERTS && (
+                <Card className="border-border/50 bg-card/50">
+                  <CardContent className="p-4 text-center">
+                    <p className="text-sm text-muted-foreground">
+                      Showing top {MAX_DISPLAYED_ALERTS} of {allAlerts.length} alerts
+                    </p>
+                  </CardContent>
+                </Card>
+              )}
+            </>
           ) : (
             <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
               <CardContent className="p-8 text-center">

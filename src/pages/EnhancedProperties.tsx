@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback, useRef, Suspense } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,6 +13,8 @@ import { RealtimeIndicator } from '@/components/collaboration/RealtimeIndicator'
 import { PropertyMap } from '@/components/maps/PropertyMap';
 import { PropertyDetailModal } from '@/components/properties/PropertyDetailModal';
 import { format } from 'date-fns';
+import { GridSkeleton } from '@/components/ui/loading-skeleton';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   Dialog,
   DialogContent,
@@ -68,6 +70,8 @@ const EnhancedProperties: React.FC = () => {
   const [showMap, setShowMap] = useState(false);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('all');
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const channelRef = useRef<any>(null);
   
   // Form state
   const [formData, setFormData] = useState({
@@ -85,27 +89,7 @@ const EnhancedProperties: React.FC = () => {
     state: '',
   });
 
-  useEffect(() => {
-    fetchProperties();
-    
-    // Set up real-time subscription for properties
-    const channel = supabase
-      .channel('properties_changes')
-      .on('postgres_changes', 
-        { event: '*', schema: 'public', table: 'properties' },
-        (payload) => {
-          console.log('Property change detected:', payload);
-          fetchProperties();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, []);
-
-  const fetchProperties = async () => {
+  const fetchProperties = useCallback(async () => {
     try {
       setLoading(true);
       const { data, error} = await supabase
@@ -138,7 +122,83 @@ const EnhancedProperties: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [toast]);
+
+  useEffect(() => {
+    fetchProperties();
+    
+    // Set up real-time subscription for properties with incremental updates
+    if (channelRef.current) {
+      supabase.removeChannel(channelRef.current);
+    }
+
+    channelRef.current = supabase
+      .channel(`enhanced_properties_changes_${Date.now()}`)
+      .on('postgres_changes', 
+        { event: 'INSERT', schema: 'public', table: 'properties' },
+        async (payload) => {
+          // Fetch only the new property
+          const { data } = await supabase
+            .from('properties')
+            .select(`
+              *,
+              profiles!properties_created_by_fkey(full_name, phone)
+            `)
+            .eq('id', payload.new.id)
+            .single();
+          
+          if (data) {
+            setProperties(prev => [{
+              ...data,
+              category: (data.category as 'primary' | 'resale' | 'rent') || 'primary',
+              updated_at: data.updated_at || data.created_at
+            }, ...prev]);
+          }
+        }
+      )
+      .on('postgres_changes', 
+        { event: 'UPDATE', schema: 'public', table: 'properties' },
+        async (payload) => {
+          // Update only the specific property
+          const { data } = await supabase
+            .from('properties')
+            .select(`
+              *,
+              profiles!properties_created_by_fkey(full_name, phone)
+            `)
+            .eq('id', payload.new.id)
+            .single();
+          
+          if (data) {
+            setProperties(prev => prev.map(prop => 
+              prop.id === payload.new.id ? {
+                ...data,
+                category: (data.category as 'primary' | 'resale' | 'rent') || 'primary',
+                updated_at: data.updated_at || data.created_at
+              } : prop
+            ));
+          }
+        }
+      )
+      .on('postgres_changes', 
+        { event: 'DELETE', schema: 'public', table: 'properties' },
+        (payload) => {
+          // Remove the deleted property
+          setProperties(prev => prev.filter(prop => prop.id !== payload.old.id));
+        }
+      )
+      .subscribe();
+
+    return () => {
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
+        channelRef.current = null;
+      }
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+    };
+  }, [fetchProperties]);
 
   const handleCreateProperty = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -396,8 +456,13 @@ const EnhancedProperties: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <Skeleton className="h-10 w-64" />
+          <Skeleton className="h-10 w-32" />
+        </div>
+        <Skeleton className="h-12 w-full" />
+        <GridSkeleton count={6} />
       </div>
     );
   }
@@ -607,13 +672,13 @@ const EnhancedProperties: React.FC = () => {
           <TabsTrigger value="rent">Rent ({rentProperties.length})</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="all" className="space-y-4">
+        <TabsContent value="all" className="space-y-4 transition-opacity duration-200">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredProperties.map(renderPropertyCard)}
           </div>
         </TabsContent>
 
-        <TabsContent value="my-properties" className="space-y-4">
+        <TabsContent value="my-properties" className="space-y-4 transition-opacity duration-200">
           <Card className="mb-6">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -639,7 +704,7 @@ const EnhancedProperties: React.FC = () => {
           )}
         </TabsContent>
 
-        <TabsContent value="primary" className="space-y-4">
+        <TabsContent value="primary" className="space-y-4 transition-opacity duration-200">
           <Card className="mb-6">
             <CardHeader>
               <CardTitle>Primary Properties</CardTitle>
@@ -651,7 +716,7 @@ const EnhancedProperties: React.FC = () => {
           </div>
         </TabsContent>
 
-        <TabsContent value="resale" className="space-y-4">
+        <TabsContent value="resale" className="space-y-4 transition-opacity duration-200">
           <Card className="mb-6">
             <CardHeader>
               <CardTitle>Resale Properties</CardTitle>
@@ -663,7 +728,7 @@ const EnhancedProperties: React.FC = () => {
           </div>
         </TabsContent>
 
-        <TabsContent value="rent" className="space-y-4">
+        <TabsContent value="rent" className="space-y-4 transition-opacity duration-200">
           <Card className="mb-6">
             <CardHeader>
               <CardTitle>Rental Properties</CardTitle>

@@ -1,5 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { IntegratedDailyReport } from '@/components/reports/IntegratedDailyReport';
+import { SalesPerformanceReport } from '@/components/reports/SalesPerformanceReport';
+import { LeadManagementReport } from '@/components/reports/LeadManagementReport';
+import { PropertyReport } from '@/components/reports/PropertyReport';
+import { AgentPerformanceReport } from '@/components/reports/AgentPerformanceReport';
+import { MarketingReport } from '@/components/reports/MarketingReport';
+import { ActivityReport } from '@/components/reports/ActivityReport';
+import { FinancialReport } from '@/components/reports/FinancialReport';
+import { ReportScheduler } from '@/components/reports/ReportScheduler';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -239,15 +247,65 @@ const Reports: React.FC = () => {
         <p className="text-muted-foreground mt-1">Comprehensive performance reports and insights</p>
       </div>
 
-      <Tabs defaultValue="analytics" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
+      <Tabs defaultValue="sales" className="w-full">
+        <TabsList className="grid w-full grid-cols-8">
+          <TabsTrigger value="sales">Sales</TabsTrigger>
+          <TabsTrigger value="leads">Leads</TabsTrigger>
+          <TabsTrigger value="properties">Properties</TabsTrigger>
+          <TabsTrigger value="agents">Agents</TabsTrigger>
+          <TabsTrigger value="marketing">Marketing</TabsTrigger>
+          <TabsTrigger value="activity">Activity</TabsTrigger>
+          <TabsTrigger value="financial">Financial</TabsTrigger>
           <TabsTrigger value="analytics">Analytics</TabsTrigger>
-          <TabsTrigger value="submit">Submit Report</TabsTrigger>
-          <TabsTrigger value="data">Data Table</TabsTrigger>
         </TabsList>
 
-        {/* Analytics Tab */}
+        {/* Sales Performance Report */}
+        <TabsContent value="sales" className="space-y-6">
+          <SalesPerformanceReport />
+        </TabsContent>
+
+        {/* Lead Management Report */}
+        <TabsContent value="leads" className="space-y-6">
+          <LeadManagementReport />
+        </TabsContent>
+
+        {/* Property Report */}
+        <TabsContent value="properties" className="space-y-6">
+          <PropertyReport />
+        </TabsContent>
+
+        {/* Agent Performance Report */}
+        <TabsContent value="agents" className="space-y-6">
+          <AgentPerformanceReport />
+        </TabsContent>
+
+        {/* Marketing Report */}
+        <TabsContent value="marketing" className="space-y-6">
+          <MarketingReport />
+        </TabsContent>
+
+        {/* Activity Report */}
+        <TabsContent value="activity" className="space-y-6">
+          <ActivityReport />
+        </TabsContent>
+
+        {/* Financial Report */}
+        <TabsContent value="financial" className="space-y-6">
+          <FinancialReport />
+        </TabsContent>
+
+        {/* Legacy Analytics Tab */}
         <TabsContent value="analytics" className="space-y-6">
+          <Tabs defaultValue="team" className="w-full">
+            <TabsList className="grid w-full grid-cols-4">
+              <TabsTrigger value="team">Team Analytics</TabsTrigger>
+              <TabsTrigger value="submit">Submit Report</TabsTrigger>
+              <TabsTrigger value="data">Data Table</TabsTrigger>
+              <TabsTrigger value="scheduler">Scheduler</TabsTrigger>
+            </TabsList>
+
+            {/* Team Analytics Tab */}
+            <TabsContent value="team" className="space-y-6">
           {/* Filters */}
           <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
             <CardContent className="p-4">
@@ -447,13 +505,13 @@ const Reports: React.FC = () => {
           )}
         </TabsContent>
 
-        {/* Submit Report Tab */}
-        <TabsContent value="submit" className="space-y-0">
-          <IntegratedDailyReport />
-        </TabsContent>
+            {/* Submit Report Tab */}
+            <TabsContent value="submit" className="space-y-0">
+              <IntegratedDailyReport />
+            </TabsContent>
 
-        {/* Data Table Tab */}
-        <TabsContent value="data" className="space-y-6">
+            {/* Data Table Tab */}
+            <TabsContent value="data" className="space-y-6">
           <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
             <CardHeader>
               <CardTitle>Team Reports Data</CardTitle>
@@ -506,6 +564,13 @@ const Reports: React.FC = () => {
               )}
             </CardContent>
           </Card>
+            </TabsContent>
+
+            {/* Scheduler Tab */}
+            <TabsContent value="scheduler" className="space-y-6">
+              <ReportScheduler />
+            </TabsContent>
+          </Tabs>
         </TabsContent>
       </Tabs>
     </div>

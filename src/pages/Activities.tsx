@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -13,6 +13,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Label } from '@/components/ui/label';
 import { format } from 'date-fns';
 import { RealtimeIndicator } from '@/components/collaboration/RealtimeIndicator';
+import { ListSkeleton } from '@/components/ui/loading-skeleton';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface Activity {
   id: string;
@@ -49,6 +51,8 @@ const Activities: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const channelRef = useRef<any>(null);
   
   // Form state
   const [formData, setFormData] = useState({
@@ -60,28 +64,7 @@ const Activities: React.FC = () => {
     property_id: '',
   });
 
-  useEffect(() => {
-    fetchActivities();
-    fetchLeads();
-    fetchProperties();
-    
-    // Set up real-time subscription
-    const channel = supabase
-      .channel('activities_changes')
-      .on('postgres_changes', 
-        { event: '*', schema: 'public', table: 'activities' },
-        () => {
-          fetchActivities();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, []);
-
-  const fetchActivities = async () => {
+  const fetchActivities = useCallback(async () => {
     try {
       const { data, error } = await supabase
         .from('activities')
@@ -90,7 +73,8 @@ const Activities: React.FC = () => {
           leads(name),
           properties(title)
         `)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(500); // Limit to 500 activities for better performance
 
       if (error) {
         console.error('Error fetching activities:', error);
@@ -108,23 +92,95 @@ const Activities: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [toast]);
 
-  const fetchLeads = async () => {
+  const fetchLeads = useCallback(async () => {
     const { data } = await supabase
       .from('leads')
       .select('id, name')
       .order('name');
     if (data) setLeads(data);
-  };
+  }, []);
 
-  const fetchProperties = async () => {
+  const fetchProperties = useCallback(async () => {
     const { data } = await supabase
       .from('properties')
       .select('id, title')
       .order('title');
     if (data) setProperties(data);
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchActivities();
+    fetchLeads();
+    fetchProperties();
+    
+    // Set up real-time subscription with incremental updates
+    if (channelRef.current) {
+      supabase.removeChannel(channelRef.current);
+    }
+
+    channelRef.current = supabase
+      .channel(`activities_changes_${Date.now()}`)
+      .on('postgres_changes', 
+        { event: 'INSERT', schema: 'public', table: 'activities' },
+        async (payload) => {
+          // Fetch only the new activity
+          const { data } = await supabase
+            .from('activities')
+            .select(`
+              *,
+              leads(name),
+              properties(title)
+            `)
+            .eq('id', payload.new.id)
+            .single();
+          
+          if (data) {
+            setActivities(prev => [data, ...prev]);
+          }
+        }
+      )
+      .on('postgres_changes', 
+        { event: 'UPDATE', schema: 'public', table: 'activities' },
+        async (payload) => {
+          // Update only the specific activity
+          const { data } = await supabase
+            .from('activities')
+            .select(`
+              *,
+              leads(name),
+              properties(title)
+            `)
+            .eq('id', payload.new.id)
+            .single();
+          
+          if (data) {
+            setActivities(prev => prev.map(activity => 
+              activity.id === payload.new.id ? data : activity
+            ));
+          }
+        }
+      )
+      .on('postgres_changes', 
+        { event: 'DELETE', schema: 'public', table: 'activities' },
+        (payload) => {
+          // Remove the deleted activity
+          setActivities(prev => prev.filter(activity => activity.id !== payload.old.id));
+        }
+      )
+      .subscribe();
+
+    return () => {
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
+        channelRef.current = null;
+      }
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+    };
+  }, [fetchActivities, fetchLeads, fetchProperties]);
 
   const handleCreateActivity = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -219,19 +275,41 @@ const Activities: React.FC = () => {
     }
   };
 
-  const filteredActivities = activities.filter(activity => {
-    const matchesSearch = activity.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      activity.description?.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    if (filterStatus === 'completed') return matchesSearch && activity.is_completed;
-    if (filterStatus === 'pending') return matchesSearch && !activity.is_completed;
-    return matchesSearch;
-  });
+  const filteredActivities = useMemo(() => {
+    return activities.filter(activity => {
+      const matchesSearch = activity.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        activity.description?.toLowerCase().includes(searchTerm.toLowerCase());
+      
+      if (filterStatus === 'completed') return matchesSearch && activity.is_completed;
+      if (filterStatus === 'pending') return matchesSearch && !activity.is_completed;
+      return matchesSearch;
+    });
+  }, [activities, searchTerm, filterStatus]);
 
-  if (loading) {
+  const pendingCount = useMemo(() => activities.filter(a => !a.is_completed).length, [activities]);
+  const completedCount = useMemo(() => activities.filter(a => a.is_completed).length, [activities]);
+
+  if (loading && activities.length === 0) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div className="space-y-2">
+            <Skeleton className="h-10 w-64" />
+            <Skeleton className="h-4 w-48" />
+          </div>
+          <Skeleton className="h-10 w-32" />
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <Card key={i}>
+              <CardContent className="pt-6">
+                <Skeleton className="h-8 w-16 mb-2" />
+                <Skeleton className="h-4 w-24" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+        <ListSkeleton count={6} />
       </div>
     );
   }
@@ -374,13 +452,13 @@ const Activities: React.FC = () => {
         </Card>
         <Card>
           <CardContent className="pt-6">
-            <div className="text-2xl font-bold">{activities.filter(a => !a.is_completed).length}</div>
+            <div className="text-2xl font-bold">{pendingCount}</div>
             <p className="text-xs text-muted-foreground">Pending</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-6">
-            <div className="text-2xl font-bold">{activities.filter(a => a.is_completed).length}</div>
+            <div className="text-2xl font-bold">{completedCount}</div>
             <p className="text-xs text-muted-foreground">Completed</p>
           </CardContent>
         </Card>

@@ -18,6 +18,8 @@ import { LeadImport } from '@/components/leads/LeadImport';
 import { DynamicTableImport } from '@/components/leads/DynamicTableImport';
 import { LeadDetailModal } from '@/components/leads/LeadDetailModal';
 import { useToast } from '@/hooks/use-toast';
+import { ListSkeleton } from '@/components/ui/loading-skeleton';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useDebounce } from '@/hooks/useDebounce';
 import {
   Dialog,
@@ -140,7 +142,8 @@ const Leads: React.FC = () => {
           project_name,
           profiles!leads_assigned_to_fkey(full_name)
         `)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(500); // Limit to 500 leads for better performance
 
       if (error) {
         console.error('Error fetching leads:', error);
@@ -407,10 +410,18 @@ const Leads: React.FC = () => {
     };
   }, [leads]);
 
-  if (loading) {
+  if (loading && leads.length === 0) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div className="space-y-2">
+            <Skeleton className="h-10 w-64" />
+            <Skeleton className="h-4 w-48" />
+          </div>
+          <Skeleton className="h-10 w-32" />
+        </div>
+        <Skeleton className="h-12 w-full" />
+        <ListSkeleton count={8} />
       </div>
     );
   }

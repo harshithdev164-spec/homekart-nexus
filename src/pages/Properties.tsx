@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback, useRef, useMemo, Suspense } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,6 +14,8 @@ import { RealtimeIndicator } from '@/components/collaboration/RealtimeIndicator'
 import { PropertyMap } from '@/components/maps/PropertyMap';
 import { PropertyDetailModal } from '@/components/properties/PropertyDetailModal';
 import { format } from 'date-fns';
+import { GridSkeleton } from '@/components/ui/loading-skeleton';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   Dialog,
   DialogContent,
@@ -70,6 +72,8 @@ const Properties: React.FC = () => {
   const [showMap, setShowMap] = useState(false);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('all');
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const channelRef = useRef<any>(null);
   
   // Form state
   const [formData, setFormData] = useState({
@@ -92,27 +96,7 @@ const Properties: React.FC = () => {
     is_magicbricks_listing: false,
   });
 
-  useEffect(() => {
-    fetchProperties();
-    
-    // Set up real-time subscription for properties
-    const channel = supabase
-      .channel('properties_changes')
-      .on('postgres_changes', 
-        { event: '*', schema: 'public', table: 'properties' },
-        (payload) => {
-          console.log('Property change detected:', payload);
-          fetchProperties();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, []);
-
-  const fetchProperties = async () => {
+  const fetchProperties = useCallback(async () => {
     try {
       setLoading(true);
       const { data, error } = await supabase
@@ -121,7 +105,8 @@ const Properties: React.FC = () => {
           *,
           profiles!properties_created_by_fkey(full_name, phone)
         `)
-        .order('updated_at', { ascending: false });
+        .order('updated_at', { ascending: false })
+        .limit(500); // Limit to 500 properties for better performance
 
       if (error) {
         console.error('Error fetching properties:', error);
@@ -146,7 +131,95 @@ const Properties: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [toast]);
+
+  // Debounced version of fetchProperties for realtime updates
+  const debouncedFetchProperties = useCallback(() => {
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+    debounceTimerRef.current = setTimeout(() => {
+      fetchProperties();
+    }, 300);
+  }, [fetchProperties]);
+
+  useEffect(() => {
+    fetchProperties();
+    
+    // Set up real-time subscription for properties with incremental updates
+    if (channelRef.current) {
+      supabase.removeChannel(channelRef.current);
+    }
+
+    channelRef.current = supabase
+      .channel(`properties_changes_${Date.now()}`)
+      .on('postgres_changes', 
+        { event: 'INSERT', schema: 'public', table: 'properties' },
+        async (payload) => {
+          // Fetch only the new property
+          const { data } = await supabase
+            .from('properties')
+            .select(`
+              *,
+              profiles!properties_created_by_fkey(full_name, phone)
+            `)
+            .eq('id', payload.new.id)
+            .single();
+          
+          if (data) {
+            setProperties(prev => [{
+              ...data,
+              category: (data.category as 'primary' | 'resale' | 'rent') || 'primary',
+              source_type: (data.source_type as 'agent' | 'owner') || 'owner',
+              updated_at: data.updated_at || data.created_at
+            }, ...prev]);
+          }
+        }
+      )
+      .on('postgres_changes', 
+        { event: 'UPDATE', schema: 'public', table: 'properties' },
+        async (payload) => {
+          // Update only the specific property
+          const { data } = await supabase
+            .from('properties')
+            .select(`
+              *,
+              profiles!properties_created_by_fkey(full_name, phone)
+            `)
+            .eq('id', payload.new.id)
+            .single();
+          
+          if (data) {
+            setProperties(prev => prev.map(prop => 
+              prop.id === payload.new.id ? {
+                ...data,
+                category: (data.category as 'primary' | 'resale' | 'rent') || 'primary',
+                source_type: (data.source_type as 'agent' | 'owner') || 'owner',
+                updated_at: data.updated_at || data.created_at
+              } : prop
+            ));
+          }
+        }
+      )
+      .on('postgres_changes', 
+        { event: 'DELETE', schema: 'public', table: 'properties' },
+        (payload) => {
+          // Remove the deleted property
+          setProperties(prev => prev.filter(prop => prop.id !== payload.old.id));
+        }
+      )
+      .subscribe();
+
+    return () => {
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
+        channelRef.current = null;
+      }
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+    };
+  }, [fetchProperties]);
 
   const handleCreateProperty = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -402,23 +475,27 @@ const Properties: React.FC = () => {
     }
   };
 
-  const filteredProperties = properties.filter(property => {
-    const matchesSearch = property.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         property.location.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         property.city.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    if (activeTab === 'all') return matchesSearch;
-    if (activeTab === 'my-properties') return matchesSearch && property.created_by === profile?.id;
-    if (activeTab === 'magicbricks') return matchesSearch && (property as any).is_magicbricks_listing === true;
-    return matchesSearch && property.category === activeTab;
-  });
+  const filteredProperties = useMemo(() => {
+    return properties.filter(property => {
+      const matchesSearch = property.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           property.location.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           property.city.toLowerCase().includes(searchTerm.toLowerCase());
+      
+      if (activeTab === 'all') return matchesSearch;
+      if (activeTab === 'my-properties') return matchesSearch && property.created_by === profile?.id;
+      if (activeTab === 'magicbricks') return matchesSearch && (property as any).is_magicbricks_listing === true;
+      return matchesSearch && property.category === activeTab;
+    });
+  }, [properties, searchTerm, activeTab, profile?.id]);
 
   // Separate properties by category for better organization
-  const primaryProperties = filteredProperties.filter(p => p.category === 'primary');
-  const resaleProperties = filteredProperties.filter(p => p.category === 'resale');
-  const rentProperties = filteredProperties.filter(p => p.category === 'rent');
-  const myProperties = filteredProperties.filter(p => p.created_by === profile?.id);
-  const magicbricksProperties = properties.filter(p => (p as any).is_magicbricks_listing === true);
+  const primaryProperties = useMemo(() => filteredProperties.filter(p => p.category === 'primary'), [filteredProperties]);
+  const resaleProperties = useMemo(() => filteredProperties.filter(p => p.category === 'resale'), [filteredProperties]);
+  const rentProperties = useMemo(() => filteredProperties.filter(p => p.category === 'rent'), [filteredProperties]);
+  const myProperties = useMemo(() => filteredProperties.filter(p => p.created_by === profile?.id), [filteredProperties, profile?.id]);
+  const magicbricksProperties = useMemo(() => properties.filter(p => (p as any).is_magicbricks_listing === true), [properties]);
+  const availableCount = useMemo(() => properties.filter(property => property.status === 'available').length, [properties]);
+  const soldCount = useMemo(() => properties.filter(property => property.status === 'sold').length, [properties]);
 
   const renderPropertyCard = (property: Property) => (
     <Card key={property.id} className="hover:shadow-md transition-shadow">
@@ -540,8 +617,13 @@ const Properties: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <Skeleton className="h-10 w-64" />
+          <Skeleton className="h-10 w-32" />
+        </div>
+        <Skeleton className="h-12 w-full" />
+        <GridSkeleton count={6} />
       </div>
     );
   }
@@ -835,7 +917,7 @@ const Properties: React.FC = () => {
         <Card>
           <CardContent className="pt-6">
             <div className="text-2xl font-bold">
-              {properties.filter(property => property.status === 'available').length}
+              {availableCount}
             </div>
             <p className="text-xs text-muted-foreground">Available</p>
           </CardContent>
@@ -843,7 +925,7 @@ const Properties: React.FC = () => {
         <Card>
           <CardContent className="pt-6">
             <div className="text-2xl font-bold">
-              {properties.filter(property => property.status === 'sold').length}
+              {soldCount}
             </div>
             <p className="text-xs text-muted-foreground">Sold</p>
           </CardContent>
@@ -869,13 +951,13 @@ const Properties: React.FC = () => {
           <TabsTrigger value="magicbricks">Magicbricks ({magicbricksProperties.length})</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="all" className="mt-6">
+        <TabsContent value="all" className="mt-6 transition-opacity duration-200">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredProperties.map(renderPropertyCard)}
           </div>
         </TabsContent>
 
-        <TabsContent value="my-properties" className="mt-6">
+        <TabsContent value="my-properties" className="mt-6 transition-opacity duration-200">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredProperties.map(renderPropertyCard)}
           </div>
@@ -886,25 +968,25 @@ const Properties: React.FC = () => {
           )}
         </TabsContent>
 
-        <TabsContent value="primary" className="mt-6">
+        <TabsContent value="primary" className="mt-6 transition-opacity duration-200">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredProperties.map(renderPropertyCard)}
           </div>
         </TabsContent>
 
-        <TabsContent value="resale" className="mt-6">
+        <TabsContent value="resale" className="mt-6 transition-opacity duration-200">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredProperties.map(renderPropertyCard)}
           </div>
         </TabsContent>
 
-        <TabsContent value="rent" className="mt-6">
+        <TabsContent value="rent" className="mt-6 transition-opacity duration-200">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredProperties.map(renderPropertyCard)}
           </div>
         </TabsContent>
 
-        <TabsContent value="magicbricks" className="mt-6">
+        <TabsContent value="magicbricks" className="mt-6 transition-opacity duration-200">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredProperties.map(renderPropertyCard)}
           </div>
