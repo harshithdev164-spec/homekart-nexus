@@ -105,7 +105,7 @@ export const NotificationSystem: React.FC<NotificationSystemProps> = ({ classNam
           schema: 'public',
           table: 'leads'
         },
-        (payload) => {
+        async (payload) => {
           const oldLead = payload.old;
           const newLead = payload.new;
           
