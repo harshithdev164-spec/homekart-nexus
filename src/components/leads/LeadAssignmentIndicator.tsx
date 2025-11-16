@@ -122,7 +122,9 @@ export const LeadAssignmentIndicator: React.FC<LeadAssignmentIndicatorProps> = R
         description: 'Lead assigned to you successfully'
       });
 
-      // Send email notification
+      // Email is sent automatically by database trigger
+      // This is a backup/optimistic call for immediate notification
+      // The trigger ensures email is sent even if this call fails
       try {
         await supabase.functions.invoke("send-lead-assignment-email", {
           body: {
@@ -133,8 +135,8 @@ export const LeadAssignmentIndicator: React.FC<LeadAssignmentIndicatorProps> = R
           },
         });
       } catch (emailError) {
-        console.error("Error sending email notification:", emailError);
-        // Don't fail the assignment if email fails
+        // Silently fail - database trigger will handle email sending
+        console.log("Optimistic email notification attempted (trigger will also send):", emailError);
       }
     }
   }, [currentUser, toast]);

@@ -64,3 +64,6 @@ verify_jwt = false
 
 [functions.perplexity-property-matcher]
 verify_jwt = false
+
+[functions.send-lead-assignment-email]
+verify_jwt = false

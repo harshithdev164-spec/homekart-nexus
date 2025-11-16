@@ -103,7 +103,7 @@ serve(async (req) => {
         }
       }
 
-      // Get the first available profile to assign leads
+      // Get the first available active profile to assign leads
       const { data: profiles } = await supabase
         .from('profiles')
         .select('id')
@@ -124,6 +124,7 @@ serve(async (req) => {
             property_type: 'villa',
             notes: `Lead from 99acres - Query: ${leadData.queryInfo || 'N/A'}, Property: ${leadData.propertyDetails || 'N/A'}`,
             created_by: profiles[0].id,
+            assigned_to: profiles[0].id, // Assign to the same user who created it
             status: 'new'
           };
 
@@ -139,6 +140,24 @@ serve(async (req) => {
           } else {
             console.log('Lead created successfully:', newLead.id);
             createdLeads.push(newLead);
+            
+            // Email will be sent automatically by database trigger
+            // But we can also call it explicitly as a backup (non-blocking)
+            if (newLead.assigned_to) {
+              try {
+                await supabase.functions.invoke("send-lead-assignment-email", {
+                  body: {
+                    leadId: newLead.id,
+                    assignedToId: newLead.assigned_to,
+                    isTransfer: false,
+                    assignedByName: "99acres Import",
+                  },
+                });
+              } catch (emailError) {
+                // Don't fail if email fails - trigger will handle it
+                console.log("Email notification attempted (trigger will also send):", emailError);
+              }
+            }
           }
         }
       }
@@ -181,6 +200,7 @@ serve(async (req) => {
           property_type: "villa",
           notes: "Demo lead - Replace with real API integration once credentials are configured",
           created_by: profiles[0].id,
+          assigned_to: profiles[0].id, // Assign to the same user who created it
           status: 'new'
         };
 

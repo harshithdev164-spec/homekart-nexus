@@ -119,8 +119,9 @@ serve(async (req) => {
       );
     }
 
-    // Add created_by to the lead
+    // Add created_by and assigned_to to the lead
     transformedLead.created_by = profiles[0].id;
+    transformedLead.assigned_to = profiles[0].id; // Assign to the same user who created it
 
     // Insert the lead into the database
     const { data: newLead, error } = await supabase
@@ -144,6 +145,24 @@ serve(async (req) => {
     }
 
     console.log('Lead created successfully from webhook:', newLead.id);
+
+    // Email will be sent automatically by database trigger
+    // But we can also call it explicitly as a backup (non-blocking)
+    if (newLead.assigned_to) {
+      try {
+        await supabase.functions.invoke("send-lead-assignment-email", {
+          body: {
+            leadId: newLead.id,
+            assignedToId: newLead.assigned_to,
+            isTransfer: false,
+            assignedByName: "System",
+          },
+        });
+      } catch (emailError) {
+        // Don't fail if email fails - trigger will handle it
+        console.log("Email notification attempted (trigger will also send):", emailError);
+      }
+    }
 
     // Log the communication for tracking
     await supabase

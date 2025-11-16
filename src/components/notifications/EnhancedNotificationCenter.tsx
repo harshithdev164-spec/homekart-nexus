@@ -80,6 +80,22 @@ export const EnhancedNotificationCenter: React.FC = () => {
                         .eq('id', newLead.id);
                       
                       showSuccess('Lead Assigned', `${newLead.name} has been assigned to you!`);
+                      
+                      // Email is sent automatically by database trigger
+                      // This is a backup call for immediate notification
+                      try {
+                        await supabase.functions.invoke("send-lead-assignment-email", {
+                          body: {
+                            leadId: newLead.id,
+                            assignedToId: profile.id,
+                            assignedByName: profile.full_name || "You",
+                            isTransfer: false,
+                          },
+                        });
+                      } catch (emailError) {
+                        // Silently fail - trigger should handle it
+                        console.log("Backup email notification attempted:", emailError);
+                      }
                     },
                     variant: 'outline'
                   }

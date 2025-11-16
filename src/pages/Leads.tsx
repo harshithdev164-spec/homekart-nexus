@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -72,6 +73,7 @@ interface Lead {
 const Leads: React.FC = () => {
   const { profile } = useAuth();
   const { toast } = useToast();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -180,6 +182,20 @@ const Leads: React.FC = () => {
     fetchLeads(1, false);
     setPage(1);
   }, [fetchLeads]);
+
+  // Check for leadId in URL query params and open that lead
+  useEffect(() => {
+    const leadIdFromUrl = searchParams.get('leadId');
+    if (leadIdFromUrl && leads.length > 0) {
+      const lead = leads.find(l => l.id === leadIdFromUrl);
+      if (lead) {
+        setSelectedLead(lead);
+        setShowLeadDetail(true);
+        // Remove query param after opening
+        setSearchParams({}, { replace: true });
+      }
+    }
+  }, [searchParams, leads, setSearchParams]);
 
   const loadMoreLeads = useCallback(() => {
     if (!hasMore || loading) return;

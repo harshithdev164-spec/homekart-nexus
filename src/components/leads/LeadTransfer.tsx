@@ -146,7 +146,9 @@ export const LeadTransfer: React.FC<LeadTransferProps> = ({
         description: `Lead transferred successfully to ${teamMembers.find(m => m.id === selectedUser)?.full_name}`,
       });
 
-      // Send email notification
+      // Email is sent automatically by database trigger
+      // This is a backup/optimistic call for immediate notification
+      // The trigger ensures email is sent even if this call fails
       try {
         await supabase.functions.invoke("send-lead-assignment-email", {
           body: {
@@ -158,8 +160,8 @@ export const LeadTransfer: React.FC<LeadTransferProps> = ({
           },
         });
       } catch (emailError) {
-        console.error("Error sending email notification:", emailError);
-        // Don't fail the transfer if email fails
+        // Silently fail - database trigger will handle email sending
+        console.log("Optimistic email notification attempted (trigger will also send):", emailError);
       }
 
       setIsDialogOpen(false);

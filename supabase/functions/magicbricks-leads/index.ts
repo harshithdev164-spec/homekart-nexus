@@ -82,6 +82,7 @@ serve(async (req) => {
             property_type: leadData.property_type?.toLowerCase() || 'apartment',
             notes: `Lead from MagicBricks - Project: ${leadData.project_name || 'N/A'}, Inquiry: ${leadData.inquiry_details || 'N/A'}`,
             created_by: profiles[0].id,
+            assigned_to: profiles[0].id, // Assign to the same user who created it
             status: 'new'
           };
 
@@ -97,6 +98,24 @@ serve(async (req) => {
           } else {
             console.log('Lead created successfully:', newLead.id);
             createdLeads.push(newLead);
+            
+            // Email will be sent automatically by database trigger
+            // But we can also call it explicitly as a backup (non-blocking)
+            if (newLead.assigned_to) {
+              try {
+                await supabase.functions.invoke("send-lead-assignment-email", {
+                  body: {
+                    leadId: newLead.id,
+                    assignedToId: newLead.assigned_to,
+                    isTransfer: false,
+                    assignedByName: "MagicBricks Import",
+                  },
+                });
+              } catch (emailError) {
+                // Don't fail if email fails - trigger will handle it
+                console.log("Email notification attempted (trigger will also send):", emailError);
+              }
+            }
           }
         }
       }

@@ -115,6 +115,22 @@ export const NotificationSystem: React.FC<NotificationSystemProps> = ({ classNam
               title: "👤 Lead Assignment",
               description: `${newLead.name} has been assigned to ${getProfileNameById(newLead.assigned_to)}`,
             });
+            
+            // Email is sent automatically by database trigger
+            // This is a backup call for cases where trigger might not fire
+            // (e.g., if http extension is not available)
+            try {
+              await supabase.functions.invoke("send-lead-assignment-email", {
+                body: {
+                  leadId: newLead.id,
+                  assignedToId: newLead.assigned_to,
+                  isTransfer: oldLead.assigned_to !== null,
+                },
+              });
+            } catch (emailError) {
+              // Silently fail - trigger should handle it, or email already sent
+              console.log("Backup email notification attempted:", emailError);
+            }
           }
         }
       )
