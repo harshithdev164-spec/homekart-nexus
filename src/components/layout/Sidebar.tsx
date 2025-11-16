@@ -24,6 +24,7 @@ import {
   ChevronRight,
   Search,
   X,
+  Mail,
 } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
@@ -53,6 +54,7 @@ const navigation: NavItem[] = [
   { title: 'Marketing', href: '/marketing', icon: Megaphone },
   { title: 'Settings', href: '/settings', icon: Settings, roles: ['admin'] },
   { title: 'Analytics', href: '/analytics', icon: BarChart3, roles: ['admin'] },
+  { title: 'Email Notifications', href: '/email-notifications-plan', icon: Mail, roles: ['admin'] },
 ];
 
 export const Sidebar: React.FC = () => {

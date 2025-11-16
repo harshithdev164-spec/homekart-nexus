@@ -38,6 +38,7 @@ const AITestPage = lazy(() => import("./pages/AITestPage"));
 const Settings = lazy(() => import("./pages/Settings"));
 const Analytics = lazy(() => import("./pages/Analytics"));
 const AdminTools = lazy(() => import("./pages/AdminTools"));
+const EmailNotificationsPlan = lazy(() => import("./pages/EmailNotificationsPlan"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 // Loading fallback component
@@ -143,6 +144,7 @@ const App: React.FC = () => {
                   <Route path="/settings" element={<DashboardLayout><Settings /></DashboardLayout>} />
                   <Route path="/analytics" element={<DashboardLayout><Analytics /></DashboardLayout>} />
                   <Route path="/admin-tools" element={<DashboardLayout><AdminTools /></DashboardLayout>} />
+                  <Route path="/email-notifications-plan" element={<DashboardLayout><EmailNotificationsPlan /></DashboardLayout>} />
                   {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                   <Route path="*" element={<NotFound />} />
                 </Routes>
