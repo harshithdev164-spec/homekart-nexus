@@ -55,13 +55,13 @@ export const Analytics: React.FC = () => {
   const [featureUsage, setFeatureUsage] = useState<any[]>([]);
 
   useEffect(() => {
-    if (currentOrganization) {
-      loadAnalytics();
-    }
+    // Load analytics even without organization (show all data)
+    loadAnalytics();
   }, [currentOrganization, timeRange]);
 
   const loadAnalytics = async () => {
-    if (!currentOrganization) return;
+    // If no organization, show all data for the user
+    if (!currentOrganization && !profile) return;
 
     setLoading(true);
     try {
@@ -80,24 +80,25 @@ export const Analytics: React.FC = () => {
           break;
       }
 
-      // Get current counts
+      // Get current counts - filter by organization if available
+      const orgFilter = currentOrganization ? { organization_id: currentOrganization.id } : {};
       const [usersRes, leadsRes, propertiesRes, activitiesRes] = await Promise.all([
         supabase
           .from('profiles')
           .select('id', { count: 'exact', head: true })
-          .eq('organization_id', currentOrganization.id),
+          .match(orgFilter),
         supabase
           .from('leads')
           .select('id', { count: 'exact', head: true })
-          .eq('organization_id', currentOrganization.id),
+          .match(orgFilter),
         supabase
           .from('properties')
           .select('id', { count: 'exact', head: true })
-          .eq('organization_id', currentOrganization.id),
+          .match(orgFilter),
         supabase
           .from('activities')
           .select('id', { count: 'exact', head: true })
-          .eq('organization_id', currentOrganization.id)
+          .match(orgFilter)
           .gte('created_at', startDate.toISOString()),
       ]);
 
@@ -123,30 +124,47 @@ export const Analytics: React.FC = () => {
           const monthStart = startOfMonth(month);
           const monthEnd = endOfMonth(month);
 
+          // Build queries conditionally
+          let leadsQuery = supabase
+            .from('leads')
+            .select('id', { count: 'exact', head: true })
+            .gte('created_at', monthStart.toISOString())
+            .lte('created_at', monthEnd.toISOString());
+          if (currentOrganization) {
+            leadsQuery = leadsQuery.eq('organization_id', currentOrganization.id);
+          }
+
+          let propertiesQuery = supabase
+            .from('properties')
+            .select('id', { count: 'exact', head: true })
+            .gte('created_at', monthStart.toISOString())
+            .lte('created_at', monthEnd.toISOString());
+          if (currentOrganization) {
+            propertiesQuery = propertiesQuery.eq('organization_id', currentOrganization.id);
+          }
+
+          let activitiesQuery = supabase
+            .from('activities')
+            .select('id', { count: 'exact', head: true })
+            .gte('created_at', monthStart.toISOString())
+            .lte('created_at', monthEnd.toISOString());
+          if (currentOrganization) {
+            activitiesQuery = activitiesQuery.eq('organization_id', currentOrganization.id);
+          }
+
+          let usersQuery = supabase
+            .from('profiles')
+            .select('id', { count: 'exact', head: true })
+            .lte('created_at', monthEnd.toISOString());
+          if (currentOrganization) {
+            usersQuery = usersQuery.eq('organization_id', currentOrganization.id);
+          }
+
           const [leads, properties, activities, users] = await Promise.all([
-            supabase
-              .from('leads')
-              .select('id', { count: 'exact', head: true })
-              .eq('organization_id', currentOrganization.id)
-              .gte('created_at', monthStart.toISOString())
-              .lte('created_at', monthEnd.toISOString()),
-            supabase
-              .from('properties')
-              .select('id', { count: 'exact', head: true })
-              .eq('organization_id', currentOrganization.id)
-              .gte('created_at', monthStart.toISOString())
-              .lte('created_at', monthEnd.toISOString()),
-            supabase
-              .from('activities')
-              .select('id', { count: 'exact', head: true })
-              .eq('organization_id', currentOrganization.id)
-              .gte('created_at', monthStart.toISOString())
-              .lte('created_at', monthEnd.toISOString()),
-            supabase
-              .from('profiles')
-              .select('id', { count: 'exact', head: true })
-              .eq('organization_id', currentOrganization.id)
-              .lte('created_at', monthEnd.toISOString()),
+            leadsQuery,
+            propertiesQuery,
+            activitiesQuery,
+            usersQuery,
           ]);
 
           return {
@@ -165,28 +183,40 @@ export const Analytics: React.FC = () => {
       setActivityTrend(trendData.map(d => ({ name: d.month, value: d.activities })));
 
       // Feature usage (simplified - count by type)
+      let reportsQuery = supabase
+        .from('reports')
+        .select('id', { count: 'exact', head: true })
+        .gte('created_at', startDate.toISOString());
+      if (currentOrganization) {
+        reportsQuery = reportsQuery.eq('organization_id', currentOrganization.id);
+      }
+
+      let messagesQuery = supabase
+        .from('communications')
+        .select('id', { count: 'exact', head: true })
+        .gte('created_at', startDate.toISOString());
+      if (currentOrganization) {
+        messagesQuery = messagesQuery.eq('organization_id', currentOrganization.id);
+      }
+
+      let activitiesTypeQuery = supabase
+        .from('activities')
+        .select('type', { count: 'exact' })
+        .gte('created_at', startDate.toISOString());
+      if (currentOrganization) {
+        activitiesTypeQuery = activitiesTypeQuery.eq('organization_id', currentOrganization.id);
+      }
+
       const [reportsRes, messagesRes, calendarRes] = await Promise.all([
-        supabase
-          .from('reports')
-          .select('id', { count: 'exact', head: true })
-          .eq('organization_id', currentOrganization.id)
-          .gte('created_at', startDate.toISOString()),
-        supabase
-          .from('communications')
-          .select('id', { count: 'exact', head: true })
-          .eq('organization_id', currentOrganization.id)
-          .gte('created_at', startDate.toISOString()),
-        supabase
-          .from('activities')
-          .select('type', { count: 'exact' })
-          .eq('organization_id', currentOrganization.id)
-          .gte('created_at', startDate.toISOString()),
+        reportsQuery,
+        messagesQuery,
+        activitiesTypeQuery,
       ]);
 
       setFeatureUsage([
         { name: 'Reports', value: reportsRes.count || 0, icon: FileText },
         { name: 'Messages', value: messagesRes.count || 0, icon: MessageSquare },
-        { name: 'Activities', value: activitiesRes.count || 0, icon: Activity },
+        { name: 'Activities', value: calendarRes.count || 0, icon: Activity },
         { name: 'Calendar', value: 0, icon: Calendar }, // TODO: Track calendar events
       ]);
 

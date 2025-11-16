@@ -4,7 +4,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/components/auth/AuthProvider';
-import { useOrganization } from '@/components/organization/OrganizationProvider';
 import { useNavigate } from 'react-router-dom';
 import { Building2, Mail, Lock, ArrowRight, Sparkles, Loader2, Eye, EyeOff } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -17,42 +16,15 @@ const Auth: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   const { signIn, user } = useAuth();
-  const { currentOrganization, loading: orgLoading } = useOrganization();
   const navigate = useNavigate();
   const { toast } = useToast();
 
   useEffect(() => {
-    if (user && !orgLoading) {
-      // Small delay to ensure organization data is loaded
-      const timer = setTimeout(async () => {
-        // Check if user has an organization
-        if (!currentOrganization) {
-          // Try to automatically assign user to Axiss Realty Corp
-          try {
-            const { ensureUserHasOrganization } = await import('@/utils/organizationHelper');
-            const hasOrg = await ensureUserHasOrganization();
-            
-            if (hasOrg) {
-              // Wait a bit for organization to be set, then check again
-              setTimeout(() => {
-                window.location.reload(); // Reload to refresh organization context
-              }, 500);
-              return;
-            }
-          } catch (error) {
-            console.error('Error ensuring user has organization:', error);
-          }
-          
-          // If still no organization, redirect to setup
-          navigate('/organization-setup');
-        } else {
-          navigate('/dashboard');
-        }
-      }, 500); // Increased delay to allow for organization assignment
-      
-      return () => clearTimeout(timer);
+    if (user) {
+      // Direct redirect to dashboard after login
+      navigate('/dashboard');
     }
-  }, [user, currentOrganization, orgLoading, navigate]);
+  }, [user, navigate]);
 
   useEffect(() => {
     // Animated particles background

@@ -28,7 +28,18 @@ const OrganizationContext = createContext<OrganizationContextType | undefined>(u
 export const useOrganization = () => {
   const context = useContext(OrganizationContext);
   if (context === undefined) {
-    throw new Error('useOrganization must be used within an OrganizationProvider');
+    // Return safe defaults instead of throwing - allows app to work without organization
+    return {
+      currentOrganization: null,
+      organizations: [],
+      members: [],
+      subscription: null,
+      settings: null,
+      loading: false,
+      switchOrganization: async () => {},
+      refreshOrganization: async () => {},
+      refreshMembers: async () => {},
+    };
   }
   return context;
 };
@@ -50,51 +61,39 @@ export const OrganizationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     }
 
     try {
-      let org = await getCurrentOrganization();
-      
-      // If user doesn't have organization, try to assign to Axiss Realty Corp
-      if (!org) {
-        console.log('User does not have organization, attempting to assign to Axiss Realty Corp...');
-        const { ensureUserHasOrganization } = await import('@/utils/organizationHelper');
-        const hasOrg = await ensureUserHasOrganization();
-        
-        if (hasOrg) {
-          // Try again after assignment
-          org = await getCurrentOrganization();
-        }
-      }
-
+      // Try to get organization, but don't force it - fail silently if tables don't exist
+      const org = await getCurrentOrganization().catch(() => null);
       setCurrentOrganization(org || null);
 
       if (org) {
         try {
           // Load subscription
-          const sub = await getOrganizationSubscription(org.id);
+          const sub = await getOrganizationSubscription(org.id).catch(() => null);
           setSubscription(sub);
 
           // Load settings
-          const orgSettings = await getOrganizationSettings(org.id);
+          const orgSettings = await getOrganizationSettings(org.id).catch(() => null);
           setSettings(orgSettings);
 
           // Load members
-          const orgMembers = await getOrganizationMembers(org.id);
+          const orgMembers = await getOrganizationMembers(org.id).catch(() => []);
           setMembers(orgMembers);
         } catch (error) {
-          console.error('Error loading organization data:', error);
-          // Continue even if some data fails to load
+          // Silently fail - organization tables might not exist
+          console.log('Organization features not available');
         }
       }
 
       // Load all user organizations
       try {
-        const userOrgs = await getUserOrganizations();
+        const userOrgs = await getUserOrganizations().catch(() => []);
         setOrganizations(userOrgs || []);
       } catch (error) {
-        console.error('Error loading user organizations:', error);
+        // Silently fail
         setOrganizations([]);
       }
     } catch (error) {
-      console.error('Error refreshing organization:', error);
+      // Silently fail - organization tables might not exist
       // Set defaults to prevent errors
       setCurrentOrganization(null);
       setOrganizations([]);

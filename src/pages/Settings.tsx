@@ -95,6 +95,13 @@ export const Settings: React.FC = () => {
         subdomain: currentOrganization.subdomain || '',
         logo: currentOrganization.logo_url || '',
       });
+    } else {
+      // Reset if organization is removed
+      setOrgData({
+        name: '',
+        subdomain: '',
+        logo: '',
+      });
     }
   }, [currentOrganization]);
 
