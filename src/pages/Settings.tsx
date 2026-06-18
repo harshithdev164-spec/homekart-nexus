@@ -374,7 +374,7 @@ export const Settings: React.FC = () => {
                         onChange={(e) => setOrgData(prev => ({ ...prev, subdomain: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '') }))}
                         placeholder="your-company"
                       />
-                      <span className="text-muted-foreground">.homekartcrm.com</span>
+                      <span className="text-muted-foreground">.realtyos.tech</span>
                     </div>
                     <p className="text-xs text-muted-foreground">
                       Your custom subdomain for accessing the CRM

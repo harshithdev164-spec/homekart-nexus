@@ -247,8 +247,9 @@ const Reports: React.FC = () => {
         <p className="text-muted-foreground mt-1">Comprehensive performance reports and insights</p>
       </div>
 
-      <Tabs defaultValue="sales" className="w-full">
-        <TabsList className="grid w-full grid-cols-8">
+      <Tabs defaultValue="daily" className="w-full">
+        <TabsList className="grid w-full grid-cols-9">
+          <TabsTrigger value="daily">Daily Reports</TabsTrigger>
           <TabsTrigger value="sales">Sales</TabsTrigger>
           <TabsTrigger value="leads">Leads</TabsTrigger>
           <TabsTrigger value="properties">Properties</TabsTrigger>
@@ -258,6 +259,11 @@ const Reports: React.FC = () => {
           <TabsTrigger value="financial">Financial</TabsTrigger>
           <TabsTrigger value="analytics">Analytics</TabsTrigger>
         </TabsList>
+
+        {/* Daily Reports */}
+        <TabsContent value="daily" className="space-y-6">
+          <IntegratedDailyReport />
+        </TabsContent>
 
         {/* Sales Performance Report */}
         <TabsContent value="sales" className="space-y-6">

@@ -8,16 +8,17 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { useToast } from '@/hooks/use-toast';
-import { 
-  BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, 
-  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, 
-  Legend, ResponsiveContainer, RadarChart, Radar, PolarGrid, 
+import {
+  BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
+  Legend, ResponsiveContainer, RadarChart, Radar, PolarGrid,
   PolarAngleAxis, PolarRadiusAxis, ComposedChart
 } from 'recharts';
 import { Phone, MessageSquare, Home, TrendingUp, Users, Calendar, Target, Award, Clock, Activity } from 'lucide-react';
 import { format, startOfDay, startOfWeek, startOfMonth, endOfDay, subDays } from 'date-fns';
 import { QuickActionsPanel } from '@/components/dashboard/QuickActionsPanel';
 import { RevenueSnapshotWidget } from '@/components/dashboard/widgets/RevenueSnapshotWidget';
+import { TimeTracker } from '@/components/time-tracking/TimeTracker';
 import { PipelineHealthWidget } from '@/components/dashboard/widgets/PipelineHealthWidget';
 import { QuickStatsWidget } from '@/components/dashboard/widgets/QuickStatsWidget';
 import { GoalProgressWidget } from '@/components/dashboard/widgets/GoalProgressWidget';
@@ -135,7 +136,7 @@ const Dashboard: React.FC = () => {
       .select('id, full_name')
       .eq('is_active', true)
       .order('full_name');
-    
+
     if (data) {
       setEmployees(data);
       employeesCacheRef.current = data;
@@ -209,43 +210,43 @@ const Dashboard: React.FC = () => {
       const conversionRate = totalLeads > 0 ? ((totalLeads / Math.max(totalLeads, 1)) * 100).toFixed(1) : 0;
 
       setMetrics([
-        { 
-          title: 'Total Calls', 
-          value: totalCalls, 
-          change: '+12%', 
-          icon: Phone, 
+        {
+          title: 'Total Calls',
+          value: totalCalls,
+          change: '+12%',
+          icon: Phone,
           color: 'text-chart-1',
           trend: 'up'
         },
-        { 
-          title: 'Site Visits', 
-          value: totalVisits, 
-          change: '+15%', 
-          icon: Home, 
+        {
+          title: 'Site Visits',
+          value: totalVisits,
+          change: '+15%',
+          icon: Home,
           color: 'text-chart-3',
           trend: 'up'
         },
-        { 
-          title: 'Leads Generated', 
-          value: totalLeads, 
-          change: '+20%', 
-          icon: TrendingUp, 
+        {
+          title: 'Leads Generated',
+          value: totalLeads,
+          change: '+20%',
+          icon: TrendingUp,
           color: 'text-chart-4',
           trend: 'up'
         },
-        { 
-          title: 'Total Reports', 
-          value: reports.length, 
-          change: '+5%', 
-          icon: Target, 
+        {
+          title: 'Total Reports',
+          value: reports.length,
+          change: '+5%',
+          icon: Target,
           color: 'text-success',
           trend: 'up'
         },
-        { 
-          title: 'Inventories', 
-          value: reports.reduce((sum, r) => sum + toNumber(r.data?.inventories_found), 0), 
-          change: '+18%', 
-          icon: Award, 
+        {
+          title: 'Inventories',
+          value: reports.reduce((sum, r) => sum + toNumber(r.data?.inventories_found), 0),
+          change: '+18%',
+          icon: Award,
           color: 'text-primary',
           trend: 'up'
         },
@@ -265,12 +266,12 @@ const Dashboard: React.FC = () => {
         );
 
         const dayCalls = dayReports.reduce((sum, r: any) => sum + toNumber(r.data?.calls_to_agents), 0);
-        const dayVisits = dayReports.reduce((sum, r: any) => 
+        const dayVisits = dayReports.reduce((sum, r: any) =>
           sum + toNumber(r.data?.primary_sites_visited) + toNumber(r.data?.client_visit), 0);
 
-        activityByDay.push({ 
-          date: dayStr, 
-          calls: dayCalls, 
+        activityByDay.push({
+          date: dayStr,
+          calls: dayCalls,
           visits: dayVisits,
           total: dayCalls + dayVisits
         });
@@ -305,7 +306,7 @@ const Dashboard: React.FC = () => {
         const todayReports = reports.filter(
           (r: any) => format(new Date(r.generated_at), 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd')
         );
-        
+
         const hourlyBreakdown = Array.from({ length: 24 }, (_, hour) => ({
           hour: `${hour}:00`,
           calls: 0,
@@ -361,8 +362,8 @@ const Dashboard: React.FC = () => {
 
     channelRef.current = supabase
       .channel(`dashboard_realtime_${Date.now()}`)
-      .on('postgres_changes', 
-        { event: '*', schema: 'public', table: 'reports', filter: `report_type=eq.team_performance` }, 
+      .on('postgres_changes',
+        { event: '*', schema: 'public', table: 'reports', filter: `report_type=eq.team_performance` },
         () => {
           debouncedFetchDashboardData();
         }
@@ -412,13 +413,14 @@ const Dashboard: React.FC = () => {
     <div className="w-full space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
+        <div className="flex-1">
           <h1 className="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-primary via-secondary to-accent bg-clip-text text-transparent">
             Performance Dashboard
           </h1>
           <p className="text-muted-foreground mt-1">Real-time analytics and insights</p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <TimeTracker />
           <Select value={timeRange} onValueChange={(v) => {
             setTimeRange(v as TimeRange);
             debouncedFetchDashboardData();
@@ -461,7 +463,7 @@ const Dashboard: React.FC = () => {
           <TabsTrigger value="analytics">Analytics</TabsTrigger>
           <TabsTrigger value="leads">Leads</TabsTrigger>
         </TabsList>
-        
+
         {/* New Widgets Dashboard Tab */}
         <TabsContent value="widgets" className="transition-opacity duration-200 space-y-6">
           {/* Executive Summary Row */}
@@ -664,40 +666,40 @@ const Dashboard: React.FC = () => {
         </TabsContent>
         <TabsContent value="analytics" className="transition-opacity duration-200">
           {/* ...existing code for analytics dashboard... */}
-          {/* Metric Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
-            {metrics.map((metric, i) => {
-              const Icon = metric.icon;
-              return (
-                <Card key={i} className="border-border/50 bg-gradient-to-br from-card/80 to-card/40 backdrop-blur-sm hover:shadow-xl hover:shadow-primary/10 transition-all duration-300 hover:-translate-y-1">
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1">
-                        <p className="text-sm text-muted-foreground">{metric.title}</p>
-                        <h3 className="text-3xl font-bold mt-2 bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
-                          {metric.title.includes('Rate') ? `${metric.value}%` : metric.value}
-                        </h3>
-                        <p className={`text-xs mt-1 flex items-center gap-1 ${
-                          metric.trend === 'up' ? 'text-success' : metric.trend === 'down' ? 'text-destructive' : 'text-muted-foreground'
-                        }`}>
-                          {metric.trend === 'up' ? '↑' : metric.trend === 'down' ? '↓' : '→'} {metric.change}
-                        </p>
+          {/* Metric Cards - Horizontal scroll on mobile */}
+          <div className="overflow-x-auto pb-2 -mx-3 px-3 md:mx-0 md:px-0 md:overflow-x-visible">
+            <div className="flex gap-3 md:grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 md:gap-4 min-w-max md:min-w-0">
+              {metrics.map((metric, i) => {
+                const Icon = metric.icon;
+                return (
+                  <Card key={i} className="border-border/50 bg-gradient-to-br from-card/80 to-card/40 backdrop-blur-sm hover:shadow-xl hover:shadow-primary/10 transition-all duration-300 hover:-translate-y-1 min-w-[200px] md:min-w-0">
+                    <CardContent className="p-4 md:p-6">
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                          <p className="text-sm text-muted-foreground">{metric.title}</p>
+                          <h3 className="text-2xl md:text-3xl font-bold mt-2 bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
+                            {metric.title.includes('Rate') ? `${metric.value}%` : metric.value}
+                          </h3>
+                          <p className={`text-xs mt-1 flex items-center gap-1 ${metric.trend === 'up' ? 'text-success' : metric.trend === 'down' ? 'text-destructive' : 'text-muted-foreground'
+                            }`}>
+                            {metric.trend === 'up' ? '↑' : metric.trend === 'down' ? '↓' : '→'} {metric.change}
+                          </p>
+                        </div>
+                        <div className={`p-2 md:p-3 rounded-xl bg-gradient-to-br ${i === 0 ? 'from-chart-1/30 to-chart-1/10' :
+                          i === 1 ? 'from-chart-2/30 to-chart-2/10' :
+                            i === 2 ? 'from-chart-3/30 to-chart-3/10' :
+                              i === 3 ? 'from-chart-4/30 to-chart-4/10' :
+                                i === 4 ? 'from-success/30 to-success/10' :
+                                  'from-primary/30 to-primary/10'
+                          }`}>
+                          <Icon className={`h-5 w-5 md:h-6 md:w-6 ${metric.color}`} />
+                        </div>
                       </div>
-                      <div className={`p-3 rounded-xl bg-gradient-to-br ${
-                        i === 0 ? 'from-chart-1/30 to-chart-1/10' :
-                        i === 1 ? 'from-chart-2/30 to-chart-2/10' :
-                        i === 2 ? 'from-chart-3/30 to-chart-3/10' :
-                        i === 3 ? 'from-chart-4/30 to-chart-4/10' :
-                        i === 4 ? 'from-success/30 to-success/10' :
-                        'from-primary/30 to-primary/10'
-                      }`}>
-                        <Icon className={`h-6 w-6 ${metric.color}`} />
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
           </div>
 
           {/* Charts Section */}

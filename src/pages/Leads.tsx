@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { supabase } from '@/integrations/supabase/client';
-import { Plus, Search, Phone, Mail, MapPin, Calendar, Filter, Users, Upload, Database, CalendarDays, Clock, AlertCircle, PhoneCall } from 'lucide-react';
+import { Plus, Search, Phone, Mail, MapPin, Calendar, Filter, Users, Upload, Database, CalendarDays, Clock, AlertCircle, PhoneCall, Instagram } from 'lucide-react';
 import { CallButton } from '@/components/calls/CallButton';
 import { CallLogs } from '@/components/calls/CallLogs';
 import { RealtimeIndicator } from '@/components/collaboration/RealtimeIndicator';
@@ -86,7 +86,7 @@ const Leads: React.FC = () => {
     endDate: null,
     followUpFilter: 'all'
   });
-  
+
   // Debounce search term to prevent excessive filtering
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
@@ -105,7 +105,7 @@ const Leads: React.FC = () => {
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const pageSize = 50;
-  
+
   // Form state
   const [formData, setFormData] = useState({
     name: '',
@@ -127,7 +127,7 @@ const Leads: React.FC = () => {
       setLoading(true);
       const from = (pageNum - 1) * pageSize;
       const to = from + pageSize - 1;
-      
+
       const { data, error, count } = await supabase
         .from('leads')
         .select(`
@@ -169,7 +169,7 @@ const Leads: React.FC = () => {
       } else {
         setLeads(data || []);
       }
-      
+
       setHasMore((count || 0) > to + 1);
     } catch (error) {
       console.error('Error fetching leads:', error);
@@ -237,21 +237,21 @@ const Leads: React.FC = () => {
     let updateCount = 0;
     const MAX_UPDATES_BEFORE_FULL_FETCH = 10;
     let pendingUpdates: any[] = [];
-    
+
     const channel = supabase
       .channel(`leads_changes_${Date.now()}`)
-      .on('postgres_changes', 
+      .on('postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'leads' },
         async (payload) => {
           // Debounce INSERT events to batch multiple rapid inserts
           pendingUpdates.push(payload);
-          
+
           clearTimeout(debounceTimer);
           debounceTimer = setTimeout(async () => {
             // Process all pending inserts
             const updatesToProcess = [...pendingUpdates];
             pendingUpdates = [];
-            
+
             // Fetch only essential fields for new leads
             const ids = updatesToProcess.map(p => p.new.id);
             const { data } = await supabase
@@ -278,7 +278,7 @@ const Leads: React.FC = () => {
                 profiles!leads_assigned_to_fkey(full_name)
               `)
               .in('id', ids);
-            
+
             if (data && data.length > 0) {
               setLeads(prev => {
                 // Merge new leads, avoiding duplicates
@@ -290,24 +290,24 @@ const Leads: React.FC = () => {
           }, 500); // 500ms debounce for INSERT events
         }
       )
-      .on('postgres_changes', 
+      .on('postgres_changes',
         { event: 'UPDATE', schema: 'public', table: 'leads' },
         (payload) => {
           // Debounce UPDATE events
           clearTimeout(debounceTimer);
-          
+
           // Update only the specific lead immediately for responsiveness
-          setLeads(prev => prev.map(lead => 
-            lead.id === payload.new.id 
+          setLeads(prev => prev.map(lead =>
+            lead.id === payload.new.id
               ? { ...lead, ...payload.new }
               : lead
           ));
-          
+
           // If status changed from 'new' to something else, mark as attended
           if (payload.old.status === 'new' && payload.new.status !== 'new') {
             setAttendedLeads(prev => new Set([...prev, payload.new.id]));
           }
-          
+
           updateCount++;
           // After multiple updates, do a full refresh to ensure consistency
           if (updateCount >= MAX_UPDATES_BEFORE_FULL_FETCH) {
@@ -318,7 +318,7 @@ const Leads: React.FC = () => {
           }
         }
       )
-      .on('postgres_changes', 
+      .on('postgres_changes',
         { event: 'DELETE', schema: 'public', table: 'leads' },
         (payload) => {
           // Remove the deleted lead
@@ -337,7 +337,7 @@ const Leads: React.FC = () => {
 
   const handleCreateLead = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!profile) {
       toast({
         title: 'Error',
@@ -415,6 +415,8 @@ const Leads: React.FC = () => {
       case 'new': return 'bg-primary/10 text-primary';
       case 'contacted': return 'bg-warning/10 text-warning';
       case 'qualified': return 'bg-success/10 text-success';
+      case 'site_visit_scheduled': return 'bg-cyan-500/10 text-cyan-500';
+      case 'site_visit_done': return 'bg-teal-500/10 text-teal-500';
       case 'proposal': return 'bg-accent/20 text-accent-foreground';
       case 'negotiation': return 'bg-warning/10 text-warning';
       case 'closed_won': return 'bg-success/10 text-success';
@@ -426,7 +428,7 @@ const Leads: React.FC = () => {
   // Memoized filtered leads with debounced search and date filters
   const filteredLeads = useMemo(() => {
     let filtered = leads;
-    
+
     // Apply search filter
     if (debouncedSearchTerm) {
       const searchLower = debouncedSearchTerm.toLowerCase();
@@ -436,7 +438,7 @@ const Leads: React.FC = () => {
         (lead.email && lead.email.toLowerCase().includes(searchLower))
       );
     }
-    
+
     // Apply date range filter
     if (dateFilter.startDate && dateFilter.endDate) {
       filtered = filtered.filter(lead => {
@@ -447,15 +449,15 @@ const Leads: React.FC = () => {
         });
       });
     }
-    
+
     // Apply follow-up filter
     if (dateFilter.followUpFilter !== 'all') {
       filtered = filtered.filter(lead => {
         if (!lead.next_followup) return dateFilter.followUpFilter === 'all';
-        
+
         const followUpDate = parseISO(lead.next_followup);
         const today = new Date();
-        
+
         switch (dateFilter.followUpFilter) {
           case 'today':
             return isToday(followUpDate);
@@ -468,25 +470,25 @@ const Leads: React.FC = () => {
         }
       });
     }
-    
+
     return filtered;
   }, [leads, debouncedSearchTerm, dateFilter]);
 
   // Memoized stats to prevent recalculation on every render
   const stats = useMemo(() => {
-    const todayFollowUps = leads.filter(lead => 
+    const todayFollowUps = leads.filter(lead =>
       lead.next_followup && isToday(parseISO(lead.next_followup))
     );
-    const overdueFollowUps = leads.filter(lead => 
+    const overdueFollowUps = leads.filter(lead =>
       lead.next_followup && isPast(parseISO(lead.next_followup)) && !isToday(parseISO(lead.next_followup))
     );
-    
+
     // Count leads by source (case-insensitive matching)
-    const getSourceCount = (sourceName: string) => 
-      leads.filter(lead => 
+    const getSourceCount = (sourceName: string) =>
+      leads.filter(lead =>
         lead.source?.toLowerCase().includes(sourceName.toLowerCase())
       ).length;
-    
+
     return {
       total: leads.length,
       new: leads.filter(lead => lead.status === 'new').length,
@@ -499,6 +501,7 @@ const Leads: React.FC = () => {
       housing: getSourceCount('housing'),
       acres99: getSourceCount('99acres'),
       meta: getSourceCount('meta') + getSourceCount('facebook'),
+      instagram: getSourceCount('instagram'),
       google: getSourceCount('google'),
     };
   }, [leads]);
@@ -531,32 +534,32 @@ const Leads: React.FC = () => {
           <p className="text-sm text-muted-foreground">Track and manage your leads through the sales pipeline</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             className="gap-2"
             onClick={() => setIsImportDialogOpen(true)}
           >
             <Upload className="h-4 w-4" />
             Import Leads
           </Button>
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             className="gap-2"
             onClick={() => setIsDynamicImportDialogOpen(true)}
           >
             <Database className="h-4 w-4" />
             Smart Import
           </Button>
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             className="gap-2"
             onClick={() => setIsIntegrationsOpen(true)}
           >
             <Database className="h-4 w-4" />
             Integrations
           </Button>
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             className="gap-2"
             onClick={() => setIsTemplatesDialogOpen(true)}
           >
@@ -570,147 +573,147 @@ const Leads: React.FC = () => {
                 Add New Lead
               </Button>
             </DialogTrigger>
-          <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle>Create New Lead</DialogTitle>
-              <DialogDescription>
-                Add a new lead to your pipeline. Fill in the details below.
-              </DialogDescription>
-            </DialogHeader>
-            <form onSubmit={handleCreateLead} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="name">Name *</Label>
-                  <Input
-                    id="name"
-                    placeholder="Lead name"
-                    value={formData.name}
-                    onChange={(e) => setFormData({...formData, name: e.target.value})}
-                    required
-                  />
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle>Create New Lead</DialogTitle>
+                <DialogDescription>
+                  Add a new lead to your pipeline. Fill in the details below.
+                </DialogDescription>
+              </DialogHeader>
+              <form onSubmit={handleCreateLead} className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="name">Name *</Label>
+                    <Input
+                      id="name"
+                      placeholder="Lead name"
+                      value={formData.name}
+                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="phone">Phone *</Label>
+                    <Input
+                      id="phone"
+                      placeholder="Phone number"
+                      value={formData.phone}
+                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                      required
+                    />
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="phone">Phone *</Label>
-                  <Input
-                    id="phone"
-                    placeholder="Phone number"
-                    value={formData.phone}
-                    onChange={(e) => setFormData({...formData, phone: e.target.value})}
-                    required
-                  />
-                </div>
-              </div>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder="Email address"
-                    value={formData.email}
-                    onChange={(e) => setFormData({...formData, email: e.target.value})}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="source">Source</Label>
-                  <Input
-                    id="source"
-                    placeholder="Lead source"
-                    value={formData.source}
-                    onChange={(e) => setFormData({...formData, source: e.target.value})}
-                  />
-                </div>
-              </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="project_name">Project Name</Label>
-                <Input
-                  id="project_name"
-                  placeholder="e.g., Sunrise Apartments, Downtown Complex"
-                  value={formData.project_name}
-                  onChange={(e) => setFormData({...formData, project_name: e.target.value})}
-                />
-              </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="email">Email</Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      placeholder="Email address"
+                      value={formData.email}
+                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="source">Source</Label>
+                    <Input
+                      id="source"
+                      placeholder="Lead source"
+                      value={formData.source}
+                      onChange={(e) => setFormData({ ...formData, source: e.target.value })}
+                    />
+                  </div>
+                </div>
 
-              <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="budget_min">Min Budget (₹)</Label>
+                  <Label htmlFor="project_name">Project Name</Label>
                   <Input
-                    id="budget_min"
-                    type="number"
-                    placeholder="Minimum budget"
-                    value={formData.budget_min}
-                    onChange={(e) => setFormData({...formData, budget_min: e.target.value})}
+                    id="project_name"
+                    placeholder="e.g., Sunrise Apartments, Downtown Complex"
+                    value={formData.project_name}
+                    onChange={(e) => setFormData({ ...formData, project_name: e.target.value })}
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="budget_max">Max Budget (₹)</Label>
-                  <Input
-                    id="budget_max"
-                    type="number"
-                    placeholder="Maximum budget"
-                    value={formData.budget_max}
-                    onChange={(e) => setFormData({...formData, budget_max: e.target.value})}
-                  />
-                </div>
-              </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="preferred_location">Preferred Location</Label>
-                  <Input
-                    id="preferred_location"
-                    placeholder="Preferred location"
-                    value={formData.preferred_location}
-                    onChange={(e) => setFormData({...formData, preferred_location: e.target.value})}
-                  />
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="budget_min">Min Budget (₹)</Label>
+                    <Input
+                      id="budget_min"
+                      type="number"
+                      placeholder="Minimum budget"
+                      value={formData.budget_min}
+                      onChange={(e) => setFormData({ ...formData, budget_min: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="budget_max">Max Budget (₹)</Label>
+                    <Input
+                      id="budget_max"
+                      type="number"
+                      placeholder="Maximum budget"
+                      value={formData.budget_max}
+                      onChange={(e) => setFormData({ ...formData, budget_max: e.target.value })}
+                    />
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="property_type">Property Type</Label>
-                  <Select value={formData.property_type} onValueChange={(value) => setFormData({...formData, property_type: value})}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="apartment">Apartment</SelectItem>
-                      <SelectItem value="villa">Villa</SelectItem>
-                      <SelectItem value="plot">Plot</SelectItem>
-                      <SelectItem value="commercial">Commercial</SelectItem>
-                      <SelectItem value="office">Office</SelectItem>
-                      <SelectItem value="warehouse">Warehouse</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="notes">Notes</Label>
-                  <Textarea
-                    id="notes"
-                    placeholder="Additional notes about the lead"
-                    value={formData.notes}
-                    onChange={(e) => setFormData({...formData, notes: e.target.value})}
-                  />
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="preferred_location">Preferred Location</Label>
+                    <Input
+                      id="preferred_location"
+                      placeholder="Preferred location"
+                      value={formData.preferred_location}
+                      onChange={(e) => setFormData({ ...formData, preferred_location: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="property_type">Property Type</Label>
+                    <Select value={formData.property_type} onValueChange={(value) => setFormData({ ...formData, property_type: value })}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="apartment">Apartment</SelectItem>
+                        <SelectItem value="villa">Villa</SelectItem>
+                        <SelectItem value="plot">Plot</SelectItem>
+                        <SelectItem value="commercial">Commercial</SelectItem>
+                        <SelectItem value="office">Office</SelectItem>
+                        <SelectItem value="warehouse">Warehouse</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="next_followup">Next Follow-up Date</Label>
-                  <Input
-                    id="next_followup"
-                    type="datetime-local"
-                    value={formData.next_followup}
-                    onChange={(e) => setFormData({...formData, next_followup: e.target.value})}
-                  />
-                </div>
-              </div>
 
-              <DialogFooter>
-                <Button type="submit" className="w-full">Create Lead</Button>
-              </DialogFooter>
-            </form>
-          </DialogContent>
-        </Dialog>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="notes">Notes</Label>
+                    <Textarea
+                      id="notes"
+                      placeholder="Additional notes about the lead"
+                      value={formData.notes}
+                      onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="next_followup">Next Follow-up Date</Label>
+                    <Input
+                      id="next_followup"
+                      type="datetime-local"
+                      value={formData.next_followup}
+                      onChange={(e) => setFormData({ ...formData, next_followup: e.target.value })}
+                    />
+                  </div>
+                </div>
+
+                <DialogFooter>
+                  <Button type="submit" className="w-full">Create Lead</Button>
+                </DialogFooter>
+              </form>
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
 
@@ -725,7 +728,7 @@ const Leads: React.FC = () => {
             className="pl-10"
           />
         </div>
-        
+
         {/* Date Range Filter */}
         <div className="flex items-center gap-2">
           <Popover>
@@ -760,8 +763,8 @@ const Leads: React.FC = () => {
                   </div>
                 </div>
                 <div className="flex gap-2 pt-2">
-                  <Button 
-                    size="sm" 
+                  <Button
+                    size="sm"
                     variant="outline"
                     onClick={() => setDateFilter(prev => ({ ...prev, startDate: null, endDate: null }))}
                   >
@@ -774,9 +777,9 @@ const Leads: React.FC = () => {
         </div>
 
         {/* Follow-up Filter */}
-        <Select 
-          value={dateFilter.followUpFilter} 
-          onValueChange={(value: 'all' | 'today' | 'overdue' | 'upcoming') => 
+        <Select
+          value={dateFilter.followUpFilter}
+          onValueChange={(value: 'all' | 'today' | 'overdue' | 'upcoming') =>
             setDateFilter(prev => ({ ...prev, followUpFilter: value }))
           }
         >
@@ -839,8 +842,8 @@ const Leads: React.FC = () => {
         </Card>
       </div>
 
-      {/* Lead Source Portal Stats */}
-      <Card className="bg-gradient-to-br from-primary/5 via-accent/5 to-secondary/5 border-primary/20">
+      {/* Lead Source Portal Stats - Hidden on Mobile */}
+      <Card className="hidden md:block bg-gradient-to-br from-primary/5 via-accent/5 to-secondary/5 border-primary/20">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Database className="h-5 w-5 text-primary" />
@@ -849,7 +852,7 @@ const Leads: React.FC = () => {
           <CardDescription>Total leads received from each platform</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
+          <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
             {/* Magicbricks */}
             <Card className="bg-card/50 backdrop-blur border-2 hover:border-primary/50 transition-all hover:shadow-lg hover:scale-105">
               <CardContent className="p-4 flex flex-col items-center gap-3">
@@ -890,6 +893,19 @@ const Leads: React.FC = () => {
                 <div className="text-center">
                   <div className="text-3xl font-bold text-blue-600">{stats.meta}</div>
                   <div className="text-xs text-muted-foreground mt-1">Meta / Facebook</div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Instagram */}
+            <Card className="bg-card/50 backdrop-blur border-2 hover:border-pink-500/50 transition-all hover:shadow-lg hover:scale-105">
+              <CardContent className="p-4 flex flex-col items-center gap-3">
+                <div className="h-12 flex items-center justify-center">
+                  <Instagram className="h-10 w-10 text-pink-500" />
+                </div>
+                <div className="text-center">
+                  <div className="text-3xl font-bold text-pink-500">{stats.instagram}</div>
+                  <div className="text-xs text-muted-foreground mt-1">Instagram</div>
                 </div>
               </CardContent>
             </Card>
@@ -961,8 +977,8 @@ const Leads: React.FC = () => {
       {/* Load More Button */}
       {hasMore && !searchTerm && filteredLeads.length > 0 && (
         <div className="flex justify-center mt-6">
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             onClick={loadMoreLeads}
             disabled={loading}
           >
@@ -990,7 +1006,7 @@ const Leads: React.FC = () => {
           <DialogHeader>
             <DialogTitle>Send Message to Lead</DialogTitle>
             <DialogDescription>
-              {selectedLead 
+              {selectedLead
                 ? `Send WhatsApp or email messages to ${selectedLead.name}`
                 : 'Send messages to leads'
               }

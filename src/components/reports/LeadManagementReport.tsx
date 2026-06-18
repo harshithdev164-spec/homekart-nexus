@@ -194,6 +194,7 @@ export const LeadManagementReport: React.FC = () => {
                         <SelectItem value="social_media">Social Media</SelectItem>
                         <SelectItem value="magicbricks">MagicBricks</SelectItem>
                         <SelectItem value="99acres">99acres</SelectItem>
+                        <SelectItem value="instagram">Instagram</SelectItem>
                         <SelectItem value="direct">Direct</SelectItem>
                       </SelectContent>
                     </Select>

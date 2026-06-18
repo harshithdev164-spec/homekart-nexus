@@ -217,6 +217,7 @@ export const QuickActionsPanel: React.FC = () => {
                     <SelectItem value="referral">Referral</SelectItem>
                     <SelectItem value="magicbricks">MagicBricks</SelectItem>
                     <SelectItem value="99acres">99acres</SelectItem>
+                    <SelectItem value="instagram">Instagram</SelectItem>
                     <SelectItem value="direct">Direct</SelectItem>
                   </SelectContent>
                 </Select>

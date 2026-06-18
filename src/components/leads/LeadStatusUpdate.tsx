@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { useToast } from '@/hooks/use-toast';
-import { AlertCircle, CheckCircle, Clock, XCircle, Edit3 } from 'lucide-react';
+import { AlertCircle, CheckCircle, Clock, XCircle, Edit3, CalendarCheck, MapPin } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 
 interface LeadStatusUpdateProps {
@@ -24,6 +24,8 @@ const statusOptions = [
   { value: 'new', label: 'New', icon: AlertCircle, color: 'bg-blue-500' },
   { value: 'contacted', label: 'Contacted', icon: Clock, color: 'bg-yellow-500' },
   { value: 'qualified', label: 'Qualified', icon: CheckCircle, color: 'bg-green-500' },
+  { value: 'site_visit_scheduled', label: 'Site Visit Scheduled', icon: CalendarCheck, color: 'bg-cyan-500' },
+  { value: 'site_visit_done', label: 'Site Visit Done', icon: MapPin, color: 'bg-teal-500' },
   { value: 'proposal', label: 'Proposal', icon: Edit3, color: 'bg-purple-500' },
   { value: 'negotiation', label: 'Negotiation', icon: Clock, color: 'bg-orange-500' },
   { value: 'closed_won', label: 'Closed Won', icon: CheckCircle, color: 'bg-emerald-500' },

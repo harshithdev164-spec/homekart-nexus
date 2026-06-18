@@ -149,7 +149,7 @@ const Auth: React.FC = () => {
             </span>
           </h1>
           <p className="text-white/60 text-lg">
-            Login to your HomeKart CRM account
+            Login to your Realty OS account
           </p>
         </div>
 

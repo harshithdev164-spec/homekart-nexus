@@ -258,7 +258,7 @@ export const OrganizationSetup: React.FC = () => {
                           onChange={(e) => handleSubdomainChange(e.target.value)}
                           className="bg-white/5 border-white/20 text-white placeholder:text-white/40 focus:border-primary h-12"
                         />
-                        <span className="text-white/60">.homekartcrm.com</span>
+                        <span className="text-white/60">.realtyos.tech</span>
                       </div>
                       <p className="text-xs text-white/40">
                         Choose a unique subdomain for your organization (letters, numbers, and hyphens only)

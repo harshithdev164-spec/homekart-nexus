@@ -2,94 +2,94 @@
 @tailwind components;
 @tailwind utilities;
 
-/* HomeKart CRM Design System - Professional Real Estate Theme */
+/* Realty OS Design System - Refined Dark SaaS Theme */
 
 @layer base {
   :root {
-    /* Background System - Modern Dark */
-    --background: 220 20% 12%;
-    --foreground: 210 20% 98%;
+    /* Background System - Deep Neutral Dark */
+    --background: 240 9% 8%;
+    --foreground: 240 12% 96%;
 
-    /* Card System - Elevated Dark Cards */
-    --card: 220 18% 16%;
-    --card-foreground: 210 20% 98%;
+    /* Card System - Subtly Elevated Surfaces */
+    --card: 240 8% 11%;
+    --card-foreground: 240 12% 96%;
 
     /* Popover System */
-    --popover: 220 18% 18%;
-    --popover-foreground: 210 20% 98%;
+    --popover: 240 8% 12%;
+    --popover-foreground: 240 12% 96%;
 
-    /* Primary - Vibrant Cyan/Teal */
-    --primary: 173 80% 65%;
-    --primary-foreground: 220 20% 12%;
-    --primary-hover: 173 80% 55%;
-    --primary-light: 173 80% 85%;
+    /* Primary - Indigo / Violet */
+    --primary: 245 75% 63%;
+    --primary-foreground: 0 0% 100%;
+    --primary-hover: 245 75% 57%;
+    --primary-light: 245 50% 22%;
 
-    /* Secondary - Purple Accent */
-    --secondary: 267 60% 65%;
-    --secondary-foreground: 210 20% 98%;
-    --secondary-light: 267 60% 85%;
+    /* Secondary - Violet */
+    --secondary: 266 65% 64%;
+    --secondary-foreground: 0 0% 100%;
+    --secondary-light: 266 45% 22%;
 
-    /* Success - Vibrant Green */
-    --success: 142 76% 55%;
-    --success-foreground: 220 20% 12%;
-    --success-light: 142 76% 85%;
+    /* Success - Emerald */
+    --success: 158 72% 48%;
+    --success-foreground: 240 9% 8%;
+    --success-light: 158 45% 18%;
 
-    /* Warning - Orange */
-    --warning: 28 92% 60%;
-    --warning-foreground: 220 20% 12%;
-    --warning-light: 28 92% 85%;
+    /* Warning - Amber */
+    --warning: 35 92% 58%;
+    --warning-foreground: 240 9% 8%;
+    --warning-light: 35 55% 20%;
 
     /* Muted System */
-    --muted: 220 15% 22%;
-    --muted-foreground: 215 15% 70%;
+    --muted: 240 6% 17%;
+    --muted-foreground: 240 6% 64%;
 
-    /* Accent - Pink/Magenta */
-    --accent: 320 70% 65%;
-    --accent-foreground: 210 20% 98%;
-    --accent-light: 320 70% 85%;
+    /* Accent - Fuchsia */
+    --accent: 300 68% 64%;
+    --accent-foreground: 0 0% 100%;
+    --accent-light: 300 45% 22%;
 
     /* Chart Colors */
-    --chart-1: 173 80% 65%;
-    --chart-2: 267 60% 65%;
-    --chart-3: 320 70% 65%;
-    --chart-4: 28 92% 60%;
-    --chart-5: 142 76% 55%;
+    --chart-1: 245 75% 63%;
+    --chart-2: 266 65% 64%;
+    --chart-3: 300 68% 64%;
+    --chart-4: 35 92% 58%;
+    --chart-5: 158 72% 48%;
 
     /* Destructive */
-    --destructive: 0 84% 60%;
-    --destructive-foreground: 210 20% 98%;
+    --destructive: 0 75% 60%;
+    --destructive-foreground: 0 0% 100%;
 
     /* UI Elements */
-    --border: 220 15% 25%;
-    --input: 220 15% 20%;
-    --ring: 173 80% 65%;
+    --border: 240 6% 19%;
+    --input: 240 6% 16%;
+    --ring: 245 75% 63%;
 
     /* Gradients */
-    --gradient-primary: linear-gradient(135deg, hsl(173 80% 45%) 0%, hsl(173 80% 65%) 100%);
-    --gradient-secondary: linear-gradient(135deg, hsl(267 60% 55%) 0%, hsl(320 70% 65%) 100%);
-    --gradient-accent: linear-gradient(135deg, hsl(320 70% 55%) 0%, hsl(28 92% 60%) 100%);
-    --gradient-hero: linear-gradient(135deg, hsl(173 80% 45%) 0%, hsl(267 60% 55%) 50%, hsl(320 70% 65%) 100%);
-    
+    --gradient-primary: linear-gradient(135deg, hsl(245 78% 58%) 0%, hsl(266 70% 62%) 100%);
+    --gradient-secondary: linear-gradient(135deg, hsl(266 68% 58%) 0%, hsl(300 65% 62%) 100%);
+    --gradient-accent: linear-gradient(135deg, hsl(300 65% 58%) 0%, hsl(35 92% 60%) 100%);
+    --gradient-hero: linear-gradient(135deg, hsl(245 78% 56%) 0%, hsl(280 65% 60%) 50%, hsl(300 65% 62%) 100%);
+
     /* Shadows */
-    --shadow-soft: 0 2px 8px -1px hsl(220 20% 8% / 0.4);
-    --shadow-medium: 0 4px 12px -2px hsl(220 20% 8% / 0.5);
-    --shadow-large: 0 8px 24px -4px hsl(220 20% 8% / 0.6);
-    --shadow-primary: 0 4px 20px -2px hsl(173 80% 65% / 0.4);
-    
+    --shadow-soft: 0 1px 2px -1px hsl(240 30% 2% / 0.6), 0 2px 8px -2px hsl(240 30% 2% / 0.4);
+    --shadow-medium: 0 4px 12px -2px hsl(240 30% 2% / 0.55);
+    --shadow-large: 0 12px 32px -6px hsl(240 30% 2% / 0.7);
+    --shadow-primary: 0 6px 24px -4px hsl(245 75% 63% / 0.4);
+
     /* Animations */
     --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     --transition-bounce: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
 
-    --radius: 0.75rem;
+    --radius: 0.7rem;
 
-    --sidebar-background: 220 20% 14%;
-    --sidebar-foreground: 210 20% 98%;
-    --sidebar-primary: 173 80% 65%;
-    --sidebar-primary-foreground: 220 20% 12%;
-    --sidebar-accent: 220 15% 22%;
-    --sidebar-accent-foreground: 210 20% 98%;
-    --sidebar-border: 220 15% 25%;
-    --sidebar-ring: 173 80% 65%;
+    --sidebar-background: 240 10% 6%;
+    --sidebar-foreground: 240 8% 80%;
+    --sidebar-primary: 245 75% 63%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 6% 14%;
+    --sidebar-accent-foreground: 240 12% 96%;
+    --sidebar-border: 240 6% 14%;
+    --sidebar-ring: 245 75% 63%;
   }
 
   /* Green blinking animation for new leads */
@@ -111,71 +111,71 @@
 
   .dark {
     /* Background System - Light Mode */
-    --background: 210 20% 98%;
-    --foreground: 220 20% 12%;
+    --background: 240 20% 99%;
+    --foreground: 240 12% 12%;
 
     /* Card System */
     --card: 0 0% 100%;
-    --card-foreground: 220 20% 12%;
+    --card-foreground: 240 12% 12%;
 
     /* Popover System */
     --popover: 0 0% 100%;
-    --popover-foreground: 220 20% 12%;
+    --popover-foreground: 240 12% 12%;
 
-    /* Primary - Vibrant Cyan/Teal */
-    --primary: 173 80% 45%;
-    --primary-foreground: 210 20% 98%;
-    --primary-hover: 173 80% 40%;
-    --primary-light: 173 80% 95%;
+    /* Primary - Indigo / Violet */
+    --primary: 245 70% 57%;
+    --primary-foreground: 0 0% 100%;
+    --primary-hover: 245 70% 50%;
+    --primary-light: 245 80% 96%;
 
-    /* Secondary - Purple Accent */
-    --secondary: 267 60% 55%;
-    --secondary-foreground: 210 20% 98%;
-    --secondary-light: 267 60% 95%;
+    /* Secondary - Violet */
+    --secondary: 266 62% 56%;
+    --secondary-foreground: 0 0% 100%;
+    --secondary-light: 266 80% 96%;
 
-    /* Success - Vibrant Green */
-    --success: 142 76% 45%;
-    --success-foreground: 210 20% 98%;
-    --success-light: 142 76% 95%;
+    /* Success - Emerald */
+    --success: 158 70% 40%;
+    --success-foreground: 0 0% 100%;
+    --success-light: 158 70% 95%;
 
-    /* Warning - Orange */
-    --warning: 28 92% 50%;
-    --warning-foreground: 210 20% 98%;
-    --warning-light: 28 92% 95%;
+    /* Warning - Amber */
+    --warning: 35 92% 48%;
+    --warning-foreground: 0 0% 100%;
+    --warning-light: 35 92% 95%;
 
     /* Muted System */
-    --muted: 210 15% 94%;
-    --muted-foreground: 220 15% 40%;
+    --muted: 240 12% 95%;
+    --muted-foreground: 240 6% 45%;
 
-    /* Accent - Pink/Magenta */
-    --accent: 320 70% 55%;
-    --accent-foreground: 210 20% 98%;
-    --accent-light: 320 70% 95%;
+    /* Accent - Fuchsia */
+    --accent: 300 65% 56%;
+    --accent-foreground: 0 0% 100%;
+    --accent-light: 300 70% 96%;
 
     /* Chart Colors */
-    --chart-1: 173 80% 45%;
-    --chart-2: 267 60% 55%;
-    --chart-3: 320 70% 55%;
-    --chart-4: 28 92% 50%;
-    --chart-5: 142 76% 45%;
+    --chart-1: 245 70% 57%;
+    --chart-2: 266 62% 56%;
+    --chart-3: 300 65% 56%;
+    --chart-4: 35 92% 48%;
+    --chart-5: 158 70% 40%;
 
     /* Destructive */
-    --destructive: 0 84% 50%;
-    --destructive-foreground: 210 20% 98%;
+    --destructive: 0 75% 52%;
+    --destructive-foreground: 0 0% 100%;
 
     /* UI Elements */
-    --border: 220 15% 88%;
-    --input: 220 15% 94%;
-    --ring: 173 80% 45%;
-    
-    --sidebar-background: 210 20% 96%;
-    --sidebar-foreground: 220 20% 12%;
-    --sidebar-primary: 173 80% 45%;
-    --sidebar-primary-foreground: 210 20% 98%;
-    --sidebar-accent: 210 15% 94%;
-    --sidebar-accent-foreground: 220 20% 12%;
-    --sidebar-border: 220 15% 88%;
-    --sidebar-ring: 173 80% 45%;
+    --border: 240 12% 90%;
+    --input: 240 12% 94%;
+    --ring: 245 70% 57%;
+
+    --sidebar-background: 240 20% 98%;
+    --sidebar-foreground: 240 12% 20%;
+    --sidebar-primary: 245 70% 57%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 12% 95%;
+    --sidebar-accent-foreground: 240 12% 12%;
+    --sidebar-border: 240 12% 90%;
+    --sidebar-ring: 245 70% 57%;
   }
 }
 
@@ -186,6 +186,34 @@
 
   body {
     @apply bg-background text-foreground;
+    font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    font-feature-settings: 'cv11', 'ss01';
+    letter-spacing: -0.011em;
+  }
+
+  h1, h2, h3, h4, h5 {
+    letter-spacing: -0.02em;
+  }
+
+  /* Refined scrollbars for a polished SaaS feel */
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: hsl(var(--muted-foreground) / 0.25);
+    border-radius: 9999px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--muted-foreground) / 0.4);
+    background-clip: content-box;
   }
 }
 
@@ -219,4 +247,34 @@
 
 .delay-1000 {
   animation-delay: 1s;
+}
+
+/* Mobile-specific utilities */
+@layer utilities {
+  .safe-area-inset-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .touch-manipulation {
+    touch-action: manipulation;
+  }
+
+  /* Smooth scrolling for mobile */
+  @media (max-width: 768px) {
+    * {
+      -webkit-tap-highlight-color: transparent;
+    }
+    
+    html {
+      scroll-behavior: smooth;
+    }
+  }
+
+  /* Hide scrollbar on mobile for cleaner look */
+  @media (max-width: 768px) {
+    .overflow-y-auto::-webkit-scrollbar {
+      width: 0px;
+      background: transparent;
+    }
+  }
 }

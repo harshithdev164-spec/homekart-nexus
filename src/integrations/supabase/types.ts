@@ -1025,6 +1025,8 @@ export type Database = {
         | "new"
         | "contacted"
         | "qualified"
+        | "site_visit_scheduled"
+        | "site_visit_done"
         | "proposal"
         | "negotiation"
         | "closed_won"

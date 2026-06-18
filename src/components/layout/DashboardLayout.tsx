@@ -6,6 +6,7 @@ import { Navigate } from 'react-router-dom';
 import { NotificationSystem } from '@/components/notifications/NotificationSystem';
 import { CookieConsent } from '@/components/cookies/CookieConsent';
 import { EnhancedNotificationCenter } from '@/components/notifications/EnhancedNotificationCenter';
+import { MobileBottomNav } from './MobileBottomNav';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -32,14 +33,15 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
       <NotificationSystem />
       <EnhancedNotificationCenter />
       <CookieConsent />
-      <div className="flex h-[calc(100vh-73px)] overflow-hidden">
+      <div className="flex h-[calc(100vh-57px)] md:h-[calc(100vh-73px)] overflow-hidden">
         <Sidebar />
-        <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-6 transition-all duration-300">
+        <main className="flex-1 overflow-y-auto overflow-x-hidden p-3 md:p-4 lg:p-6 pb-20 md:pb-4 transition-all duration-300">
           <div className="max-w-7xl mx-auto">
             {children}
           </div>
         </main>
       </div>
+      <MobileBottomNav />
     </div>
   );
 };

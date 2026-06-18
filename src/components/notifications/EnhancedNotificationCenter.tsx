@@ -23,7 +23,7 @@ export const EnhancedNotificationCenter: React.FC = () => {
     
     if (!lastLogin) {
       showSuccess(
-        'Welcome to HomeKart CRM! 🎉',
+        'Welcome to Realty OS! 🎉',
         `Hello ${profile.full_name}, welcome to your dashboard. Get started by exploring your leads and properties.`,
         [
           {

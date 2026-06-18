@@ -125,7 +125,7 @@ const LandingPage: React.FC = () => {
     {
       name: 'Rajesh Kumar',
       role: 'Real Estate Manager',
-      content: 'HomeKart CRM has transformed our business. Lead conversion has increased by 40% since we started using it.',
+      content: 'Realty OS has transformed our business. Lead conversion has increased by 40% since we started using it.',
       rating: 5,
       avatar: 'RK',
     },
@@ -168,7 +168,7 @@ const LandingPage: React.FC = () => {
                 <div className="absolute inset-0 bg-primary/50 blur-xl" />
               </div>
               <h1 className="text-2xl font-bold bg-gradient-to-r from-primary via-purple-400 to-pink-400 bg-clip-text text-transparent">
-                HomeKart CRM
+                Realty OS
               </h1>
             </div>
             <div className="flex items-center space-x-4">
@@ -298,7 +298,7 @@ const LandingPage: React.FC = () => {
                 Trusted by Real Estate Professionals
               </h2>
               <p className="text-xl text-white/60">
-                See what our customers have to say about HomeKart CRM
+                See what our customers have to say about Realty OS
               </p>
             </div>
             
@@ -339,7 +339,7 @@ const LandingPage: React.FC = () => {
                 Ready to Transform Your Business?
               </h3>
               <p className="text-xl mb-8 text-white/80">
-                Join thousands of real estate professionals who trust HomeKart CRM to grow their business.
+                Join thousands of real estate professionals who trust Realty OS to grow their business.
               </p>
               <Button 
                 size="lg" 
@@ -373,11 +373,11 @@ const LandingPage: React.FC = () => {
             <div className="flex items-center justify-center gap-2 mb-4">
               <Building2 className="h-6 w-6 text-primary" />
               <div className="text-2xl font-bold bg-gradient-to-r from-primary via-purple-400 to-pink-400 bg-clip-text text-transparent">
-                HomeKart CRM
+                Realty OS
               </div>
             </div>
             <p className="text-white/60">
-              © 2024 HomeKart CRM. All rights reserved.
+              © 2026 Realty OS. All rights reserved.
             </p>
           </div>
         </footer>

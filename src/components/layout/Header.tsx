@@ -24,19 +24,20 @@ export const Header: React.FC = () => {
   };
 
   return (
-    <header className="bg-card border-b border-border px-6 py-4">
+    <header className="bg-card/80 backdrop-blur-md border-b border-border px-4 md:px-6 py-3 md:py-4 sticky top-0 z-30">
       <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-4">
-          <h1 className="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">
-            HomeKart CRM
+        <div className="flex items-center space-x-2 md:space-x-4 ml-12 md:ml-0">
+          <h1 className="text-lg md:text-xl font-bold tracking-tight">
+            Realty <span className="bg-gradient-primary bg-clip-text text-transparent">OS</span>
           </h1>
         </div>
 
-        <div className="flex items-center space-x-4">
+        <div className="flex items-center space-x-2 md:space-x-4">
           <TimeTracker />
-          
-          <Button variant="ghost" size="icon">
-            <Bell className="h-5 w-5" />
+
+          <Button variant="ghost" size="icon" className="relative h-8 w-8 md:h-10 md:w-10 text-muted-foreground hover:text-foreground">
+            <Bell className="h-4 w-4 md:h-5 md:w-5" />
+            <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-primary ring-2 ring-card" />
           </Button>
 
           <DropdownMenu>

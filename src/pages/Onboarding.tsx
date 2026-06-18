@@ -53,7 +53,7 @@ export const Onboarding: React.FC = () => {
       // This would typically update organization settings
       toast({
         title: 'Onboarding Complete!',
-        description: 'Welcome to HomeKart CRM',
+        description: 'Welcome to Realty OS',
       });
       navigate('/dashboard');
     } catch (error: any) {
