@@ -70,6 +70,57 @@ interface Lead {
   };
 }
 
+// Portal/source filter keyword map (case-insensitive substring match on lead.source)
+const PORTAL_KEYWORDS: Record<string, string[]> = {
+  magicbricks: ['magicbricks'],
+  housing: ['housing'],
+  '99acres': ['99acres'],
+  meta: ['meta', 'facebook'],
+  instagram: ['instagram'],
+  google: ['google'],
+};
+
+const STATUS_FILTER_OPTIONS: { value: string; label: string }[] = [
+  { value: 'all', label: 'All Status' },
+  { value: 'new', label: 'New' },
+  { value: 'contacted', label: 'Contacted' },
+  { value: 'qualified', label: 'Qualified' },
+  { value: 'meeting_scheduled', label: 'Meeting Scheduled' },
+  { value: 'site_visit_scheduled', label: 'Site Visit Scheduled' },
+  { value: 'site_visit_done', label: 'Site Visit Done' },
+  { value: 'proposal', label: 'Proposal' },
+  { value: 'negotiation', label: 'Negotiation' },
+  { value: 'closed_won', label: 'Closed Won' },
+  { value: 'closed_lost', label: 'Closed Lost' },
+];
+
+const SOURCE_FILTER_OPTIONS: { value: string; label: string }[] = [
+  { value: 'all', label: 'All Sources' },
+  { value: 'magicbricks', label: 'Magicbricks' },
+  { value: 'housing', label: 'Housing.com' },
+  { value: '99acres', label: '99acres' },
+  { value: 'meta', label: 'Meta / Facebook' },
+  { value: 'instagram', label: 'Instagram' },
+  { value: 'google', label: 'Google' },
+  { value: 'others', label: 'Others' },
+];
+
+// Source options for the Add Lead form (values match PORTAL_KEYWORDS so the
+// portal cards & source filter pick them up automatically).
+const LEAD_SOURCE_OPTIONS: { value: string; label: string }[] = [
+  { value: 'magicbricks', label: 'Magicbricks' },
+  { value: 'housing', label: 'Housing.com' },
+  { value: '99acres', label: '99acres' },
+  { value: 'meta', label: 'Meta / Facebook' },
+  { value: 'instagram', label: 'Instagram' },
+  { value: 'google', label: 'Google' },
+  { value: 'website', label: 'Website' },
+  { value: 'referral', label: 'Referral' },
+  { value: 'walk_in', label: 'Walk-in' },
+  { value: 'direct', label: 'Direct' },
+  { value: 'other', label: 'Other' },
+];
+
 const Leads: React.FC = () => {
   const { profile } = useAuth();
   const { toast } = useToast();
@@ -81,10 +132,16 @@ const Leads: React.FC = () => {
     startDate: Date | null;
     endDate: Date | null;
     followUpFilter: 'all' | 'today' | 'overdue' | 'upcoming';
+    sourceFilter: string;
+    statusFilter: string;
+    assignedFilter: string;
   }>({
     startDate: null,
     endDate: null,
-    followUpFilter: 'all'
+    followUpFilter: 'all',
+    sourceFilter: 'all',
+    statusFilter: 'all',
+    assignedFilter: 'all'
   });
 
   // Debounce search term to prevent excessive filtering
@@ -104,7 +161,10 @@ const Leads: React.FC = () => {
   const [attendedLeads, setAttendedLeads] = useState<Set<string>>(new Set());
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
+  const [members, setMembers] = useState<{ id: string; full_name: string }[]>([]);
   const pageSize = 50;
+
+  const canFilterByMember = profile?.role === 'admin' || profile?.role === 'manager';
 
   // Form state
   const [formData, setFormData] = useState({
@@ -182,6 +242,19 @@ const Leads: React.FC = () => {
     fetchLeads(1, false);
     setPage(1);
   }, [fetchLeads]);
+
+  // Load team members for the "Assigned To" filter (admins/managers only)
+  useEffect(() => {
+    if (!canFilterByMember) return;
+    (async () => {
+      const { data } = await supabase
+        .from('profiles')
+        .select('id, full_name')
+        .eq('is_active', true)
+        .order('full_name');
+      if (data) setMembers(data as { id: string; full_name: string }[]);
+    })();
+  }, [canFilterByMember]);
 
   // Check for leadId in URL query params and open that lead
   useEffect(() => {
@@ -415,6 +488,7 @@ const Leads: React.FC = () => {
       case 'new': return 'bg-primary/10 text-primary';
       case 'contacted': return 'bg-warning/10 text-warning';
       case 'qualified': return 'bg-success/10 text-success';
+      case 'meeting_scheduled': return 'bg-indigo-500/10 text-indigo-500';
       case 'site_visit_scheduled': return 'bg-cyan-500/10 text-cyan-500';
       case 'site_visit_done': return 'bg-teal-500/10 text-teal-500';
       case 'proposal': return 'bg-accent/20 text-accent-foreground';
@@ -447,6 +521,34 @@ const Leads: React.FC = () => {
           start: startOfDay(dateFilter.startDate!),
           end: endOfDay(dateFilter.endDate!)
         });
+      });
+    }
+
+    // Apply status filter
+    if (dateFilter.statusFilter !== 'all') {
+      filtered = filtered.filter(lead => lead.status === dateFilter.statusFilter);
+    }
+
+    // Apply assigned team-member filter
+    if (dateFilter.assignedFilter !== 'all') {
+      filtered = filtered.filter(lead =>
+        dateFilter.assignedFilter === 'unassigned'
+          ? !lead.assigned_to
+          : lead.assigned_to === dateFilter.assignedFilter
+      );
+    }
+
+    // Apply source / portal filter
+    if (dateFilter.sourceFilter !== 'all') {
+      const allKeywords = Object.values(PORTAL_KEYWORDS).flat();
+      filtered = filtered.filter(lead => {
+        const src = lead.source?.toLowerCase() || '';
+        if (dateFilter.sourceFilter === 'others') {
+          // Leads from any source not covered by a known portal (incl. no source)
+          return !allKeywords.some(kw => src.includes(kw));
+        }
+        const keywords = PORTAL_KEYWORDS[dateFilter.sourceFilter] || [dateFilter.sourceFilter];
+        return keywords.some(kw => src.includes(kw));
       });
     }
 
@@ -617,12 +719,16 @@ const Leads: React.FC = () => {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="source">Source</Label>
-                    <Input
-                      id="source"
-                      placeholder="Lead source"
-                      value={formData.source}
-                      onChange={(e) => setFormData({ ...formData, source: e.target.value })}
-                    />
+                    <Select value={formData.source} onValueChange={(value) => setFormData({ ...formData, source: value })}>
+                      <SelectTrigger id="source">
+                        <SelectValue placeholder="Select source" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {LEAD_SOURCE_OPTIONS.map((opt) => (
+                          <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
 
@@ -718,8 +824,8 @@ const Leads: React.FC = () => {
       </div>
 
       {/* Search and Filters */}
-      <div className="flex items-center gap-4 flex-wrap">
-        <div className="relative flex-1 min-w-[300px]">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:flex-wrap">
+        <div className="relative w-full sm:flex-1 sm:min-w-[240px]">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Search leads by name, phone, or email..."
@@ -730,10 +836,10 @@ const Leads: React.FC = () => {
         </div>
 
         {/* Date Range Filter */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 w-full sm:w-auto">
           <Popover>
             <PopoverTrigger asChild>
-              <Button variant="outline" className="gap-2">
+              <Button variant="outline" className="gap-2 w-full sm:w-auto justify-start">
                 <CalendarDays className="h-4 w-4" />
                 {dateFilter.startDate && dateFilter.endDate
                   ? `${format(dateFilter.startDate, 'MMM dd')} - ${format(dateFilter.endDate, 'MMM dd')}`
@@ -776,6 +882,64 @@ const Leads: React.FC = () => {
           </Popover>
         </div>
 
+        {/* Assigned Team Member Filter (admins/managers) */}
+        {canFilterByMember && (
+          <Select
+            value={dateFilter.assignedFilter}
+            onValueChange={(value: string) =>
+              setDateFilter(prev => ({ ...prev, assignedFilter: value }))
+            }
+          >
+            <SelectTrigger className="w-full sm:w-[180px]">
+              <Users className="h-4 w-4 mr-1 text-muted-foreground" />
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Members</SelectItem>
+              <SelectItem value="unassigned">Unassigned</SelectItem>
+              {members.map((m) => (
+                <SelectItem key={m.id} value={m.id}>{m.full_name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+
+        {/* Status Filter */}
+        <Select
+          value={dateFilter.statusFilter}
+          onValueChange={(value: string) =>
+            setDateFilter(prev => ({ ...prev, statusFilter: value }))
+          }
+        >
+          <SelectTrigger className="w-full sm:w-[170px]">
+            <Filter className="h-4 w-4 mr-1 text-muted-foreground" />
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {STATUS_FILTER_OPTIONS.map(opt => (
+              <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        {/* Source / Portal Filter */}
+        <Select
+          value={dateFilter.sourceFilter}
+          onValueChange={(value: string) =>
+            setDateFilter(prev => ({ ...prev, sourceFilter: value }))
+          }
+        >
+          <SelectTrigger className="w-full sm:w-[160px]">
+            <Database className="h-4 w-4 mr-1 text-muted-foreground" />
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {SOURCE_FILTER_OPTIONS.map(opt => (
+              <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
         {/* Follow-up Filter */}
         <Select
           value={dateFilter.followUpFilter}
@@ -783,7 +947,7 @@ const Leads: React.FC = () => {
             setDateFilter(prev => ({ ...prev, followUpFilter: value }))
           }
         >
-          <SelectTrigger className="w-[140px]">
+          <SelectTrigger className="w-full sm:w-[140px]">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>

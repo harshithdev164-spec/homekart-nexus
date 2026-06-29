@@ -17,6 +17,8 @@ const Onboarding = lazy(() => import("./pages/Onboarding"));
 const Billing = lazy(() => import("./pages/Billing"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const Leads = lazy(() => import("./pages/Leads"));
+const DataCalling = lazy(() => import("./pages/DataCalling"));
+const DailyPlanner = lazy(() => import("./pages/DailyPlanner"));
 const Properties = lazy(() => import("./pages/Properties"));
 const EnhancedProperties = lazy(() => import("./pages/EnhancedProperties"));
 const Magicbricks = lazy(() => import("./pages/Magicbricks"));
@@ -123,6 +125,8 @@ const App: React.FC = () => {
                   <Route path="/billing" element={<DashboardLayout><Billing /></DashboardLayout>} />
                   <Route path="/dashboard" element={<DashboardLayout><Dashboard /></DashboardLayout>} />
                   <Route path="/leads" element={<DashboardLayout><Leads /></DashboardLayout>} />
+                  <Route path="/data-calling" element={<DashboardLayout><DataCalling /></DashboardLayout>} />
+                  <Route path="/daily-planner" element={<DashboardLayout><DailyPlanner /></DashboardLayout>} />
                   <Route path="/properties" element={<DashboardLayout><Properties /></DashboardLayout>} />
                   <Route path="/enhanced-properties" element={<DashboardLayout><EnhancedProperties /></DashboardLayout>} />
                   <Route path="/add-listing" element={<DashboardLayout><AddListing /></DashboardLayout>} />

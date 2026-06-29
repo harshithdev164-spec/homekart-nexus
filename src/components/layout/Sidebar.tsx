@@ -26,6 +26,8 @@ import {
   X,
   Mail,
   Menu,
+  PhoneCall,
+  ClipboardList,
 } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
@@ -39,6 +41,8 @@ interface NavItem {
 const navigation: NavItem[] = [
   { title: 'Dashboard', href: '/dashboard', icon: Home },
   { title: 'Leads', href: '/leads', icon: UserCheck },
+  { title: 'Data Calling', href: '/data-calling', icon: PhoneCall },
+  { title: 'Daily Planner', href: '/daily-planner', icon: ClipboardList },
   { title: 'Properties', href: '/properties', icon: Building2 },
   { title: 'Add Listing', href: '/add-listing', icon: Plus },
   { title: 'Magicbricks', href: '/magicbricks', icon: Store },

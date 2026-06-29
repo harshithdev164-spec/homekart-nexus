@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
@@ -9,18 +9,49 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog';
 import { useAuth } from '@/components/auth/AuthProvider';
-import { Bell, Settings, LogOut, User } from 'lucide-react';
+import { Bell, Settings, LogOut, User, AlertTriangle, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { TimeTracker } from '@/components/time-tracking/TimeTracker';
+import { getPendingDailyTasks, PendingTask } from '@/hooks/useDailyCompletion';
 
 export const Header: React.FC = () => {
   const { profile, signOut } = useAuth();
   const navigate = useNavigate();
+  const [checkingLogout, setCheckingLogout] = useState(false);
+  const [pendingTasks, setPendingTasks] = useState<PendingTask[]>([]);
+  const [blockOpen, setBlockOpen] = useState(false);
 
-  const handleSignOut = async () => {
+  const doSignOut = async () => {
     await signOut();
     navigate('/auth');
+  };
+
+  const handleSignOut = async () => {
+    // Admins can always log out; everyone else must finish end-of-day tasks first.
+    if (!profile || profile.role === 'admin') {
+      await doSignOut();
+      return;
+    }
+
+    setCheckingLogout(true);
+    const pending = await getPendingDailyTasks(profile.id);
+    setCheckingLogout(false);
+
+    if (pending.length > 0) {
+      setPendingTasks(pending);
+      setBlockOpen(true);
+      return;
+    }
+    await doSignOut();
   };
 
   return (
@@ -73,14 +104,55 @@ export const Header: React.FC = () => {
                 <span>Settings</span>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={handleSignOut}>
-                <LogOut className="mr-2 h-4 w-4" />
-                <span>Log out</span>
+              <DropdownMenuItem
+                onSelect={(e) => { e.preventDefault(); handleSignOut(); }}
+                disabled={checkingLogout}
+              >
+                {checkingLogout ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <LogOut className="mr-2 h-4 w-4" />
+                )}
+                <span>{checkingLogout ? 'Checking...' : 'Log out'}</span>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
       </div>
+
+      {/* Logout blocked until end-of-day tasks are done */}
+      <Dialog open={blockOpen} onOpenChange={setBlockOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-warning" />
+              Finish before you log out
+            </DialogTitle>
+            <DialogDescription>
+              Please complete the following before logging out for the day:
+            </DialogDescription>
+          </DialogHeader>
+
+          <ul className="space-y-2 py-2">
+            {pendingTasks.map((task) => (
+              <li key={task.href} className="flex items-center justify-between gap-3 rounded-md border p-3">
+                <span className="text-sm font-medium">{task.label}</span>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => { setBlockOpen(false); navigate(task.href); }}
+                >
+                  {task.actionLabel}
+                </Button>
+              </li>
+            ))}
+          </ul>
+
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setBlockOpen(false)}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </header>
   );
 };

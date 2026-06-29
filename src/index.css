@@ -259,22 +259,73 @@
     touch-action: manipulation;
   }
 
-  /* Smooth scrolling for mobile */
-  @media (max-width: 768px) {
-    * {
-      -webkit-tap-highlight-color: transparent;
-    }
-    
-    html {
-      scroll-behavior: smooth;
-    }
+  /* Hide scrollbars where a clean look is wanted (e.g. scrollable tab bars) */
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+    display: none;
+  }
+}
+
+/* Prevent horizontal overflow & iOS text auto-inflation */
+html,
+body {
+  max-width: 100%;
+  overflow-x: hidden;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+/* Momentum scrolling on touch devices */
+.overflow-y-auto,
+.overflow-x-auto,
+.overflow-auto {
+  -webkit-overflow-scrolling: touch;
+}
+
+@media (max-width: 768px) {
+  * {
+    -webkit-tap-highlight-color: transparent;
   }
 
-  /* Hide scrollbar on mobile for cleaner look */
-  @media (max-width: 768px) {
-    .overflow-y-auto::-webkit-scrollbar {
-      width: 0px;
-      background: transparent;
-    }
+  html {
+    scroll-behavior: smooth;
+  }
+
+  /* backdrop-filter is very expensive on mobile GPUs and is the #1 cause of
+     scroll jank — disable it on small screens for a smooth flow. */
+  [class*="backdrop-blur"] {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+
+  /* Continuous infinite animations cause constant repaints on phones */
+  .animate-float,
+  .animate-gradient {
+    animation: none !important;
+  }
+
+  /* Cleaner scroll areas on mobile */
+  .overflow-y-auto::-webkit-scrollbar,
+  .overflow-x-auto::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+    background: transparent;
+  }
+}
+
+/* Honor users who prefer reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

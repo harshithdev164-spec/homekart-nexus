@@ -541,6 +541,8 @@ export type Database = {
           created_by: string
           description: string | null
           floor: string | null
+          facing: string | null
+          project_name: string | null
           id: string
           images: string[] | null
           is_magicbricks_listing: boolean
@@ -572,6 +574,8 @@ export type Database = {
           created_by: string
           description?: string | null
           floor?: string | null
+          facing?: string | null
+          project_name?: string | null
           id?: string
           images?: string[] | null
           is_magicbricks_listing?: boolean
@@ -603,6 +607,8 @@ export type Database = {
           created_by?: string
           description?: string | null
           floor?: string | null
+          facing?: string | null
+          project_name?: string | null
           id?: string
           images?: string[] | null
           is_magicbricks_listing?: boolean
@@ -1025,6 +1031,7 @@ export type Database = {
         | "new"
         | "contacted"
         | "qualified"
+        | "meeting_scheduled"
         | "site_visit_scheduled"
         | "site_visit_done"
         | "proposal"

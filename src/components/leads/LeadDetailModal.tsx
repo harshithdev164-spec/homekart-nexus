@@ -254,6 +254,7 @@ export const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
       new: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300',
       contacted: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300',
       qualified: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300',
+      meeting_scheduled: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-300',
       site_visit_scheduled: 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900 dark:text-cyan-300',
       site_visit_done: 'bg-teal-100 text-teal-800 dark:bg-teal-900 dark:text-teal-300',
       proposal: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300',
@@ -315,7 +316,7 @@ export const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
 
         <div className="space-y-6">
           <Tabs defaultValue="overview" className="w-full">
-            <TabsList className="grid w-full grid-cols-5">
+            <TabsList className="flex sm:grid w-full sm:grid-cols-5 overflow-x-auto no-scrollbar justify-start [&>button]:flex-shrink-0">
               <TabsTrigger value="overview">Overview</TabsTrigger>
               <TabsTrigger value="followup" className="flex items-center gap-1">
                 <CalendarClock className="h-4 w-4" />

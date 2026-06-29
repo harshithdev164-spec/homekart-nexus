@@ -52,6 +52,7 @@ const getStatusColor = (status: string) => {
     case 'new': return 'bg-primary/10 text-primary';
     case 'contacted': return 'bg-warning/10 text-warning';
     case 'qualified': return 'bg-success/10 text-success';
+    case 'meeting_scheduled': return 'bg-indigo-500/10 text-indigo-500';
     case 'site_visit_scheduled': return 'bg-cyan-500/10 text-cyan-500';
     case 'site_visit_done': return 'bg-teal-500/10 text-teal-500';
     case 'proposal': return 'bg-accent/20 text-accent-foreground';

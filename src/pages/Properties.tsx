@@ -33,6 +33,8 @@ interface Property {
   id: string;
   title: string;
   description?: string;
+  project_name?: string;
+  facing?: string;
   price: number;
   property_type: string;
   status: string;
@@ -59,6 +61,11 @@ interface Property {
   };
 }
 
+const FACING_OPTIONS = [
+  'North', 'South', 'East', 'West',
+  'North-East', 'North-West', 'South-East', 'South-West',
+];
+
 const Properties: React.FC = () => {
   const { profile } = useAuth();
   const { toast } = useToast();
@@ -79,6 +86,8 @@ const Properties: React.FC = () => {
   const [formData, setFormData] = useState({
     title: '',
     description: '',
+    project_name: '',
+    facing: '',
     property_type: '',
     category: 'primary' as 'primary' | 'resale' | 'rent',
     source_type: 'owner' as 'agent' | 'owner',
@@ -95,6 +104,21 @@ const Properties: React.FC = () => {
     floor: '',
     is_magicbricks_listing: false,
   });
+
+  // Filters
+  const [showFilters, setShowFilters] = useState(false);
+  const emptyFilters = {
+    priceMin: '', priceMax: '',
+    areaMin: '', areaMax: '',
+    location: '', city: '',
+    projectName: '', facing: 'all',
+    propertyType: 'all', status: 'all',
+    sourceType: 'all', bedrooms: 'all',
+  };
+  const [filters, setFilters] = useState({ ...emptyFilters });
+  const activeFilterCount = Object.entries(filters).filter(
+    ([, v]) => v !== '' && v !== 'all'
+  ).length;
 
   const fetchProperties = useCallback(async () => {
     try {
@@ -231,6 +255,8 @@ const Properties: React.FC = () => {
         ...formData,
         property_type: formData.property_type as 'apartment' | 'villa' | 'plot' | 'commercial' | 'office' | 'warehouse',
         price: parseFloat(formData.price),
+        project_name: formData.project_name || null,
+        facing: formData.facing || null,
         area: formData.area ? parseFloat(formData.area) : null,
         bedrooms: formData.bedrooms ? parseInt(formData.bedrooms) : null,
         bathrooms: formData.bathrooms ? parseInt(formData.bathrooms) : null,
@@ -264,6 +290,8 @@ const Properties: React.FC = () => {
       setFormData({
         title: '',
         description: '',
+        project_name: '',
+        facing: '',
         property_type: '',
         category: 'primary',
         source_type: 'owner',
@@ -296,6 +324,8 @@ const Properties: React.FC = () => {
         ...formData,
         property_type: formData.property_type as 'apartment' | 'villa' | 'plot' | 'commercial' | 'office' | 'warehouse',
         price: parseFloat(formData.price),
+        project_name: formData.project_name || null,
+        facing: formData.facing || null,
         area: formData.area ? parseFloat(formData.area) : null,
         bedrooms: formData.bedrooms ? parseInt(formData.bedrooms) : null,
         bathrooms: formData.bathrooms ? parseInt(formData.bathrooms) : null,
@@ -374,6 +404,8 @@ const Properties: React.FC = () => {
     setFormData({
       title: property.title,
       description: property.description || '',
+      project_name: property.project_name || '',
+      facing: property.facing || '',
       property_type: property.property_type,
       category: property.category || 'primary',
       source_type: property.source_type || 'owner',
@@ -476,17 +508,43 @@ const Properties: React.FC = () => {
   };
 
   const filteredProperties = useMemo(() => {
+    const num = (v: string) => (v === '' ? null : Number(v));
+    const matchesFilters = (p: Property) => {
+      const pMin = num(filters.priceMin), pMax = num(filters.priceMax);
+      if (pMin !== null && p.price < pMin) return false;
+      if (pMax !== null && p.price > pMax) return false;
+      const aMin = num(filters.areaMin), aMax = num(filters.areaMax);
+      if (aMin !== null && (p.area ?? 0) < aMin) return false;
+      if (aMax !== null && (p.area ?? Number.MAX_SAFE_INTEGER) > aMax) return false;
+      if (filters.location && !p.location?.toLowerCase().includes(filters.location.toLowerCase())) return false;
+      if (filters.city && !p.city?.toLowerCase().includes(filters.city.toLowerCase())) return false;
+      if (filters.projectName && !(p.project_name || '').toLowerCase().includes(filters.projectName.toLowerCase())) return false;
+      if (filters.facing !== 'all' && p.facing !== filters.facing) return false;
+      if (filters.propertyType !== 'all' && p.property_type !== filters.propertyType) return false;
+      if (filters.status !== 'all' && p.status !== filters.status) return false;
+      if (filters.sourceType !== 'all' && p.source_type !== filters.sourceType) return false;
+      if (filters.bedrooms !== 'all') {
+        const b = p.bedrooms ?? 0;
+        if (filters.bedrooms === '5') { if (b < 5) return false; }
+        else if (b !== Number(filters.bedrooms)) return false;
+      }
+      return true;
+    };
+
     return properties.filter(property => {
-      const matchesSearch = property.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           property.location.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           property.city.toLowerCase().includes(searchTerm.toLowerCase());
-      
-      if (activeTab === 'all') return matchesSearch;
-      if (activeTab === 'my-properties') return matchesSearch && property.created_by === profile?.id;
-      if (activeTab === 'magicbricks') return matchesSearch && (property as any).is_magicbricks_listing === true;
-      return matchesSearch && property.category === activeTab;
+      const term = searchTerm.toLowerCase();
+      const matchesSearch = property.title.toLowerCase().includes(term) ||
+                           property.location.toLowerCase().includes(term) ||
+                           property.city.toLowerCase().includes(term) ||
+                           (property.project_name || '').toLowerCase().includes(term);
+
+      if (!matchesSearch || !matchesFilters(property)) return false;
+      if (activeTab === 'all') return true;
+      if (activeTab === 'my-properties') return property.created_by === profile?.id;
+      if (activeTab === 'magicbricks') return (property as any).is_magicbricks_listing === true;
+      return property.category === activeTab;
     });
-  }, [properties, searchTerm, activeTab, profile?.id]);
+  }, [properties, searchTerm, activeTab, profile?.id, filters]);
 
   // Separate properties by category for better organization
   const primaryProperties = useMemo(() => filteredProperties.filter(p => p.category === 'primary'), [filteredProperties]);
@@ -526,6 +584,17 @@ const Properties: React.FC = () => {
           <MapPin className="h-4 w-4" />
           <span className="truncate">{property.location}, {property.city}</span>
         </div>
+
+        {(property.project_name || property.facing) && (
+          <div className="flex flex-wrap items-center gap-2 mb-2">
+            {property.project_name && (
+              <span className="text-sm font-medium truncate">{property.project_name}</span>
+            )}
+            {property.facing && (
+              <Badge variant="outline" className="text-[10px]">{property.facing} facing</Badge>
+            )}
+          </div>
+        )}
 
         <div className="flex items-center gap-4 mb-2">
           <div className="flex items-center gap-1">
@@ -736,6 +805,30 @@ const Properties: React.FC = () => {
                 </div>
               </div>
 
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="project_name">Project Name</Label>
+                  <Input
+                    id="project_name"
+                    placeholder="e.g., Prestige Lakeside"
+                    value={formData.project_name}
+                    onChange={(e) => setFormData({...formData, project_name: e.target.value})}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="facing">Facing</Label>
+                  <Select value={formData.facing || 'none'} onValueChange={(v) => setFormData({...formData, facing: v === 'none' ? '' : v})}>
+                    <SelectTrigger id="facing">
+                      <SelectValue placeholder="Select facing" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Not specified</SelectItem>
+                      {FACING_OPTIONS.map((o) => <SelectItem key={o} value={o}>{o}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
               <div className="grid grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="area">Area (sq ft)</Label>
@@ -877,19 +970,153 @@ const Properties: React.FC = () => {
       </div>
 
       {/* Search and Filters */}
-      <div className="flex items-center gap-4">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search properties by title, location, or city..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10"
-          />
+      <div className="space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+          <div className="relative w-full sm:flex-1">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search by title, project, location, or city..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+          <Button
+            variant={showFilters ? 'default' : 'outline'}
+            onClick={() => setShowFilters((v) => !v)}
+            className="gap-2 w-full sm:w-auto"
+          >
+            <Filter className="h-4 w-4" />
+            Filters
+            {activeFilterCount > 0 && (
+              <Badge variant="secondary" className="ml-1">{activeFilterCount}</Badge>
+            )}
+          </Button>
         </div>
-        <Button variant="outline" size="icon">
-          <Filter className="h-4 w-4" />
-        </Button>
+
+        {showFilters && (
+          <Card>
+            <CardContent className="p-4 space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Min Price (₹)</Label>
+                  <Input type="number" placeholder="0" value={filters.priceMin}
+                    onChange={(e) => setFilters((f) => ({ ...f, priceMin: e.target.value }))} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Max Price (₹)</Label>
+                  <Input type="number" placeholder="Any" value={filters.priceMax}
+                    onChange={(e) => setFilters((f) => ({ ...f, priceMax: e.target.value }))} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Min Area (sq ft)</Label>
+                  <Input type="number" placeholder="0" value={filters.areaMin}
+                    onChange={(e) => setFilters((f) => ({ ...f, areaMin: e.target.value }))} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Max Area (sq ft)</Label>
+                  <Input type="number" placeholder="Any" value={filters.areaMax}
+                    onChange={(e) => setFilters((f) => ({ ...f, areaMax: e.target.value }))} />
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Project Name</Label>
+                  <Input placeholder="Project" value={filters.projectName}
+                    onChange={(e) => setFilters((f) => ({ ...f, projectName: e.target.value }))} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Location</Label>
+                  <Input placeholder="Area / locality" value={filters.location}
+                    onChange={(e) => setFilters((f) => ({ ...f, location: e.target.value }))} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">City</Label>
+                  <Input placeholder="City" value={filters.city}
+                    onChange={(e) => setFilters((f) => ({ ...f, city: e.target.value }))} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Facing</Label>
+                  <Select value={filters.facing} onValueChange={(v) => setFilters((f) => ({ ...f, facing: v }))}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Any facing</SelectItem>
+                      {FACING_OPTIONS.map((o) => <SelectItem key={o} value={o}>{o}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Property Type</Label>
+                  <Select value={filters.propertyType} onValueChange={(v) => setFilters((f) => ({ ...f, propertyType: v }))}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Any type</SelectItem>
+                      <SelectItem value="apartment">Apartment</SelectItem>
+                      <SelectItem value="villa">Villa</SelectItem>
+                      <SelectItem value="plot">Plot</SelectItem>
+                      <SelectItem value="commercial">Commercial</SelectItem>
+                      <SelectItem value="office">Office</SelectItem>
+                      <SelectItem value="warehouse">Warehouse</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Bedrooms (BHK)</Label>
+                  <Select value={filters.bedrooms} onValueChange={(v) => setFilters((f) => ({ ...f, bedrooms: v }))}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Any</SelectItem>
+                      <SelectItem value="1">1 BHK</SelectItem>
+                      <SelectItem value="2">2 BHK</SelectItem>
+                      <SelectItem value="3">3 BHK</SelectItem>
+                      <SelectItem value="4">4 BHK</SelectItem>
+                      <SelectItem value="5">5+ BHK</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Status</Label>
+                  <Select value={filters.status} onValueChange={(v) => setFilters((f) => ({ ...f, status: v }))}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Any status</SelectItem>
+                      <SelectItem value="available">Available</SelectItem>
+                      <SelectItem value="under_contract">Under Contract</SelectItem>
+                      <SelectItem value="sold">Sold</SelectItem>
+                      <SelectItem value="rented">Rented</SelectItem>
+                      <SelectItem value="off_market">Off Market</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Source Type</Label>
+                  <Select value={filters.sourceType} onValueChange={(v) => setFilters((f) => ({ ...f, sourceType: v }))}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Any source</SelectItem>
+                      <SelectItem value="agent">Agent</SelectItem>
+                      <SelectItem value="owner">Owner</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between">
+                <p className="text-xs text-muted-foreground">
+                  {filteredProperties.length} propert{filteredProperties.length === 1 ? 'y' : 'ies'} match
+                </p>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setFilters({ ...emptyFilters })}
+                  disabled={activeFilterCount === 0}
+                >
+                  Clear all
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       {/* Map View */}
@@ -1121,6 +1348,30 @@ const Properties: React.FC = () => {
                   value={formData.area}
                   onChange={(e) => setFormData({...formData, area: e.target.value})}
                 />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-project_name">Project Name</Label>
+                <Input
+                  id="edit-project_name"
+                  placeholder="e.g., Prestige Lakeside"
+                  value={formData.project_name}
+                  onChange={(e) => setFormData({...formData, project_name: e.target.value})}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-facing">Facing</Label>
+                <Select value={formData.facing || 'none'} onValueChange={(v) => setFormData({...formData, facing: v === 'none' ? '' : v})}>
+                  <SelectTrigger id="edit-facing">
+                    <SelectValue placeholder="Select facing" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Not specified</SelectItem>
+                    {FACING_OPTIONS.map((o) => <SelectItem key={o} value={o}>{o}</SelectItem>)}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 

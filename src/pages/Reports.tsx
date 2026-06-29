@@ -248,7 +248,7 @@ const Reports: React.FC = () => {
       </div>
 
       <Tabs defaultValue="daily" className="w-full">
-        <TabsList className="grid w-full grid-cols-9">
+        <TabsList className="flex md:grid w-full md:grid-cols-9 overflow-x-auto no-scrollbar justify-start [&>button]:flex-shrink-0">
           <TabsTrigger value="daily">Daily Reports</TabsTrigger>
           <TabsTrigger value="sales">Sales</TabsTrigger>
           <TabsTrigger value="leads">Leads</TabsTrigger>
@@ -303,7 +303,7 @@ const Reports: React.FC = () => {
         {/* Legacy Analytics Tab */}
         <TabsContent value="analytics" className="space-y-6">
           <Tabs defaultValue="team" className="w-full">
-            <TabsList className="grid w-full grid-cols-4">
+            <TabsList className="flex sm:grid w-full sm:grid-cols-4 overflow-x-auto no-scrollbar justify-start [&>button]:flex-shrink-0">
               <TabsTrigger value="team">Team Analytics</TabsTrigger>
               <TabsTrigger value="submit">Submit Report</TabsTrigger>
               <TabsTrigger value="data">Data Table</TabsTrigger>
